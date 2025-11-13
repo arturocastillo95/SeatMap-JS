@@ -51,6 +51,9 @@ export const AlignmentManager = {
     // Row label position buttons (toggleable)
     Elements.rowLabelLeft.addEventListener('click', () => this.toggleRowLabelPosition('left'));
     Elements.rowLabelRight.addEventListener('click', () => this.toggleRowLabelPosition('right'));
+
+    // Rotation slider
+    Elements.rotateSlider.addEventListener('input', (e) => this.setRotation(parseFloat(e.target.value)));
   },
 
   setRowLabelType(type) {
@@ -85,6 +88,25 @@ export const AlignmentManager = {
       
       SectionManager.updateRowLabels(section);
       this.updateSeatPositions(section); // Update positions after box size changes
+      this.updateSidebarValues(section);
+    }
+  },
+
+  setRotation(degrees) {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      
+      // Clamp rotation between -180 and 180
+      degrees = Math.max(-180, Math.min(180, degrees));
+      section.rotationDegrees = degrees;
+      
+      // Rotate the section graphics (bounding box)
+      section.angle = degrees;
+      
+      // Update seat and label positions to rotate them around section center
+      SectionManager.positionSeatsAndLabels(section);
+      
+      // Update the UI
       this.updateSidebarValues(section);
     }
   },
@@ -128,6 +150,11 @@ export const AlignmentManager = {
     // Update row label position buttons (independently toggleable)
     Elements.rowLabelLeft.classList.toggle('active', section.showLeftLabels);
     Elements.rowLabelRight.classList.toggle('active', section.showRightLabels);
+    
+    // Update rotation slider and display value
+    const rotation = section.rotationDegrees || 0;
+    Elements.rotateSlider.value = rotation;
+    Elements.rotateValue.textContent = `${rotation}°`;
   },
 
   // ============================================
@@ -296,16 +323,8 @@ export const AlignmentManager = {
    * Update seat positions for a section (optimized - no logging)
    */
   updateSeatPositions(section) {
-    section.seats.forEach(seat => {
-      seat.x = section.x + seat.relativeX;
-      seat.y = section.y + seat.relativeY;
-    });
-    
-    // Update row label positions (just move them, don't recreate)
-    section.rowLabels.forEach(label => {
-      label.x = section.x + label.relativeX;
-      label.y = section.y + label.relativeY;
-    });
+    // Use the centralized positioning method from SectionManager
+    SectionManager.positionSeatsAndLabels(section);
   },
 
   // ============================================

@@ -97,17 +97,8 @@ export const InteractionManager = {
         section.x += dx;
         section.y += dy;
         
-        // Move all seats with their section using relative positions
-        section.seats.forEach(seat => {
-          seat.x = section.x + seat.relativeX;
-          seat.y = section.y + seat.relativeY;
-        });
-        
-        // Move all labels with their section using relative positions
-        section.rowLabels.forEach(label => {
-          label.x = section.x + label.relativeX;
-          label.y = section.y + label.relativeY;
-        });
+        // Update seat and label positions (handles rotation if needed)
+        AlignmentManager.updateSeatPositions(section);
       });
       return;
     }

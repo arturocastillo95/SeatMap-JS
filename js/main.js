@@ -68,6 +68,8 @@ function initializeElements() {
   Elements.rowLabelLeft = document.getElementById('rowLabelLeft');
   Elements.rowLabelRight = document.getElementById('rowLabelRight');
   Elements.rowLabelPositionSection = document.getElementById('rowLabelPositionSection');
+  Elements.rotateSlider = document.getElementById('rotateSlider');
+  Elements.rotateValue = document.getElementById('rotateValue');
 }
 
 function setupResizeHandler() {
