@@ -47,8 +47,8 @@ export const ToolManager = {
       // Section bounds
       minX = Math.min(minX, section.x);
       minY = Math.min(minY, section.y);
-      maxX = Math.max(maxX, section.x + section.width);
-      maxY = Math.max(maxY, section.y + section.height);
+      maxX = Math.max(maxX, section.x + section.contentWidth);
+      maxY = Math.max(maxY, section.y + section.contentHeight);
       
       // Check seats too for more accurate bounds
       section.seats.forEach(seat => {

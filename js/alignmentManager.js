@@ -211,16 +211,16 @@ export const AlignmentManager = {
         // Calculate bounds at current position
         const currentBounds = {
           minX: x,
-          maxX: x + section.width,
+          maxX: x + section.contentWidth,
           minY: y,
-          maxY: y + section.height
+          maxY: y + section.contentHeight
         };
         
         const otherBounds = {
           minX: other.x,
-          maxX: other.x + other.width,
+          maxX: other.x + other.contentWidth,
           minY: other.y,
-          maxY: other.y + other.height
+          maxY: other.y + other.contentHeight
         };
         
         // Check X-axis movement independently
@@ -228,9 +228,9 @@ export const AlignmentManager = {
           const testX = x + finalDx;
           const testBoundsX = {
             minX: testX,
-            maxX: testX + section.width,
+            maxX: testX + section.contentWidth,
             minY: y, // Keep Y at original
-            maxY: y + section.height
+            maxY: y + section.contentHeight
           };
           
           // Would moving on X-axis cause overlap?
@@ -238,7 +238,7 @@ export const AlignmentManager = {
               testBoundsX.maxY > otherBounds.minY && testBoundsX.minY < otherBounds.maxY) {
             // Collision on X-axis - constrain X movement
             if (dx > 0) {
-              const maxDx = otherBounds.minX - (x + section.width);
+              const maxDx = otherBounds.minX - (x + section.contentWidth);
               finalDx = Math.min(finalDx, maxDx);
             } else {
               const maxDx = otherBounds.maxX - x;
@@ -252,9 +252,9 @@ export const AlignmentManager = {
           const testY = y + finalDy;
           const testBoundsY = {
             minX: x, // Keep X at original
-            maxX: x + section.width,
+            maxX: x + section.contentWidth,
             minY: testY,
-            maxY: testY + section.height
+            maxY: testY + section.contentHeight
           };
           
           // Would moving on Y-axis cause overlap?
@@ -262,7 +262,7 @@ export const AlignmentManager = {
               testBoundsY.maxY > otherBounds.minY && testBoundsY.minY < otherBounds.maxY) {
             // Collision on Y-axis - constrain Y movement
             if (dy > 0) {
-              const maxDy = otherBounds.minY - (y + section.height);
+              const maxDy = otherBounds.minY - (y + section.contentHeight);
               finalDy = Math.min(finalDy, maxDy);
             } else {
               const maxDy = otherBounds.maxY - y;
@@ -398,7 +398,7 @@ export const AlignmentManager = {
     
     // Move all sections so their right edge aligns with maxX
     State.selectedSections.forEach(section => {
-      section.x = maxX - section.width;
+      section.x = maxX - section.contentWidth;
       this.updateSeatPositions(section);
     });
     
@@ -414,7 +414,7 @@ export const AlignmentManager = {
     
     // Move all sections so their centers align
     State.selectedSections.forEach(section => {
-      section.x = avgCenter - section.width / 2;
+      section.x = avgCenter - section.contentWidth / 2;
       this.updateSeatPositions(section);
     });
     
@@ -440,11 +440,11 @@ export const AlignmentManager = {
     if (State.selectedSections.length < 2) return;
     
     // Find the bottommost edge (y + height)
-    const maxY = Math.max(...State.selectedSections.map(s => s.y + s.height));
+    const maxY = Math.max(...State.selectedSections.map(s => s.y + s.contentHeight));
     
     // Move all sections so their bottom edge aligns with maxY
     State.selectedSections.forEach(section => {
-      section.y = maxY - section.height;
+      section.y = maxY - section.contentHeight;
       this.updateSeatPositions(section);
     });
     
@@ -455,12 +455,12 @@ export const AlignmentManager = {
     if (State.selectedSections.length < 2) return;
     
     // Calculate center of bounding box for each section
-    const centers = State.selectedSections.map(s => s.y + s.height / 2);
+    const centers = State.selectedSections.map(s => s.y + s.contentHeight / 2);
     const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length;
     
     // Move all sections so their centers align
     State.selectedSections.forEach(section => {
-      section.y = avgCenter - section.height / 2;
+      section.y = avgCenter - section.contentHeight / 2;
       this.updateSeatPositions(section);
     });
     

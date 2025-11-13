@@ -22,8 +22,10 @@ export const SectionManager = {
     section.showRightLabels = false;
     section.x = x;
     section.y = y;
-    section.width = width;
-    section.height = height;
+    
+    // Use custom properties for logical dimensions (don't use .width/.height as they modify scale)
+    section.contentWidth = width;
+    section.contentHeight = height;
     section.baseWidth = width; // Store original width without labels
     section.baseHeight = height;
     section.rotationDegrees = 0; // Store rotation in degrees (custom property to avoid PIXI conflict)
@@ -72,7 +74,7 @@ export const SectionManager = {
     label.y = 0;
     label.anchor.set(0.5, 0);
     
-    labelContainer.x = section.width / 2;
+    labelContainer.x = section.contentWidth / 2;
     labelContainer.y = -label.height - 8;
     labelContainer.eventMode = 'static';
     labelContainer.cursor = 'text';
@@ -292,10 +294,6 @@ export const SectionManager = {
   },
 
   updateRowLabels(section) {
-    console.log('=== UPDATE ROW LABELS START ===');
-    console.log('Section dimensions before:', { width: section.width, height: section.height });
-    console.log('Base dimensions:', { baseWidth: section.baseWidth, baseHeight: section.baseHeight });
-    
     // Remove existing labels
     section.rowLabels.forEach(label => {
       State.seatLayer.removeChild(label);
@@ -304,51 +302,28 @@ export const SectionManager = {
     section.rowLabels = [];
 
     // ALWAYS reset seats to their true base positions (from creation)
-    console.log('First seat BEFORE reset:', { 
-      relativeX: section.seats[0].relativeX, 
-      relativeY: section.seats[0].relativeY,
-      baseRelativeX: section.seats[0].baseRelativeX,
-      baseRelativeY: section.seats[0].baseRelativeY
-    });
-    
     section.seats.forEach(seat => {
       seat.relativeX = seat.baseRelativeX;
       seat.relativeY = seat.baseRelativeY;
     });
-    
-    console.log('First seat AFTER reset:', { 
-      relativeX: section.seats[0].relativeX, 
-      relativeY: section.seats[0].relativeY 
-    });
 
-    // Don't create labels if type is 'none' or neither position is enabled
+        // Don't create labels if type is 'none' or neither position is enabled
     if (section.rowLabelType === 'none' || (!section.showLeftLabels && !section.showRightLabels)) {
-      console.log('NO LABELS - resetting to base dimensions');
-      
       // Reset to base dimensions if no labels
-      section.width = section.baseWidth;
-      section.height = section.baseHeight;
+      section.contentWidth = section.baseWidth;
+      section.contentHeight = section.baseHeight;
       
       // Clear layout shift
       section.layoutShiftX = 0;
       section.layoutShiftY = 0;
       
       // Update pivot to base center
-      section.pivot.set(section.width / 2, section.height / 2);
-      
-      console.log('Reset complete:', { 
-        width: section.width, 
-        height: section.height,
-        pivot: { x: section.pivot.x, y: section.pivot.y },
-        shift: { x: section.layoutShiftX, y: section.layoutShiftY }
-      });
+      section.pivot.set(section.contentWidth / 2, section.contentHeight / 2);
       
       // Update seat positions (handles rotation)
       this.positionSeatsAndLabels(section);
       
       this.updateSectionGraphics(section);
-      
-      console.log('=== UPDATE ROW LABELS END (no labels) ===\n');
       return;
     }
 
@@ -413,32 +388,15 @@ export const SectionManager = {
       maxY = Math.max(maxY, seat.relativeY + 10);
     });
 
-    console.log('Bounds after seats:', { minX, maxX, minY, maxY });
-    console.log('Number of labels:', section.rowLabels.length);
-
     // Check all labels (use actual bounds)
-    section.rowLabels.forEach((label, idx) => {
+    section.rowLabels.forEach(label => {
       const labelHalfWidth = label.width / 2;
       const labelHalfHeight = label.height / 2;
-      console.log(`Label ${idx}:`, { 
-        relativeX: label.relativeX, 
-        relativeY: label.relativeY,
-        width: label.width,
-        height: label.height,
-        bounds: {
-          left: label.relativeX - labelHalfWidth,
-          right: label.relativeX + labelHalfWidth,
-          top: label.relativeY - labelHalfHeight,
-          bottom: label.relativeY + labelHalfHeight
-        }
-      });
       minX = Math.min(minX, label.relativeX - labelHalfWidth);
       maxX = Math.max(maxX, label.relativeX + labelHalfWidth);
       minY = Math.min(minY, label.relativeY - labelHalfHeight);
       maxY = Math.max(maxY, label.relativeY + labelHalfHeight);
     });
-
-    console.log('Final bounds (seats + labels):', { minX, maxX, minY, maxY });
 
     // Add padding
     const EDGE_PADDING = 10;
@@ -447,13 +405,9 @@ export const SectionManager = {
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
     
-    console.log('Content dimensions:', { contentWidth, contentHeight });
-    
     // Shift everything so content starts at EDGE_PADDING
     const shiftX = EDGE_PADDING - minX;
     const shiftY = EDGE_PADDING - minY;
-    
-    console.log('Applying shift:', { shiftX, shiftY });
     
     // Store the shift amounts on the section - don't modify relative positions yet
     section.layoutShiftX = shiftX;
@@ -465,21 +419,12 @@ export const SectionManager = {
       label.relativeY += shiftY;
     });
     
-    console.log('First seat AFTER (no change, shift stored):', { 
-      relativeX: section.seats[0].relativeX, 
-      relativeY: section.seats[0].relativeY 
-    });
-    
-    // Update dimensions to match content (no ceiling for precision)
-    section.width = contentWidth + (EDGE_PADDING * 2);
-    section.height = contentHeight + (EDGE_PADDING * 2);
-    
-    console.log('New dimensions:', { width: section.width, height: section.height });
+        // Update dimensions to match content (no ceiling for precision)
+    section.contentWidth = contentWidth + (EDGE_PADDING * 2);
+    section.contentHeight = contentHeight + (EDGE_PADDING * 2);
     
     // Update pivot to new center (important for rotation)
-    section.pivot.set(section.width / 2, section.height / 2);
-    
-    console.log('New pivot:', { x: section.pivot.x, y: section.pivot.y });
+    section.pivot.set(section.contentWidth / 2, section.contentHeight / 2);
     
     // Update the visual graphics to match new dimensions
     this.updateSectionGraphics(section);
@@ -487,14 +432,12 @@ export const SectionManager = {
     // Update selection border if it exists
     if (section.selectionBorder) {
       section.selectionBorder.clear();
-      section.selectionBorder.rect(-3, -3, section.width + 6, section.height + 6);
+      section.selectionBorder.rect(-3, -3, section.contentWidth + 6, section.contentHeight + 6);
       section.selectionBorder.stroke({ width: 3, color: 0x00ff00 });
     }
     
     // Update seat and label positions (handles rotation)
     this.positionSeatsAndLabels(section);
-    
-    console.log('=== UPDATE ROW LABELS END ===\n');
   },
 
   positionSeatsAndLabels(section) {
@@ -555,7 +498,7 @@ export const SectionManager = {
   updateSectionGraphics(section) {
     // Redraw the section rectangle at current size
     section.clear();
-    section.rect(0, 0, section.width, section.height);
+    section.rect(0, 0, section.contentWidth, section.contentHeight);
     section.fill({ color: COLORS.SECTION_FILL, alpha: 0.25 });
     section.stroke({ width: 2, color: COLORS.SECTION_STROKE, alpha: 0.8 });
   },
@@ -603,7 +546,7 @@ export const SectionManager = {
     // Add selection border if it doesn't exist
     if (!section.selectionBorder) {
       section.selectionBorder = new PIXI.Graphics();
-      section.selectionBorder.rect(-3, -3, section.width + 6, section.height + 6);
+      section.selectionBorder.rect(-3, -3, section.contentWidth + 6, section.contentHeight + 6);
       section.selectionBorder.stroke({ width: 3, color: 0x00ff00 });
       section.addChildAt(section.selectionBorder, 0);
     }

@@ -229,8 +229,8 @@ export const InteractionManager = {
       const sectionBounds = {
         x: section.x,
         y: section.y,
-        width: section.width,
-        height: section.height
+        width: section.contentWidth,
+        height: section.contentHeight
       };
       
       // Check if rectangles intersect
