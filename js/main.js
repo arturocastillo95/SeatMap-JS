@@ -70,6 +70,16 @@ function initializeElements() {
   Elements.rowLabelPositionSection = document.getElementById('rowLabelPositionSection');
   Elements.rotateSlider = document.getElementById('rotateSlider');
   Elements.rotateValue = document.getElementById('rotateValue');
+  Elements.resetRotateBtn = document.getElementById('resetRotateBtn');
+  Elements.curveSlider = document.getElementById('curveSlider');
+  Elements.curveValue = document.getElementById('curveValue');
+  Elements.resetCurveBtn = document.getElementById('resetCurveBtn');
+  Elements.stretchHSlider = document.getElementById('stretchHSlider');
+  Elements.stretchHValue = document.getElementById('stretchHValue');
+  Elements.resetStretchHBtn = document.getElementById('resetStretchHBtn');
+  Elements.stretchVSlider = document.getElementById('stretchVSlider');
+  Elements.stretchVValue = document.getElementById('stretchVValue');
+  Elements.resetStretchVBtn = document.getElementById('resetStretchVBtn');
 }
 
 function setupResizeHandler() {

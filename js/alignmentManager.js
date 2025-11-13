@@ -54,6 +54,17 @@ export const AlignmentManager = {
 
     // Rotation slider
     Elements.rotateSlider.addEventListener('input', (e) => this.setRotation(parseFloat(e.target.value)));
+    Elements.resetRotateBtn.addEventListener('click', () => this.resetRotation());
+
+    // Curve slider
+    Elements.curveSlider.addEventListener('input', (e) => this.setCurve(parseFloat(e.target.value)));
+    Elements.resetCurveBtn.addEventListener('click', () => this.resetCurve());
+
+    // Stretch sliders
+    Elements.stretchHSlider.addEventListener('input', (e) => this.setStretchH(parseFloat(e.target.value)));
+    Elements.resetStretchHBtn.addEventListener('click', () => this.resetStretchH());
+    Elements.stretchVSlider.addEventListener('input', (e) => this.setStretchV(parseFloat(e.target.value)));
+    Elements.resetStretchVBtn.addEventListener('click', () => this.resetStretchV());
   },
 
   setRowLabelType(type) {
@@ -111,6 +122,74 @@ export const AlignmentManager = {
     }
   },
 
+  setStretchH(amount) {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      section.stretchH = amount;
+      
+      // Recalculate seat positions with new horizontal spacing
+      SectionManager.applyStretch(section);
+      
+      // Update the UI
+      this.updateSidebarValues(section);
+    }
+  },
+
+  setStretchV(amount) {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      section.stretchV = amount;
+      
+      // Recalculate seat positions with new vertical spacing
+      SectionManager.applyStretch(section);
+      
+      // Update the UI
+      this.updateSidebarValues(section);
+    }
+  },
+
+  setCurve(amount) {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      
+      // Calculate maximum safe curve for this section
+      const maxCurve = SectionManager.calculateMaxCurve(section);
+      
+      // Clamp the curve to safe maximum
+      section.curve = Math.min(amount, maxCurve);
+      
+      // Recalculate seat positions with curve
+      SectionManager.applyCurve(section);
+      
+      // Update the UI
+      this.updateSidebarValues(section);
+    }
+  },
+
+  resetRotation() {
+    if (State.selectedSections.length === 1) {
+      this.setRotation(0);
+    }
+  },
+
+  resetCurve() {
+    if (State.selectedSections.length === 1) {
+      this.setCurve(0);
+    }
+  },
+
+  resetStretchH() {
+    if (State.selectedSections.length === 1) {
+      this.setStretchH(0);
+    }
+  },
+
+  resetStretchV() {
+    if (State.selectedSections.length === 1) {
+      this.setStretchV(0);
+    }
+  },
+
   observeSelectionChanges() {
     // Event-driven approach instead of polling
     document.addEventListener('selectionchanged', () => {
@@ -155,6 +234,19 @@ export const AlignmentManager = {
     const rotation = section.rotationDegrees || 0;
     Elements.rotateSlider.value = rotation;
     Elements.rotateValue.textContent = `${rotation}°`;
+
+    // Update curve slider and display value
+    const curve = section.curve || 0;
+    Elements.curveSlider.value = curve;
+    Elements.curveValue.textContent = `${curve}`;
+
+    // Update stretch sliders and display values
+    const stretchH = section.stretchH || 0;
+    const stretchV = section.stretchV || 0;
+    Elements.stretchHSlider.value = stretchH;
+    Elements.stretchHValue.textContent = `${stretchH}`;
+    Elements.stretchVSlider.value = stretchV;
+    Elements.stretchVValue.textContent = `${stretchV}`;
   },
 
   // ============================================

@@ -29,6 +29,9 @@ export const SectionManager = {
     section.baseWidth = width; // Store original width without labels
     section.baseHeight = height;
     section.rotationDegrees = 0; // Store rotation in degrees (custom property to avoid PIXI conflict)
+    section.stretchH = 0; // Horizontal stretch (adds spacing between columns)
+    section.stretchV = 0; // Vertical stretch (adds spacing between rows)
+    section.curve = 0; // Curve amount (0 = flat, positive = curved)
     
     // Set pivot to center for rotation
     section.pivot.set(width / 2, height / 2);
@@ -259,6 +262,10 @@ export const SectionManager = {
         seatContainer.baseRelativeX = seatContainer.relativeX;
         seatContainer.baseRelativeY = seatContainer.relativeY;
         
+        // Store row and column indices for grouping
+        seatContainer.rowIndex = row;
+        seatContainer.colIndex = col;
+        
         // Initial position accounting for pivot
         seatContainer.x = section.x + seatContainer.relativeX - section.pivot.x;
         seatContainer.y = section.y + seatContainer.relativeY - section.pivot.y;
@@ -302,10 +309,24 @@ export const SectionManager = {
     section.rowLabels = [];
 
     // ALWAYS reset seats to their true base positions (from creation)
-    section.seats.forEach(seat => {
-      seat.relativeX = seat.baseRelativeX;
-      seat.relativeY = seat.baseRelativeY;
-    });
+    // But then reapply transformations (stretch and curve) if they exist
+    const stretchH = section.stretchH || 0;
+    const stretchV = section.stretchV || 0;
+    const curve = section.curve || 0;
+    
+    if (curve !== 0) {
+      // Curve takes precedence and includes stretch
+      this.applyCurveTransform(section);
+    } else if (stretchH !== 0 || stretchV !== 0) {
+      // Just apply stretch
+      this.applyStretchTransform(section);
+    } else {
+      // No transformations, just use base positions
+      section.seats.forEach(seat => {
+        seat.relativeX = seat.baseRelativeX;
+        seat.relativeY = seat.baseRelativeY;
+      });
+    }
 
         // Don't create labels if type is 'none' or neither position is enabled
     if (section.rowLabelType === 'none' || (!section.showLeftLabels && !section.showRightLabels)) {
@@ -334,46 +355,43 @@ export const SectionManager = {
       return;
     }
 
-    // Get unique rows from seats
+    // Group seats by their original row index (not by Y position which changes with transformations)
     const rowMap = new Map();
     section.seats.forEach(seat => {
-      const rowY = seat.relativeY;
-      if (!rowMap.has(rowY)) {
-        rowMap.set(rowY, []);
+      const rowIdx = seat.rowIndex;
+      if (!rowMap.has(rowIdx)) {
+        rowMap.set(rowIdx, []);
       }
-      rowMap.get(rowY).push(seat);
+      rowMap.get(rowIdx).push(seat);
     });
 
     const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
     const LABEL_GAP = 30; // Distance from seat edge to label center
     
-    rows.forEach((rowData, index) => {
-      const [rowY, seatsInRow] = rowData;
-      const labelText = this.getRowLabelText(index, section.rowLabelType);
+    rows.forEach(([rowIndex, seatsInRow]) => {
+      const labelText = this.getRowLabelText(rowIndex, section.rowLabelType);
       
-      // Get leftmost and rightmost seats
+      // Get leftmost and rightmost seats based on their current relativeX (after transformations)
       const sortedSeats = seatsInRow.sort((a, b) => a.relativeX - b.relativeX);
-      const leftSeat = sortedSeats[0];
-      const rightSeat = sortedSeats[sortedSeats.length - 1];
+      const leftmostSeat = sortedSeats[0];
+      const rightmostSeat = sortedSeats[sortedSeats.length - 1];
 
-      // Create left label - store relative position
-      // Position label to the left of the leftmost seat edge (seat center - seat radius - gap)
+      // Create left label - position at the leftmost seat of this row
       if (section.showLeftLabels) {
         const leftLabel = this.createRowLabel(labelText);
-        leftLabel.relativeX = leftSeat.relativeX - 10 - LABEL_GAP; // 10 = seat radius
-        leftLabel.relativeY = rowY;
+        leftLabel.relativeX = leftmostSeat.relativeX - 10 - LABEL_GAP; // 10 = seat radius
+        leftLabel.relativeY = leftmostSeat.relativeY; // Use the seat's Y position (important for curves)
         leftLabel.x = section.x + leftLabel.relativeX;
         leftLabel.y = section.y + leftLabel.relativeY;
         section.rowLabels.push(leftLabel);
         State.seatLayer.addChild(leftLabel);
       }
 
-      // Create right label - store relative position
-      // Position label to the right of the rightmost seat edge (seat center + seat radius + gap)
+      // Create right label - position at the rightmost seat of this row
       if (section.showRightLabels) {
         const rightLabel = this.createRowLabel(labelText);
-        rightLabel.relativeX = rightSeat.relativeX + 10 + LABEL_GAP; // 10 = seat radius
-        rightLabel.relativeY = rowY;
+        rightLabel.relativeX = rightmostSeat.relativeX + 10 + LABEL_GAP; // 10 = seat radius
+        rightLabel.relativeY = rightmostSeat.relativeY; // Use the seat's Y position (important for curves)
         rightLabel.x = section.x + rightLabel.relativeX;
         rightLabel.y = section.y + rightLabel.relativeY;
         section.rowLabels.push(rightLabel);
@@ -581,6 +599,256 @@ export const SectionManager = {
       this.deselectSection(section);
     });
     State.selectedSections = [];
+  },
+
+  applyStretch(section) {
+    const curve = section.curve || 0;
+    
+    // If there's a curve, use applyCurve instead (which includes stretch)
+    if (curve !== 0) {
+      this.applyCurve(section);
+      return;
+    }
+    
+    // Get the stretch amounts
+    const stretchH = section.stretchH || 0;
+    const stretchV = section.stretchV || 0;
+    
+    // Apply stretch transformation
+    this.applyStretchTransform(section);
+    
+    // After stretching seats, update row labels if they exist
+    if (section.rowLabels.length > 0) {
+      this.updateRowLabels(section);
+    } else {
+      // No labels, just recalculate dimensions and update positions
+      this.recalculateSectionDimensions(section);
+      this.positionSeatsAndLabels(section);
+    }
+  },
+
+  // Helper: Apply stretch transformation to seats (modifies relativeX/Y)
+  applyStretchTransform(section) {
+    const stretchH = section.stretchH || 0;
+    const stretchV = section.stretchV || 0;
+    
+    const rowMap = new Map();
+    section.seats.forEach(seat => {
+      const rowY = seat.baseRelativeY;
+      if (!rowMap.has(rowY)) {
+        rowMap.set(rowY, []);
+      }
+      rowMap.get(rowY).push(seat);
+    });
+    const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
+    
+    const colMap = new Map();
+    section.seats.forEach(seat => {
+      const colX = seat.baseRelativeX;
+      if (!colMap.has(colX)) {
+        colMap.set(colX, []);
+      }
+      colMap.get(colX).push(seat);
+    });
+    const cols = Array.from(colMap.keys()).sort((a, b) => a - b);
+    
+    section.seats.forEach(seat => {
+      let rowIndex = 0;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i][1].includes(seat)) {
+          rowIndex = i;
+          break;
+        }
+      }
+      const colIndex = cols.indexOf(seat.baseRelativeX);
+      
+      seat.relativeX = seat.baseRelativeX + (colIndex * stretchH);
+      seat.relativeY = seat.baseRelativeY + (rowIndex * stretchV);
+    });
+  },
+
+  // Helper: Apply curve transformation to seats (modifies relativeX/Y)
+  applyCurveTransform(section) {
+    const curve = section.curve || 0;
+    const stretchH = section.stretchH || 0;
+    const stretchV = section.stretchV || 0;
+    
+    const rowMap = new Map();
+    section.seats.forEach(seat => {
+      const rowY = seat.baseRelativeY;
+      if (!rowMap.has(rowY)) {
+        rowMap.set(rowY, []);
+      }
+      rowMap.get(rowY).push(seat);
+    });
+    const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
+    
+    const colMap = new Map();
+    section.seats.forEach(seat => {
+      const colX = seat.baseRelativeX;
+      if (!colMap.has(colX)) {
+        colMap.set(colX, []);
+      }
+      colMap.get(colX).push(seat);
+    });
+    const cols = Array.from(colMap.keys()).sort((a, b) => a - b);
+    
+    // Calculate original spacing
+    const seatSpacingX = cols.length > 1 ? (cols[cols.length - 1] - cols[0]) / (cols.length - 1) : 20;
+    const seatSpacingY = rows.length > 1 ? (rows[rows.length - 1][0] - rows[0][0]) / (rows.length - 1) : 20;
+    
+    // Apply stretch to spacing
+    const effectiveSeatSpacingX = seatSpacingX + stretchH;
+    const effectiveSeatSpacingY = seatSpacingY + stretchV;
+    
+    // Convert curve value (0-100) to curvature k
+    const k = curve / 2000;
+    const R = 1 / k;
+    
+    const centerCol = (cols.length - 1) / 2;
+    
+    section.seats.forEach(seat => {
+      let rowIndex = 0;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i][1].includes(seat)) {
+          rowIndex = i;
+          break;
+        }
+      }
+      const colIndex = cols.indexOf(seat.baseRelativeX);
+      
+      // Calculate radius for this row (each row is an arc at different radius)
+      const r = R + rowIndex * effectiveSeatSpacingY;
+      
+      // For proper seat-to-seat spacing on the arc, we need arc length spacing
+      // Arc length = r * theta, so if we want arc spacing to equal effectiveSeatSpacingX:
+      // theta_per_seat = effectiveSeatSpacingX / r
+      
+      // Total angle span for this row based on number of seats and desired spacing
+      const seatsFromCenter = colIndex - centerCol;
+      const theta = (effectiveSeatSpacingX / r) * seatsFromCenter;
+      
+      // Convert polar to Cartesian
+      const x = r * Math.sin(theta);
+      const y = r * Math.cos(theta) - R;
+      
+      // Offset to match the original center position
+      const centerX = (cols[0] + cols[cols.length - 1]) / 2;
+      const centerY = rows[0][0];
+      
+      seat.relativeX = centerX + x;
+      seat.relativeY = centerY + y;
+    });
+  },
+
+  calculateMaxCurve(section) {
+    // Calculate the maximum safe curve value to prevent self-intersection
+    // The curve becomes problematic when the angle exceeds ~170 degrees total
+    
+    const stretchH = section.stretchH || 0;
+    
+    // Get column information
+    const colMap = new Map();
+    section.seats.forEach(seat => {
+      const colX = seat.baseRelativeX;
+      if (!colMap.has(colX)) {
+        colMap.set(colX, []);
+      }
+      colMap.get(colX).push(seat);
+    });
+    const cols = Array.from(colMap.keys()).sort((a, b) => a - b);
+    
+    // Calculate spacing
+    const seatSpacingX = cols.length > 1 ? (cols[cols.length - 1] - cols[0]) / (cols.length - 1) : 20;
+    const effectiveSeatSpacingX = seatSpacingX + stretchH;
+    
+    // Total width of the section (in seat spacing units)
+    const totalWidth = (cols.length - 1) * effectiveSeatSpacingX;
+    
+    // We want to limit the total angle to about 190 degrees (3.316 radians)
+    // theta_total = (totalWidth / 2) / R  (for half the section)
+    // We want: theta_total < 3.316 / 2 ≈ 1.658 radians
+    // So: (totalWidth / 2) / R < 1.658
+    // Therefore: R > (totalWidth / 2) / 1.658
+    // And: k < 1 / R
+    
+    const maxTotalAngle = 3.3; // radians (~190 degrees total, leaving margin)
+    const minRadius = (totalWidth / 2) / (maxTotalAngle / 2);
+    const maxK = 1 / minRadius;
+    
+    // Convert back to curve value (0-100)
+    // k = curve / 2000
+    const maxCurve = maxK * 2000;
+    
+    // Clamp to slider range with minimal safety margin
+    return Math.min(100, maxCurve * 0.95);
+  },
+
+  applyCurve(section) {
+    const curve = section.curve || 0;
+    
+    if (curve === 0) {
+      // No curve, just apply stretch if any
+      this.applyStretch(section);
+      return;
+    }
+    
+    // Apply curve transformation (includes stretch)
+    this.applyCurveTransform(section);
+    
+    // After curving seats, update row labels if they exist
+    if (section.rowLabels.length > 0) {
+      this.updateRowLabels(section);
+    } else {
+      // No labels, just recalculate dimensions and update positions
+      this.recalculateSectionDimensions(section);
+      this.positionSeatsAndLabels(section);
+    }
+  },
+
+  recalculateSectionDimensions(section) {
+    // Calculate bounding box based on current seat positions
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    
+    section.seats.forEach(seat => {
+      minX = Math.min(minX, seat.relativeX - 10);
+      maxX = Math.max(maxX, seat.relativeX + 10);
+      minY = Math.min(minY, seat.relativeY - 10);
+      maxY = Math.max(maxY, seat.relativeY + 10);
+    });
+    
+    const EDGE_PADDING = 10;
+    
+    // Calculate dimensions
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    
+    // Shift everything to start at EDGE_PADDING
+    const shiftX = EDGE_PADDING - minX;
+    const shiftY = EDGE_PADDING - minY;
+    
+    section.layoutShiftX = shiftX;
+    section.layoutShiftY = shiftY;
+    
+    // Update dimensions
+    section.contentWidth = contentWidth + (EDGE_PADDING * 2);
+    section.contentHeight = contentHeight + (EDGE_PADDING * 2);
+    
+    // Update pivot to new center
+    section.pivot.set(section.contentWidth / 2, section.contentHeight / 2);
+    
+    // Update graphics
+    this.updateSectionGraphics(section);
+    
+    // Update selection border if it exists
+    if (section.selectionBorder) {
+      section.selectionBorder.clear();
+      section.selectionBorder.rect(-3, -3, section.contentWidth + 6, section.contentHeight + 6);
+      section.selectionBorder.stroke({ width: 3, color: 0x00ff00 });
+    }
   },
 
   deleteSection(section) {

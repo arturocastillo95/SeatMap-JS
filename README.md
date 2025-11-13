@@ -33,6 +33,8 @@ venue-map-js/
 - **Pan & Zoom**: Space+drag to pan, scroll to zoom, double-click to zoom-to-fit
 - **Interactive Seats**: Click individual seats for interaction
 - **Tooltips**: Hover for seat/section information
+- **Section Labels**: Click section label to rename, editable text input
+- **Row Labels**: Add numbered (1,2,3...) or lettered (A,B,C...) labels to rows, position left/right or both
 
 ### Advanced Multi-Section Controls
 - **Alignment Bar**: When 2+ sections are selected, a control bar appears at the bottom with 8 alignment options:
@@ -44,6 +46,25 @@ venue-map-js/
   - **Align Bottom**: Align all sections to bottommost edge
   - **Distribute Horizontally**: Evenly space sections horizontally (anchors first/last, calculates dynamic gaps)
   - **Distribute Vertically**: Evenly space sections vertically (anchors first/last, calculates dynamic gaps)
+
+### Section Transformation Controls
+When a single section is selected, a sidebar panel appears with advanced transformation tools:
+
+- **Section Title**: Editable text input to rename the section
+- **Row Labels**: Add labels to rows with three type options:
+  - **None**: No row labels
+  - **Numbers**: Numeric labels (1, 2, 3...)
+  - **Letters**: Alphabetic labels (A, B, C... Z, AA, AB...)
+  - **Position**: Toggle left and/or right side labels independently
+- **Rotation**: Slider (-180° to 180°) to rotate the entire section with reset button
+- **Curve**: Slider (0-100) to create stadium-style curved seating with intelligent limits:
+  - Maintains constant seat-to-seat spacing along the arc
+  - Automatically calculates safe maximum curve to prevent self-intersection
+  - Uses polar coordinate transformation (arc length = radius × theta)
+  - Works seamlessly with stretch transformations
+- **Stretch Horizontal**: Slider (0-100) to add spacing between seat columns with reset button
+- **Stretch Vertical**: Slider (0-100) to add spacing between seat rows with reset button
+- **Transform Preservation**: All transformations (rotation, curve, stretch) are preserved when adding/removing row labels
 
 ### Intelligent Collision Detection
 The system implements a **two-problem approach** for collision handling:
@@ -92,9 +113,16 @@ The system implements a **two-problem approach** for collision handling:
 
 ### **sectionManager.js**
 - Section creation and deletion
-- Seat generation
+- Seat generation with row/column indices
 - Selection system with visual feedback (green border 0x00ff00)
 - Event dispatching for selection changes (`selectionchanged` custom event)
+- **Row Label System**: Dynamic labels positioned at row extremes, follows transformations
+- **Transform Engine**:
+  - `applyStretchTransform()`: Adds horizontal/vertical spacing between seats
+  - `applyCurveTransform()`: Polar coordinate transformation for stadium-style curves
+  - `calculateMaxCurve()`: Prevents self-intersection by calculating safe curve limits
+- **Dimension Management**: Automatic bounding box recalculation after transformations
+- Section label editing with inline text input
 
 ### **toolManager.js**
 - Create tool (drag-to-draw sections with real-time preview)
@@ -108,7 +136,7 @@ The system implements a **two-problem approach** for collision handling:
 - Tool mode routing
 
 ### **alignmentManager.js** 🆕
-**Core collision and alignment system**
+**Core collision and alignment system + single-section transformation controls**
 - **Alignment Functions**: 6 functions (left, right, center-h, top, bottom, center-v) using bounding box coordinates
 - **Distribution Functions**: Dynamic gap calculation with 40px minimum enforcement
 - **Collision Detection**:
@@ -116,7 +144,14 @@ The system implements a **two-problem approach** for collision handling:
   - `getPermittedDrag()`: Prevention system - calculates maximum permitted movement, tests X/Y axes independently
   - `getCollisionVector()`: Calculates Minimum Translation Vector for separation
   - `resolveCollisions()`: Iterative relaxation to push overlapping sections apart
-- **Event-Driven Observer**: Monitors selection changes to show/hide alignment bar
+- **Event-Driven Observer**: Monitors selection changes to show/hide alignment bar and sidebar
+- **Single-Section Controls**:
+  - `setRowLabelType()`: Toggle between none/numbers/letters with smart position defaults
+  - `toggleRowLabelPosition()`: Independent left/right label positioning
+  - `setRotation()`: Rotate section with seat/label repositioning
+  - `setCurve()`: Apply stadium curve with automatic safety limiting
+  - `setStretchH/V()`: Add spacing between seats with transformation preservation
+  - Reset buttons for quick return to defaults
 - **Configuration**: `COLLISION_PADDING: 0` (sections can touch), `GAP: 40` (minimum distribution spacing)
 
 ### **sceneSetup.js**
@@ -170,8 +205,15 @@ const CONFIG = {
 ### Coordinate System
 All alignment and collision detection uses **bounding box coordinates**:
 - `section.x`, `section.y`: Top-left corner position
-- `section.width`, `section.height`: Section dimensions
-- Seats have relative positions stored as `seat.relativeX`, `seat.relativeY`
+- `section.width`, `section.height`: Section dimensions (dynamically updated after transformations)
+- Seats store both base and transformed positions:
+  - `seat.baseRelativeX`, `seat.baseRelativeY`: Original positions (never modified)
+  - `seat.relativeX`, `seat.relativeY`: Current positions (after transformations)
+  - `seat.rowIndex`, `seat.colIndex`: Grid indices for grouping and transformations
+- Transformation properties:
+  - `section.rotationDegrees`: Rotation angle (-180 to 180)
+  - `section.curve`: Curve amount (0-100, auto-limited per section)
+  - `section.stretchH`, `section.stretchV`: Horizontal/vertical spacing additions
 
 ### Collision Detection Strategy
 **Two-Problem Approach:**

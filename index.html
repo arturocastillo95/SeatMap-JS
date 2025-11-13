@@ -934,25 +934,50 @@
       <div class="sidebar-header">TRANSFORM</div>
       
       <div class="sidebar-input-group">
-        <label class="sidebar-label">Rotate <span id="rotateValue" style="color: #1e90ff;">0°</span></label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label class="sidebar-label" style="margin-bottom: 0;">Rotate <span id="rotateValue" style="color: #1e90ff;">0°</span></label>
+          <button class="sidebar-increment-btn" id="resetRotateBtn" title="Reset Rotation">
+            <span class="material-symbols">refresh</span>
+          </button>
+        </div>
         <div class="sidebar-slider">
           <input type="range" class="sidebar-slider-input" id="rotateSlider" min="-180" max="180" value="0" step="1" />
         </div>
       </div>
 
       <div class="sidebar-input-group">
-        <label class="sidebar-label">Curve</label>
-        <input type="text" class="sidebar-input" value="0" />
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label class="sidebar-label" style="margin-bottom: 0;">Curve <span id="curveValue" style="color: #1e90ff;">0</span></label>
+          <button class="sidebar-increment-btn" id="resetCurveBtn" title="Reset Curve">
+            <span class="material-symbols">refresh</span>
+          </button>
+        </div>
         <div class="sidebar-slider">
-          <input type="range" class="sidebar-slider-input" min="-100" max="100" value="0" />
+          <input type="range" class="sidebar-slider-input" id="curveSlider" min="0" max="100" value="0" step="1" />
         </div>
       </div>
 
       <div class="sidebar-input-group">
-        <label class="sidebar-label">Stretch</label>
-        <input type="text" class="sidebar-input" value="0" />
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label class="sidebar-label" style="margin-bottom: 0;">Stretch Horizontal <span id="stretchHValue" style="color: #1e90ff;">0</span></label>
+          <button class="sidebar-increment-btn" id="resetStretchHBtn" title="Reset Horizontal Stretch">
+            <span class="material-symbols">refresh</span>
+          </button>
+        </div>
         <div class="sidebar-slider">
-          <input type="range" class="sidebar-slider-input" min="-100" max="100" value="0" />
+          <input type="range" class="sidebar-slider-input" id="stretchHSlider" min="0" max="100" value="0" step="1" />
+        </div>
+      </div>
+
+      <div class="sidebar-input-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label class="sidebar-label" style="margin-bottom: 0;">Stretch Vertical <span id="stretchVValue" style="color: #1e90ff;">0</span></label>
+          <button class="sidebar-increment-btn" id="resetStretchVBtn" title="Reset Vertical Stretch">
+            <span class="material-symbols">refresh</span>
+          </button>
+        </div>
+        <div class="sidebar-slider">
+          <input type="range" class="sidebar-slider-input" id="stretchVSlider" min="0" max="100" value="0" step="1" />
         </div>
       </div>
     </div>
