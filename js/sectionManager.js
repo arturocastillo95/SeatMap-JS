@@ -320,6 +320,13 @@ export const SectionManager = {
       // Update pivot to base center
       section.pivot.set(section.contentWidth / 2, section.contentHeight / 2);
       
+      // Update selection border if it exists
+      if (section.selectionBorder) {
+        section.selectionBorder.clear();
+        section.selectionBorder.rect(-3, -3, section.contentWidth + 6, section.contentHeight + 6);
+        section.selectionBorder.stroke({ width: 3, color: 0x00ff00 });
+      }
+      
       // Update seat positions (handles rotation)
       this.positionSeatsAndLabels(section);
       
