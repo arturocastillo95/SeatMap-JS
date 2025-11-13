@@ -531,6 +531,12 @@ export const SectionManager = {
       seat.destroy();
     });
     
+    // Remove all row labels
+    section.rowLabels.forEach(label => {
+      State.seatLayer.removeChild(label);
+      label.destroy();
+    });
+    
     // Remove section
     State.sectionLayer.removeChild(section);
     section.destroy();
@@ -546,6 +552,9 @@ export const SectionManager = {
     if (selIndex > -1) {
       State.selectedSections.splice(selIndex, 1);
     }
+    
+    // Dispatch selection change event to update UI (hide sidebar if no selection)
+    document.dispatchEvent(new CustomEvent('selectionchanged'));
     
     console.log('Deleted section:', section.sectionId);
   }

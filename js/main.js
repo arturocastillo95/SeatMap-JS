@@ -83,7 +83,7 @@ function setupResizeHandler() {
   await initializeApp();
   initializeElements();
   setupGrid();
-  setupExampleSection();
+  // setupExampleSection();
   ToolManager.init();
   InteractionManager.init();
   AlignmentManager.init();
