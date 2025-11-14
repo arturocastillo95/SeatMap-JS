@@ -14,7 +14,7 @@ export const FileManager = {
     const mapData = {
       // Format metadata
       format: "SMF",
-      version: "1.0.0",
+      version: "2.0.0",
       created: timestamp,
       modified: timestamp,
       
@@ -104,15 +104,28 @@ export const FileManager = {
       // Row labels
       rowLabels: {
         type: section.rowLabelType || "none",
+        start: section.rowLabelStart !== undefined ? section.rowLabelStart : (section.rowLabelType === 'letters' ? 'A' : 1),
+        reversed: section.rowLabelReversed || false,
         showLeft: section.showLeftLabels || false,
         showRight: section.showRightLabels || false
       },
       
-      // Seat configuration
-      seats: {
-        count: seats.length,
-        numbering: "perRow"
+      // Seat configuration and numbering
+      seatNumbering: {
+        start: section.seatNumberStart || 1,
+        reversed: section.seatNumberReversed || false,
+        perRow: true
       },
+      
+      // Individual seats (for supporting deleted seats)
+      seats: seats.map(seat => ({
+        rowIndex: seat.rowIndex,
+        colIndex: seat.colIndex,
+        number: seat.children[1] ? seat.children[1].text : (seat.colIndex + 1).toString(),
+        baseX: seat.baseRelativeX,
+        baseY: seat.baseRelativeY,
+        metadata: {}
+      })),
       
       // Visual styling
       style: {
@@ -217,6 +230,9 @@ export const FileManager = {
    * Deserialize a single section from JSON
    */
   deserializeSection(data, SectionManager) {
+    // Determine if this is v2.0.0 format with individual seat data
+    const hasIndividualSeats = Array.isArray(data.seats) && data.seats.length > 0 && data.seats[0].rowIndex !== undefined;
+    
     // Create section with base dimensions
     const section = SectionManager.createSection(
       data.x,
@@ -230,16 +246,44 @@ export const FileManager = {
     // Restore section name
     section.sectionId = data.name;
     
-    // Restore row labels
+    // Restore row labels (with v2.0.0 additions)
     section.rowLabelType = data.rowLabels.type;
+    section.rowLabelStart = data.rowLabels.start !== undefined ? data.rowLabels.start : (data.rowLabels.type === 'letters' ? 'A' : 1);
+    section.rowLabelReversed = data.rowLabels.reversed || false;
     section.showLeftLabels = data.rowLabels.showLeft;
     section.showRightLabels = data.rowLabels.showRight;
+    
+    // Restore seat numbering (v2.0.0)
+    if (data.seatNumbering) {
+      section.seatNumberStart = data.seatNumbering.start || 1;
+      section.seatNumberReversed = data.seatNumbering.reversed || false;
+    }
     
     // Restore transformations
     section.rotationDegrees = data.transform.rotation;
     section.curve = data.transform.curve;
     section.stretchH = data.transform.stretchH;
     section.stretchV = data.transform.stretchV;
+    
+    // Handle deleted seats (v2.0.0)
+    if (hasIndividualSeats) {
+      // Create a set of existing seat positions for fast lookup
+      const existingSeats = new Set(data.seats.map(s => `${s.rowIndex},${s.colIndex}`));
+      
+      // Remove seats that were deleted
+      section.seats = section.seats.filter(seat => {
+        const key = `${seat.rowIndex},${seat.colIndex}`;
+        const exists = existingSeats.has(key);
+        
+        if (!exists) {
+          // Remove from display
+          State.seatLayer.removeChild(seat);
+          seat.destroy();
+        }
+        
+        return exists;
+      });
+    }
     
     // Apply transformations in correct order
     if (data.transform.curve > 0 || data.transform.stretchH > 0 || data.transform.stretchV > 0) {
@@ -254,6 +298,11 @@ export const FileManager = {
     if (data.transform.rotation !== 0) {
       section.angle = data.transform.rotation;
       SectionManager.positionSeatsAndLabels(section);
+    }
+    
+    // Update seat numbers if custom numbering
+    if (data.seatNumbering && (data.seatNumbering.start !== 1 || data.seatNumbering.reversed)) {
+      SectionManager.updateSeatNumbers(section);
     }
     
     // Update row labels if needed
