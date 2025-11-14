@@ -195,9 +195,17 @@ export const ToolManager = {
         }
       }
 
-      // ESC cancels create mode (if not currently drawing)
+      // ESC exits edit seats mode or cancels create mode
       if (e.code === 'Escape' && !e.repeat) {
-        if (State.isCreateMode && !State.isCreating) {
+        // Exit edit seats mode
+        if (State.isEditSeatsMode) {
+          e.preventDefault();
+          import('./modeManager.js').then(({ ModeManager }) => {
+            ModeManager.switchMode('schema');
+          });
+        }
+        // Cancel create mode (if not currently drawing)
+        else if (State.isCreateMode && !State.isCreating) {
           e.preventDefault();
           State.isCreateMode = false;
           Elements.createBtn.classList.remove('active');

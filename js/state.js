@@ -27,6 +27,9 @@ export const State = {
   isEditSeatsMode: false,
   selectedSeats: [],
   activeSectionForSeats: null,
+  seatSelectionStart: null,
+  seatSelectionRect: null,
+  seatSelectionShiftKey: false,
   
   // Creation state
   createStart: null,

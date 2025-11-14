@@ -7,6 +7,7 @@ import { Utils } from './utils.js';
 import { ToolManager } from './toolManager.js';
 import { SectionManager } from './sectionManager.js';
 import { AlignmentManager } from './alignmentManager.js';
+import { ModeManager } from './modeManager.js';
 
 export const InteractionManager = {
   init() {
@@ -38,6 +39,22 @@ export const InteractionManager = {
     
     // Store shift key state for later use
     State.isShiftPressed = e.shiftKey;
+    
+    // In edit seats mode, start seat selection rectangle
+    if (State.isEditSeatsMode) {
+      // Clear previous selection if not holding shift
+      if (!e.shiftKey) {
+        State.selectedSeats.forEach(seat => {
+          ModeManager.deselectSeat(seat);
+        });
+        State.selectedSeats = [];
+      }
+      
+      State.seatSelectionStart = { x: e.global.x, y: e.global.y };
+      State.seatSelectionShiftKey = e.shiftKey; // Store for later
+      State.app.stage.cursor = 'crosshair';
+      return;
+    }
     
     // Clear selection when clicking on background (not holding shift)
     if (!e.shiftKey && State.selectedSections.length > 0) {
@@ -126,6 +143,12 @@ export const InteractionManager = {
       return;
     }
     
+    // Handle seat selection dragging in Edit Seats mode
+    if (State.isEditSeatsMode && State.seatSelectionStart) {
+      this.updateSeatSelectionRect(e.global.x, e.global.y);
+      return;
+    }
+    
     // Default: move tooltip
     Utils.moveTooltip(e.global.x, e.global.y);
   },
@@ -150,6 +173,81 @@ export const InteractionManager = {
     State.selectionRect.rect(x, y, width, height);
     State.selectionRect.fill({ color: 0x1e90ff, alpha: 0.1 });
     State.selectionRect.stroke({ width: 2, color: 0x1e90ff, alpha: 0.8 });
+  },
+
+  updateSeatSelectionRect(currentX, currentY) {
+    const startX = State.seatSelectionStart.x;
+    const startY = State.seatSelectionStart.y;
+    
+    const screenX = Math.min(startX, currentX);
+    const screenY = Math.min(startY, currentY);
+    const screenWidth = Math.abs(currentX - startX);
+    const screenHeight = Math.abs(currentY - startY);
+    
+    // Create seat selection rectangle if it doesn't exist
+    if (!State.seatSelectionRect) {
+      State.seatSelectionRect = new PIXI.Graphics();
+      State.app.stage.addChild(State.seatSelectionRect);
+    }
+    
+    // Draw seat selection rectangle (different color than section selection)
+    State.seatSelectionRect.clear();
+    State.seatSelectionRect.rect(screenX, screenY, screenWidth, screenHeight);
+    State.seatSelectionRect.fill({ color: 0x00ff00, alpha: 0.1 });
+    State.seatSelectionRect.stroke({ width: 2, color: 0x00ff00, alpha: 0.8 });
+    
+    // Real-time seat selection preview - convert to world coordinates properly
+    const worldStart = Utils.screenToWorld(Math.min(startX, currentX), Math.min(startY, currentY));
+    const worldEnd = Utils.screenToWorld(Math.max(startX, currentX), Math.max(startY, currentY));
+    
+    const selectionBounds = {
+      x: worldStart.x,
+      y: worldStart.y,
+      width: worldEnd.x - worldStart.x,
+      height: worldEnd.y - worldStart.y
+    };
+    
+    this.updateLiveSelectionPreview(selectionBounds);
+  },
+  
+  updateLiveSelectionPreview(selectionBounds) {
+    
+    // Get the active section for seat editing
+    const section = State.activeSectionForSeats;
+    if (!section || !section.seats) return;
+    
+    // Track which seats are currently in the selection
+    const seatsInSelection = new Set();
+    
+    section.seats.forEach(seat => {
+      // Seats are in the seatLayer which is a child of world
+      // So we need to use their x, y positions directly (already in world space)
+      const seatX = seat.x;
+      const seatY = seat.y;
+      const seatRadius = 10; // Seat circle radius
+      
+      // Check if seat center is within selection bounds
+      // Using center point for more accurate selection
+      const isInBounds = (
+        seatX >= selectionBounds.x &&
+        seatX <= selectionBounds.x + selectionBounds.width &&
+        seatY >= selectionBounds.y &&
+        seatY <= selectionBounds.y + selectionBounds.height
+      );
+      
+      if (isInBounds) {
+        seatsInSelection.add(seat);
+        // Highlight if not already selected
+        if (!State.selectedSeats.includes(seat)) {
+          ModeManager.highlightSeat(seat, true);
+        }
+      } else {
+        // Remove highlight if not in permanent selection
+        if (!State.selectedSeats.includes(seat)) {
+          ModeManager.highlightSeat(seat, false);
+        }
+      }
+    });
   },
 
   handlePointerUp(e) {
@@ -203,6 +301,24 @@ export const InteractionManager = {
       State.app.stage.cursor = 'default';
       return;
     }
+
+    // Handle seat selection end in Edit Seats mode
+    if (State.isEditSeatsMode && State.seatSelectionStart) {
+      if (State.seatSelectionRect) {
+        this.processSeatSelection(e);
+      }
+      
+      // Clean up
+      if (State.seatSelectionRect) {
+        State.seatSelectionRect.clear();
+        State.seatSelectionRect.destroy();
+        State.seatSelectionRect = null;
+      }
+      
+      State.seatSelectionStart = null;
+      State.app.stage.cursor = 'default';
+      return;
+    }
   },
 
   processSelection(e) {
@@ -244,6 +360,50 @@ export const InteractionManager = {
       if (intersects && !State.selectedSections.includes(section)) {
         State.selectedSections.push(section);
         SectionManager.selectSection(section);
+      }
+    });
+  },
+
+  processSeatSelection(e) {
+    const startX = State.seatSelectionStart.x;
+    const startY = State.seatSelectionStart.y;
+    const endX = e.clientX;
+    const endY = e.clientY;
+    
+    // Convert screen coordinates to world coordinates
+    const worldStart = Utils.screenToWorld(Math.min(startX, endX), Math.min(startY, endY));
+    const worldEnd = Utils.screenToWorld(Math.max(startX, endX), Math.max(startY, endY));
+    
+    const selectionBounds = {
+      x: worldStart.x,
+      y: worldStart.y,
+      width: worldEnd.x - worldStart.x,
+      height: worldEnd.y - worldStart.y
+    };
+    
+    // Get the active section for seat editing
+    const section = State.activeSectionForSeats;
+    if (!section || !section.seats) return;
+    
+    // Note: Selection was already cleared in handlePointerDown if shift wasn't pressed
+    
+    // Check which seats intersect with the selection rectangle
+    section.seats.forEach(seat => {
+      // Seats are in the seatLayer which is a child of world
+      // So we use their x, y positions directly (already in world space)
+      const seatX = seat.x;
+      const seatY = seat.y;
+      
+      // Check if seat center is within selection bounds
+      const isInBounds = (
+        seatX >= selectionBounds.x &&
+        seatX <= selectionBounds.x + selectionBounds.width &&
+        seatY >= selectionBounds.y &&
+        seatY <= selectionBounds.y + selectionBounds.height
+      );
+      
+      if (isInBounds && !State.selectedSeats.includes(seat)) {
+        ModeManager.selectSeat(seat);
       }
     });
   },

@@ -7,6 +7,12 @@ import { State } from './state.js';
 export const ModeManager = {
   init() {
     this.setupModeButtons();
+    this.updateModeButtonStates();
+    
+    // Listen for selection changes to update button states
+    document.addEventListener('selectionchanged', () => {
+      this.updateModeButtonStates();
+    });
   },
   
   setupModeButtons() {
@@ -14,10 +20,33 @@ export const ModeManager = {
     
     modeButtons.forEach(button => {
       button.addEventListener('click', () => {
+        // Don't allow clicking disabled buttons
+        if (button.classList.contains('disabled')) {
+          return;
+        }
+        
         const mode = button.getAttribute('data-mode');
         this.switchMode(mode);
       });
     });
+  },
+  
+  updateModeButtonStates() {
+    const editSeatsBtn = document.querySelector('[data-mode="seats"]');
+    
+    if (!editSeatsBtn) return;
+    
+    // Don't update if we're already in seats mode (section is locked)
+    if (State.currentMode === 'seats') {
+      return;
+    }
+    
+    // Enable Edit Seats only if exactly one section is selected
+    if (State.selectedSections.length === 1) {
+      editSeatsBtn.classList.remove('disabled');
+    } else {
+      editSeatsBtn.classList.add('disabled');
+    }
   },
   
   switchMode(mode) {
@@ -57,9 +86,12 @@ export const ModeManager = {
     State.activeSectionForSeats = State.selectedSections[0];
     
     // Keep the section selected and visible
-    // But hide alignment bar
+    // But hide alignment bar and sidebar
     document.getElementById('alignBar').classList.remove('show');
     document.getElementById('sectionSidebar').classList.remove('show');
+    
+    // Disable section interactions (prevent deselection)
+    State.activeSectionForSeats.eventMode = 'none';
     
     // Dim all other sections
     State.sections.forEach(section => {
@@ -95,8 +127,13 @@ export const ModeManager = {
       section.seats.forEach(seat => {
         seat.eventMode = 'static';
         seat.cursor = 'pointer';
+        // Ensure all seats are unhighlighted
+        this.highlightSeat(seat, false);
       });
     });
+    
+    // Keep the section selected (don't clear selection)
+    // The section that was being edited remains selected
     
     // Clear active section reference
     State.activeSectionForSeats = null;

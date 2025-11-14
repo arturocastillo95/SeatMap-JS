@@ -339,6 +339,22 @@
       color: #fff;
     }
 
+    .mode-item.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .mode-item.disabled:hover {
+      background: transparent;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .mode-item.disabled .material-symbols,
+    .mode-item.disabled .mode-item-label {
+      color: #5a5f6d;
+    }
+
     /* ========= FLOATING TOOL ISLAND ========= */
     .tool-island {
       position: fixed;
@@ -568,15 +584,15 @@
     .sidebar-align-group {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      gap: 6px;
     }
 
     .sidebar-align-btn {
       aspect-ratio: 1;
-      padding: 12px;
+      padding: 8px;
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
+      border-radius: 6px;
       color: #9095a0;
       cursor: pointer;
       transition: all .2s;
@@ -586,7 +602,7 @@
     }
 
     .sidebar-align-btn .material-symbols {
-      font-size: 20px;
+      font-size: 18px;
     }
 
     .sidebar-align-btn:hover {

@@ -44,12 +44,15 @@ The app has multiple modes accessible from the left sidebar:
 - **Interactive Seats**: Click individual seats for interaction
 - **Edit Seats Mode**: Enter via sidebar to select and delete individual seats
   - Requires exactly one section to be selected before entering mode
+  - Section remains selected and locked during edit mode
   - Only seats in the selected section can be edited
   - Other sections are dimmed and non-interactive
-  - Click seats to select (green tint)
-  - Multi-select by clicking multiple seats
+  - Click individual seats to select (green tint)
+  - **Drag-to-Select**: Drag on canvas to draw selection rectangle (green) and select multiple seats
+  - Hold Shift while dragging to add seats to existing selection
+  - Real-time visual feedback: seats highlight as the selection rectangle passes over them
   - Press Backspace to delete selected seats
-  - Returns to normal mode by selecting different mode
+  - Press Escape or click "Edit Layout" to exit and return to schema mode
 - **Tooltips**: Hover for seat/section information
 - **Row Labels**: Add numbered (1,2,3...) or lettered (A,B,C...) labels to rows, position left/right or both
 
@@ -73,6 +76,12 @@ When a single section is selected, a sidebar panel appears with advanced transfo
   - **Numbers**: Numeric labels (1, 2, 3...)
   - **Letters**: Alphabetic labels (A, B, C... Z, AA, AB...)
   - **Position**: Toggle left and/or right side labels independently
+- **Align Rows**: Three alignment options for horizontal row positioning:
+  - **Align Left**: Align all rows to the left edge
+  - **Align Center**: Center all rows horizontally
+  - **Align Right**: Align all rows to the right edge
+  - **Smart Gap Preservation**: When seats are deleted, alignment maintains original grid spacing (treats missing seats as if they're still there)
+  - Works after editing seats in Edit Seats mode to realign rows with gaps
 - **Rotation**: Slider (-180° to 180°) to rotate the entire section with reset button
 - **Curve**: Slider (0-100) to create stadium-style curved seating with intelligent limits:
   - Maintains constant seat-to-seat spacing along the arc
@@ -151,6 +160,11 @@ The system implements a **two-problem approach** for collision handling:
   - `applyStretchTransform()`: Adds horizontal/vertical spacing between seats
   - `applyCurveTransform()`: Polar coordinate transformation for stadium-style curves
   - `calculateMaxCurve()`: Prevents self-intersection by calculating safe curve limits
+- **Align Rows Function**:
+  - `alignRows()`: Aligns rows left/center/right within a section
+  - Uses `colIndex` to preserve original grid structure when seats are missing
+  - Calculates virtual row width including gaps from deleted seats
+  - Reapplies transformations after alignment
 - **Dimension Management**: Automatic bounding box recalculation after transformations
 
 ### **toolManager.js**
@@ -163,6 +177,12 @@ The system implements a **two-problem approach** for collision handling:
 - Mouse/touch event handling
 - Multi-drag with collision prevention using `getPermittedDrag()`
 - Tool mode routing
+- **Seat Selection in Edit Seats Mode**:
+  - `updateSeatSelectionRect()`: Draws green selection rectangle during drag
+  - `updateLiveSelectionPreview()`: Real-time seat highlighting as rectangle passes over seats
+  - `processSeatSelection()`: Finalizes seat selection on drag end
+  - Uses world coordinate system for accurate collision detection
+  - Supports shift-key multi-selection
 
 ### **alignmentManager.js** 🆕
 **Core collision and alignment system + single-section transformation controls**

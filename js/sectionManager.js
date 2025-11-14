@@ -899,5 +899,95 @@ export const SectionManager = {
     document.dispatchEvent(new CustomEvent('selectionchanged'));
     
     console.log('Deleted section:', section.sectionId);
+  },
+
+  alignRows(section, alignment) {
+    // Group seats by row
+    const rowsMap = new Map();
+    section.seats.forEach(seat => {
+      const rowIdx = seat.rowIndex;
+      if (!rowsMap.has(rowIdx)) {
+        rowsMap.set(rowIdx, []);
+      }
+      rowsMap.get(rowIdx).push(seat);
+    });
+
+    // For each row, calculate new baseRelativeX positions
+    rowsMap.forEach((seatsInRow, rowIdx) => {
+      if (seatsInRow.length === 0) return;
+
+      // Sort seats by their column index to maintain grid order
+      seatsInRow.sort((a, b) => a.colIndex - b.colIndex);
+
+      // Find the min and max column indices to determine the virtual row width
+      const minColIndex = Math.min(...seatsInRow.map(s => s.colIndex));
+      const maxColIndex = Math.max(...seatsInRow.map(s => s.colIndex));
+      const virtualSeatsInRow = maxColIndex - minColIndex + 1; // Total slots including missing seats
+
+      // Calculate seat spacing based on the original spacing
+      // If we have 2+ seats, calculate spacing from their original positions
+      let seatSpacing;
+      if (seatsInRow.length >= 2) {
+        // Use the column index difference to calculate spacing
+        const firstSeat = seatsInRow[0];
+        const lastSeat = seatsInRow[seatsInRow.length - 1];
+        const colDiff = lastSeat.colIndex - firstSeat.colIndex;
+        seatSpacing = colDiff > 0 
+          ? (lastSeat.baseRelativeX - firstSeat.baseRelativeX) / colDiff 
+          : 0;
+      } else {
+        // Single seat - use default spacing (we can't determine spacing)
+        seatSpacing = 0;
+      }
+
+      // Calculate the total width this row would occupy (including missing seats)
+      const rowWidth = (virtualSeatsInRow - 1) * seatSpacing;
+
+      // Calculate available width (section width minus margins)
+      const availableWidth = section.contentWidth - (CONFIG.SECTION_MARGIN * 2);
+
+      // Calculate starting X position based on alignment
+      let startX;
+      switch (alignment) {
+        case 'left':
+          startX = CONFIG.SECTION_MARGIN;
+          break;
+        case 'center':
+          startX = CONFIG.SECTION_MARGIN + (availableWidth - rowWidth) / 2;
+          break;
+        case 'right':
+          startX = CONFIG.SECTION_MARGIN + (availableWidth - rowWidth);
+          break;
+        default:
+          startX = CONFIG.SECTION_MARGIN;
+      }
+
+      // Reposition seats in this row based on their column index
+      seatsInRow.forEach((seat) => {
+        const offsetFromStart = seat.colIndex - minColIndex;
+        seat.baseRelativeX = startX + (offsetFromStart * seatSpacing);
+        seat.relativeX = seat.baseRelativeX; // Reset to base, will be transformed later
+      });
+    });
+
+    // Reapply transformations (stretch and curve)
+    if (section.stretchH > 0 || section.stretchV > 0) {
+      this.applyStretchTransform(section);
+    }
+    if (section.curve > 0) {
+      this.applyCurveTransform(section);
+    }
+
+    // Update seat positions
+    section.seats.forEach(seat => {
+      seat.x = section.x + seat.relativeX - section.pivot.x;
+      seat.y = section.y + seat.relativeY - section.pivot.y;
+    });
+
+    // Update row labels to match new positions
+    this.updateRowLabels(section);
+
+    // Recalculate section dimensions
+    this.recalculateSectionDimensions(section);
   }
 };

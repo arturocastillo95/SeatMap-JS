@@ -65,6 +65,14 @@ export const AlignmentManager = {
     Elements.resetStretchHBtn.addEventListener('click', () => this.resetStretchH());
     Elements.stretchVSlider.addEventListener('input', (e) => this.setStretchV(parseFloat(e.target.value)));
     Elements.resetStretchVBtn.addEventListener('click', () => this.resetStretchV());
+
+    // Align Rows buttons
+    const alignRowsButtons = document.querySelectorAll('.sidebar-align-btn');
+    if (alignRowsButtons.length >= 3) {
+      alignRowsButtons[0].addEventListener('click', () => this.alignRowsLeft());
+      alignRowsButtons[1].addEventListener('click', () => this.alignRowsCenter());
+      alignRowsButtons[2].addEventListener('click', () => this.alignRowsRight());
+    }
   },
 
   setRowLabelType(type) {
@@ -187,6 +195,30 @@ export const AlignmentManager = {
   resetStretchV() {
     if (State.selectedSections.length === 1) {
       this.setStretchV(0);
+    }
+  },
+
+  alignRowsLeft() {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      SectionManager.alignRows(section, 'left');
+      console.log('✓ Aligned rows to left');
+    }
+  },
+
+  alignRowsCenter() {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      SectionManager.alignRows(section, 'center');
+      console.log('✓ Aligned rows to center');
+    }
+  },
+
+  alignRowsRight() {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      SectionManager.alignRows(section, 'right');
+      console.log('✓ Aligned rows to right');
     }
   },
 
