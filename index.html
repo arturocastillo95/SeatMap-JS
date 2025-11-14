@@ -588,7 +588,6 @@
     }
 
     .sidebar-align-btn {
-      aspect-ratio: 1;
       padding: 8px;
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.12);
@@ -602,7 +601,7 @@
     }
 
     .sidebar-align-btn .material-symbols {
-      font-size: 18px;
+      font-size: 15px;
     }
 
     .sidebar-align-btn:hover {
@@ -885,7 +884,7 @@
         </div>
         
         <div id="rowLabelPositionSection" style="display: none;">
-          <label class="sidebar-label" style="margin-top: 12px;">Position</label>
+          <label class="sidebar-label" style="margin-top: 12px;">Label Position</label>
           <div class="sidebar-button-group">
             <button class="sidebar-toggle-btn" id="rowLabelLeft">
               <span class="material-symbols">align_horizontal_left</span>
@@ -894,6 +893,14 @@
             <button class="sidebar-toggle-btn" id="rowLabelRight">
               <span class="material-symbols">align_horizontal_right</span>
               <span>Right</span>
+            </button>
+          </div>
+
+          <label class="sidebar-label" style="margin-top: 12px;">Starting Label</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" class="sidebar-input" id="rowLabelStartInput" placeholder="A or 1" style="flex: 1; text-align: center;" />
+            <button class="sidebar-toggle-btn" id="rowLabelFlipBtn" style="flex: 0 0 auto; min-width: 50px;">
+              <span class="material-symbols">swap_vert</span>
             </button>
           </div>
         </div>
@@ -910,6 +917,17 @@
       <div class="sidebar-input-group">
         <label class="sidebar-label">Seats</label>
         <div class="sidebar-info">12 rows / 252 seats</div>
+      </div>
+
+      <div class="sidebar-input-group">
+        <label class="sidebar-label">Seat Numbering</label>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <input type="number" class="sidebar-input" id="seatNumberStartInput" placeholder="1" min="1" style="flex: 1; text-align: center;" />
+          <button class="sidebar-toggle-btn" id="seatNumberFlipBtn" style="flex: 0 0 auto; min-width: 50px;">
+            <span class="material-symbols">swap_horiz</span>
+          </button>
+        </div>
+        <div class="sidebar-info" style="font-size: 11px;">Starting number and direction</div>
       </div>
     </div>
 

@@ -181,6 +181,12 @@ export const ToolManager = {
 
       // Backspace deletes selected sections OR seats depending on mode
       if (e.code === 'Backspace' && !e.repeat) {
+        // Don't trigger delete if user is typing in an input field
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          return; // Let the input handle backspace normally
+        }
+
         // In edit seats mode, delete selected seats
         if (State.isEditSeatsMode && State.selectedSeats.length > 0) {
           e.preventDefault();

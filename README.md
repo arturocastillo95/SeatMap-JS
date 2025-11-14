@@ -54,7 +54,13 @@ The app has multiple modes accessible from the left sidebar:
   - Press Backspace to delete selected seats
   - Press Escape or click "Edit Layout" to exit and return to schema mode
 - **Tooltips**: Hover for seat/section information
-- **Row Labels**: Add numbered (1,2,3...) or lettered (A,B,C...) labels to rows, position left/right or both
+- **Row Labels**: Add numbered (1,2,3...) or lettered (A,B,C... Z, AA, BB, CC...) labels to rows
+  - Position labels on left and/or right side independently
+  - **Custom Starting Point**: Set custom starting number (e.g., start at 5) or letter (e.g., start at C)
+  - **Flip Direction**: Reverse label order from top-to-bottom to bottom-to-top with toggle button
+- **Seat Numbering**: Customize seat numbers within each row
+  - **Custom Starting Number**: Set starting seat number (minimum 1, no negatives allowed)
+  - **Flip Direction**: Reverse numbering from left-to-right to right-to-left with toggle button
 
 ### Advanced Multi-Section Controls
 - **Alignment Bar**: When 2+ sections are selected, a control bar appears at the bottom with 8 alignment options:
@@ -74,8 +80,22 @@ When a single section is selected, a sidebar panel appears with advanced transfo
 - **Row Labels**: Add labels to rows with three type options:
   - **None**: No row labels
   - **Numbers**: Numeric labels (1, 2, 3...)
-  - **Letters**: Alphabetic labels (A, B, C... Z, AA, AB...)
+  - **Letters**: Alphabetic labels (A, B, C... Z, AA, BB, CC...)
+    - Pattern: Single letters A-Z, then repeated letters AA, BB, CC... ZZ, then AAA, BBB, etc.
   - **Position**: Toggle left and/or right side labels independently
+  - **Starting Label**: Custom starting point for labels
+    - For numbers: Any integer ≥ 1 (e.g., start at 5 → 5, 6, 7...)
+    - For letters: Any letter A-Z (e.g., start at C → C, D, E...)
+  - **Flip Direction**: Reverse label order with vertical swap button
+    - Normal: top-to-bottom (A, B, C, D...)
+    - Reversed: bottom-to-top (D, C, B, A...)
+- **Seat Numbering**: Customize how seats are numbered in each row
+  - **Starting Number**: Set custom starting seat number (minimum 1, e.g., 101 → 101, 102, 103...)
+  - **Flip Direction**: Reverse seat numbering with horizontal swap button
+    - Normal: left-to-right (1, 2, 3, 4...)
+    - Reversed: right-to-left (4, 3, 2, 1...)
+  - Each row uses the same starting number and direction
+  - Input field blocks keyboard shortcuts (Backspace works normally for text editing)
 - **Align Rows**: Three alignment options for horizontal row positioning:
   - **Align Left**: Align all rows to the left edge
   - **Align Center**: Center all rows horizontally
@@ -155,7 +175,14 @@ The system implements a **two-problem approach** for collision handling:
 - Seat generation with row/column indices
 - Selection system with visual feedback (green border 0x00ff00)
 - Event dispatching for selection changes (`selectionchanged` custom event)
-- **Row Label System**: Dynamic row labels positioned at extremes, follows all transformations
+- **Row Label System**: 
+  - Dynamic row labels positioned at extremes, follows all transformations
+  - `getRowLabelText()`: Generates labels with custom starting points and letter patterns
+  - Supports reversed label ordering (bottom-to-top)
+- **Seat Numbering System**:
+  - `updateSeatNumbers()`: Updates all seat numbers based on starting point and direction
+  - Per-row numbering with configurable start and reversed direction
+  - Maintains seat order based on `colIndex` for consistency
 - **Transform Engine**:
   - `applyStretchTransform()`: Adds horizontal/vertical spacing between seats
   - `applyCurveTransform()`: Polar coordinate transformation for stadium-style curves
@@ -195,12 +222,18 @@ The system implements a **two-problem approach** for collision handling:
   - `resolveCollisions()`: Iterative relaxation to push overlapping sections apart
 - **Event-Driven Observer**: Monitors selection changes to show/hide alignment bar and sidebar
 - **Single-Section Controls**:
-  - `setRowLabelType()`: Toggle between none/numbers/letters with smart position defaults
+  - `setRowLabelType()`: Toggle between none/numbers/letters with smart position defaults and automatic type-based defaults
   - `toggleRowLabelPosition()`: Independent left/right label positioning
+  - `setRowLabelStart()`: Set custom starting label (validates number ≥1 or letter A-Z)
+  - `flipRowLabels()`: Toggle reversed row label ordering
+  - `setSeatNumberStart()`: Set custom starting seat number (validates ≥1)
+  - `flipSeatNumbering()`: Toggle reversed seat numbering direction
   - `setRotation()`: Rotate section with seat/label repositioning
   - `setCurve()`: Apply stadium curve with automatic safety limiting
   - `setStretchH/V()`: Add spacing between seats with transformation preservation
+  - `alignRowsLeft/Center/Right()`: Align rows with smart gap preservation
   - Reset buttons for quick return to defaults
+- **Input Protection**: Keyboard shortcuts (Backspace) disabled when typing in input fields
 - **Configuration**: `COLLISION_PADDING: 0` (sections can touch), `GAP: 40` (minimum distribution spacing)
 
 ### **modeManager.js** 🆕

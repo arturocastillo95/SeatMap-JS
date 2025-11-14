@@ -18,8 +18,12 @@ export const SectionManager = {
     section.seats = [];
     section.rowLabels = [];
     section.rowLabelType = 'none'; // 'none', 'numbers', 'letters'
+    section.rowLabelStart = 1; // Starting value for labels (1 for numbers, 'A' for letters)
+    section.rowLabelReversed = false; // Whether to reverse row label order (top to bottom)
     section.showLeftLabels = false;
     section.showRightLabels = false;
+    section.seatNumberStart = 1; // Starting seat number (default 1)
+    section.seatNumberReversed = false; // Whether to reverse seat numbering direction
     section.x = x;
     section.y = y;
     
@@ -383,8 +387,11 @@ export const SectionManager = {
     const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
     const LABEL_GAP = 30; // Distance from seat edge to label center
     
-    rows.forEach(([rowIndex, seatsInRow]) => {
-      const labelText = this.getRowLabelText(rowIndex, section.rowLabelType);
+    rows.forEach(([rowIndex, seatsInRow], arrayIndex) => {
+      // Calculate the label index (reversed if needed)
+      const totalRows = rows.length;
+      const labelIndex = section.rowLabelReversed ? (totalRows - 1 - arrayIndex) : arrayIndex;
+      const labelText = this.getRowLabelText(labelIndex, section.rowLabelType, section.rowLabelStart);
       
       // Get leftmost and rightmost seats based on their current relativeX (after transformations)
       const sortedSeats = seatsInRow.sort((a, b) => a.relativeX - b.relativeX);
@@ -543,18 +550,29 @@ export const SectionManager = {
     section.stroke({ width: 2, color: COLORS.SECTION_STROKE, alpha: 0.8 });
   },
 
-  getRowLabelText(index, type) {
+  getRowLabelText(index, type, startValue) {
     if (type === 'numbers') {
-      return (index + 1).toString();
+      const start = startValue || 1;
+      return (index + start).toString();
     } else if (type === 'letters') {
-      // Convert to letters: 0->A, 1->B, ... 25->Z, 26->AA, 27->AB, etc.
-      let label = '';
-      let num = index;
-      do {
-        label = String.fromCharCode(65 + (num % 26)) + label;
-        num = Math.floor(num / 26) - 1;
-      } while (num >= 0);
-      return label;
+      const start = startValue || 'A';
+      const startCharCode = start.charCodeAt(0);
+      const offset = startCharCode - 65; // Offset from 'A'
+      
+      // Convert to letters with offset: A-Z, then AA, BB, CC, etc.
+      // Pattern: A, B, C, ..., Z, AA, BB, CC, ..., ZZ, AAA, BBB, etc.
+      let num = index + offset;
+      
+      if (num < 26) {
+        // Single letter: A-Z
+        return String.fromCharCode(65 + num);
+      } else {
+        // Multiple letters: AA, BB, CC, etc.
+        const repeatCount = Math.floor(num / 26) + 1;
+        const letterIndex = num % 26;
+        const letter = String.fromCharCode(65 + letterIndex);
+        return letter.repeat(repeatCount);
+      }
     }
     return '';
   },
@@ -834,6 +852,20 @@ export const SectionManager = {
       minY = Math.min(minY, seat.relativeY - 10);
       maxY = Math.max(maxY, seat.relativeY + 10);
     });
+
+    // Also include row labels in bounding box calculation
+    if (section.rowLabels && section.rowLabels.length > 0) {
+      section.rowLabels.forEach(label => {
+        const labelBounds = label.getBounds();
+        const labelRelativeX = label.x - section.x + section.pivot.x;
+        const labelRelativeY = label.y - section.y + section.pivot.y;
+        
+        minX = Math.min(minX, labelRelativeX - labelBounds.width / 2);
+        maxX = Math.max(maxX, labelRelativeX + labelBounds.width / 2);
+        minY = Math.min(minY, labelRelativeY - labelBounds.height / 2);
+        maxY = Math.max(maxY, labelRelativeY + labelBounds.height / 2);
+      });
+    }
     
     const EDGE_PADDING = 10;
     
@@ -978,16 +1010,53 @@ export const SectionManager = {
       this.applyCurveTransform(section);
     }
 
-    // Update seat positions
+    // Recalculate section dimensions first to get proper bounding box
+    this.recalculateSectionDimensions(section);
+
+    // Now update all positions with the new layout shift and pivot
     section.seats.forEach(seat => {
+      seat.relativeX += section.layoutShiftX || 0;
+      seat.relativeY += section.layoutShiftY || 0;
       seat.x = section.x + seat.relativeX - section.pivot.x;
       seat.y = section.y + seat.relativeY - section.pivot.y;
     });
 
     // Update row labels to match new positions
     this.updateRowLabels(section);
+  },
 
-    // Recalculate section dimensions
-    this.recalculateSectionDimensions(section);
+  updateSeatNumbers(section) {
+    // Group seats by row to renumber them
+    const rowsMap = new Map();
+    section.seats.forEach(seat => {
+      const rowIdx = seat.rowIndex;
+      if (!rowsMap.has(rowIdx)) {
+        rowsMap.set(rowIdx, []);
+      }
+      rowsMap.get(rowIdx).push(seat);
+    });
+
+    const startNumber = section.seatNumberStart || 1;
+    const reversed = section.seatNumberReversed || false;
+
+    rowsMap.forEach((seatsInRow) => {
+      // Sort seats by column index to maintain order
+      seatsInRow.sort((a, b) => a.colIndex - b.colIndex);
+      
+      // Reverse if needed
+      if (reversed) {
+        seatsInRow.reverse();
+      }
+
+      // Renumber seats in this row
+      seatsInRow.forEach((seat, index) => {
+        const seatLabel = seat.children[1]; // Second child is the text label
+        if (seatLabel) {
+          seatLabel.text = (startNumber + index).toString();
+        }
+      });
+    });
+
+    console.log(`✓ Updated seat numbers (start: ${startNumber}, reversed: ${reversed})`);
   }
 };

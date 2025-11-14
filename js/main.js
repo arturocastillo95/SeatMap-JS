@@ -73,6 +73,10 @@ function initializeElements() {
   Elements.rowLabelLeft = document.getElementById('rowLabelLeft');
   Elements.rowLabelRight = document.getElementById('rowLabelRight');
   Elements.rowLabelPositionSection = document.getElementById('rowLabelPositionSection');
+  Elements.rowLabelStartInput = document.getElementById('rowLabelStartInput');
+  Elements.rowLabelFlipBtn = document.getElementById('rowLabelFlipBtn');
+  Elements.seatNumberStartInput = document.getElementById('seatNumberStartInput');
+  Elements.seatNumberFlipBtn = document.getElementById('seatNumberFlipBtn');
   Elements.rotateSlider = document.getElementById('rotateSlider');
   Elements.rotateValue = document.getElementById('rotateValue');
   Elements.resetRotateBtn = document.getElementById('resetRotateBtn');

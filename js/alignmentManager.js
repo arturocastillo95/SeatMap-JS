@@ -52,6 +52,14 @@ export const AlignmentManager = {
     Elements.rowLabelLeft.addEventListener('click', () => this.toggleRowLabelPosition('left'));
     Elements.rowLabelRight.addEventListener('click', () => this.toggleRowLabelPosition('right'));
 
+    // Row label starting point
+    Elements.rowLabelStartInput.addEventListener('input', (e) => this.setRowLabelStart(e.target.value));
+    Elements.rowLabelFlipBtn.addEventListener('click', () => this.flipRowLabels());
+
+    // Seat numbering
+    Elements.seatNumberStartInput.addEventListener('input', (e) => this.setSeatNumberStart(e.target.value));
+    Elements.seatNumberFlipBtn.addEventListener('click', () => this.flipSeatNumbering());
+
     // Rotation slider
     Elements.rotateSlider.addEventListener('input', (e) => this.setRotation(parseFloat(e.target.value)));
     Elements.resetRotateBtn.addEventListener('click', () => this.resetRotation());
@@ -79,6 +87,13 @@ export const AlignmentManager = {
     if (State.selectedSections.length === 1) {
       const section = State.selectedSections[0];
       section.rowLabelType = type;
+      
+      // Set appropriate default starting value based on type
+      if (type === 'numbers' && (typeof section.rowLabelStart !== 'number')) {
+        section.rowLabelStart = 1;
+      } else if (type === 'letters' && (typeof section.rowLabelStart !== 'string')) {
+        section.rowLabelStart = 'A';
+      }
       
       // If selecting numbers or letters and no position is set, default to left
       if (type !== 'none' && !section.showLeftLabels && !section.showRightLabels) {
@@ -108,6 +123,89 @@ export const AlignmentManager = {
       SectionManager.updateRowLabels(section);
       this.updateSeatPositions(section); // Update positions after box size changes
       this.updateSidebarValues(section);
+    }
+  },
+
+  setRowLabelStart(value) {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      
+      // Validate and set the starting value based on label type
+      if (section.rowLabelType === 'numbers') {
+        // For numbers, parse as integer and ensure it's >= 1
+        const num = parseInt(value, 10);
+        if (!isNaN(num) && num >= 1) {
+          section.rowLabelStart = num;
+          SectionManager.updateRowLabels(section);
+          this.updateSeatPositions(section);
+        } else if (value === '') {
+          // Reset to default
+          section.rowLabelStart = 1;
+          Elements.rowLabelStartInput.value = '1';
+          SectionManager.updateRowLabels(section);
+          this.updateSeatPositions(section);
+        }
+      } else if (section.rowLabelType === 'letters') {
+        // For letters, validate it's a single letter
+        const letter = value.toUpperCase().trim();
+        if (letter.length === 1 && letter >= 'A' && letter <= 'Z') {
+          section.rowLabelStart = letter;
+          Elements.rowLabelStartInput.value = letter;
+          SectionManager.updateRowLabels(section);
+          this.updateSeatPositions(section);
+        } else if (value === '') {
+          // Reset to default
+          section.rowLabelStart = 'A';
+          Elements.rowLabelStartInput.value = 'A';
+          SectionManager.updateRowLabels(section);
+          this.updateSeatPositions(section);
+        }
+      }
+    }
+  },
+
+  flipRowLabels() {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      section.rowLabelReversed = !section.rowLabelReversed;
+      
+      // Update button active state
+      Elements.rowLabelFlipBtn.classList.toggle('active', section.rowLabelReversed);
+      
+      SectionManager.updateRowLabels(section);
+      this.updateSeatPositions(section);
+      console.log(`✓ Row labels ${section.rowLabelReversed ? 'reversed' : 'normal'}`);
+    }
+  },
+
+  setSeatNumberStart(value) {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      
+      // Parse as integer and ensure it's >= 1
+      const num = parseInt(value, 10);
+      if (!isNaN(num) && num >= 1) {
+        section.seatNumberStart = num;
+        SectionManager.updateSeatNumbers(section);
+      } else if (value === '') {
+        // Reset to default
+        section.seatNumberStart = 1;
+        Elements.seatNumberStartInput.value = '1';
+        SectionManager.updateSeatNumbers(section);
+      }
+    }
+  },
+
+  flipSeatNumbering() {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      section.seatNumberReversed = !section.seatNumberReversed;
+      
+      // Update button active state
+      Elements.seatNumberFlipBtn.classList.toggle('active', section.seatNumberReversed);
+      
+      SectionManager.updateSeatNumbers(section);
+      console.log(`✓ Seat numbering ${section.seatNumberReversed ? 'reversed' : 'normal'}`);
     }
   },
 
@@ -261,6 +359,20 @@ export const AlignmentManager = {
     // Update row label position buttons (independently toggleable)
     Elements.rowLabelLeft.classList.toggle('active', section.showLeftLabels);
     Elements.rowLabelRight.classList.toggle('active', section.showRightLabels);
+
+    // Update row label starting point input
+    if (section.rowLabelType === 'numbers') {
+      Elements.rowLabelStartInput.value = section.rowLabelStart || 1;
+      Elements.rowLabelStartInput.placeholder = '1';
+    } else if (section.rowLabelType === 'letters') {
+      Elements.rowLabelStartInput.value = section.rowLabelStart || 'A';
+      Elements.rowLabelStartInput.placeholder = 'A';
+    }
+    Elements.rowLabelFlipBtn.classList.toggle('active', section.rowLabelReversed || false);
+
+    // Update seat numbering controls
+    Elements.seatNumberStartInput.value = section.seatNumberStart || 1;
+    Elements.seatNumberFlipBtn.classList.toggle('active', section.seatNumberReversed || false);
     
     // Update rotation slider and display value
     const rotation = section.rotationDegrees || 0;
