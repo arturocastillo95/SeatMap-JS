@@ -16,6 +16,8 @@ venue-map-js/
 │   ├── toolManager.js          # Tool handling (create/delete)
 │   ├── interactionManager.js   # Mouse/touch interactions with collision detection
 │   ├── alignmentManager.js     # Multi-section alignment, distribution & collision system
+│   ├── modeManager.js          # App mode switching (schema/seats/underlay/etc.)
+│   ├── fileManager.js          # Save/Load venue maps (SMF format)
 │   └── sceneSetup.js           # Grid and example section setup
 ├── example.html                # Original single-file version
 ├── example-refactored.html     # Refactored single-file version
@@ -23,6 +25,14 @@ venue-map-js/
 ```
 
 ## 🎯 Features
+
+### App Modes
+The app has multiple modes accessible from the left sidebar:
+- **Edit Layout (Schema)**: Default mode for creating, moving, and transforming sections
+- **Edit Seats**: Select and delete individual seats within sections
+- **Underlay**: (Planned) Add background images
+- **Venue Shape**: (Planned) Define venue boundaries
+- **Pricing**: (Planned) Set pricing tiers
 
 ### Core Functionality
 - **Create Sections**: Drag to draw rectangular seating sections
@@ -32,8 +42,15 @@ venue-map-js/
 - **Delete with Confirmation**: Backspace key removes selected sections with dialog
 - **Pan & Zoom**: Space+drag to pan, scroll to zoom, double-click to zoom-to-fit
 - **Interactive Seats**: Click individual seats for interaction
+- **Edit Seats Mode**: Enter via sidebar to select and delete individual seats
+  - Requires exactly one section to be selected before entering mode
+  - Only seats in the selected section can be edited
+  - Other sections are dimmed and non-interactive
+  - Click seats to select (green tint)
+  - Multi-select by clicking multiple seats
+  - Press Backspace to delete selected seats
+  - Returns to normal mode by selecting different mode
 - **Tooltips**: Hover for seat/section information
-- **Section Labels**: Click section label to rename, editable text input
 - **Row Labels**: Add numbered (1,2,3...) or lettered (A,B,C...) labels to rows, position left/right or both
 
 ### Advanced Multi-Section Controls
@@ -79,6 +96,19 @@ The system implements a **two-problem approach** for collision handling:
    - Iterative relaxation ensures all collisions are resolved
    - Preserves user's alignment intent while preventing overlap
 
+### Save & Load (SMF - Seat Map Format)
+- **Save**: Click the Save button in the toolbar to export your venue map as JSON
+  - Downloads a timestamped `.json` file (e.g., `venue-map-2025-11-13T12-30-00.json`)
+  - Preserves all sections, transformations, and configuration
+  - Format: SMF v1.0.0 (Seat Map Format) - extensible JSON structure
+  - Includes: section positions, dimensions, transformations (rotation, curve, stretch), row labels, and metadata
+- **Open**: Click the Open button to load a saved venue map
+  - Opens file picker dialog to select `.json` file
+  - Validates SMF format and version
+  - Clears existing sections and restores saved state
+  - Reconstructs all sections with transformations applied
+  - Restores canvas zoom and pan position
+
 ### Keyboard Shortcuts
 - **Space**: Hold to enable pan mode (drag canvas)
 - **Backspace**: Delete selected sections (with confirmation dialog)
@@ -116,13 +146,12 @@ The system implements a **two-problem approach** for collision handling:
 - Seat generation with row/column indices
 - Selection system with visual feedback (green border 0x00ff00)
 - Event dispatching for selection changes (`selectionchanged` custom event)
-- **Row Label System**: Dynamic labels positioned at row extremes, follows transformations
+- **Row Label System**: Dynamic row labels positioned at extremes, follows all transformations
 - **Transform Engine**:
   - `applyStretchTransform()`: Adds horizontal/vertical spacing between seats
   - `applyCurveTransform()`: Polar coordinate transformation for stadium-style curves
   - `calculateMaxCurve()`: Prevents self-intersection by calculating safe curve limits
 - **Dimension Management**: Automatic bounding box recalculation after transformations
-- Section label editing with inline text input
 
 ### **toolManager.js**
 - Create tool (drag-to-draw sections with real-time preview)
@@ -153,6 +182,42 @@ The system implements a **two-problem approach** for collision handling:
   - `setStretchH/V()`: Add spacing between seats with transformation preservation
   - Reset buttons for quick return to defaults
 - **Configuration**: `COLLISION_PADDING: 0` (sections can touch), `GAP: 40` (minimum distribution spacing)
+
+### **modeManager.js** 🆕
+**App mode switching and seat editing functionality**
+- **Mode Management**:
+  - `switchMode()`: Changes between schema/seats/underlay/venue-shape/pricing modes
+  - `enterEditSeatsMode()`: Enables individual seat selection and editing
+  - `exitEditSeatsMode()`: Returns to schema mode, clears seat selection
+- **Seat Selection**:
+  - `selectSeat()`: Adds seat to selection with visual highlighting (green tint)
+  - `deselectSeat()`: Removes seat from selection
+  - `deselectAllSeats()`: Clears all selected seats
+  - `highlightSeat()`: Visual feedback for selection state
+- **Seat Deletion**:
+  - `deleteSelectedSeats()`: Removes selected seats from sections and display
+- **UI Updates**: Manages mode button active states, hides/shows relevant panels
+
+### **fileManager.js** 🆕
+**Save/Load system using SMF (Seat Map Format) - JSON-based venue map serialization**
+- **Export Functions**:
+  - `exportToJSON()`: Serializes entire venue state to SMF format
+  - `serializeSection()`: Converts section to JSON with all properties
+  - `calculateTotalCapacity()`: Computes total seat count
+  - `downloadJSON()`: Triggers browser download with timestamped filename
+  - `save()`: Main save function, generates and downloads venue map
+- **Import Functions**:
+  - `importFromJSON()`: Deserializes SMF JSON and reconstructs venue map
+  - `deserializeSection()`: Recreates section from JSON data, applies all transformations
+  - `clearAllSections()`: Removes all existing sections before loading
+  - `open()`: Opens file picker dialog and loads selected JSON file
+- **SMF Format v1.0.0**:
+  - Format metadata (version, timestamps)
+  - Venue information (name, location, capacity)
+  - Canvas state (zoom, pan position)
+  - Section data (position, dimensions, transformations, labels, metadata)
+  - Extensible structure for future features (groups, objects, custom data)
+- **Error Handling**: Validates format, catches parsing errors, user-friendly error messages
 
 ### **sceneSetup.js**
 - Grid background generation

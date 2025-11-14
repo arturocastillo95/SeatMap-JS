@@ -20,6 +20,14 @@ export const State = {
   isSelecting: false,
   wasSpacePressed: false,
   
+  // App modes
+  currentMode: 'schema',  // 'schema' | 'seats' | 'underlay' | 'venue-shape' | 'pricing'
+  
+  // Seat editing
+  isEditSeatsMode: false,
+  selectedSeats: [],
+  activeSectionForSeats: null,
+  
   // Creation state
   createStart: null,
   previewRect: null,

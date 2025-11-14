@@ -48,6 +48,7 @@ export const SectionManager = {
     return section;
   },
 
+  // Deprecated: Section labels no longer used
   createSectionLabel(section) {
     // Create background for label
     const labelBg = new PIXI.Graphics();
@@ -208,7 +209,7 @@ export const SectionManager = {
         Utils.showTooltip('Click to delete: ' + section.sectionId);
         section.tint = COLORS.DELETE_HIGHLIGHT;
       } else if (!State.isCreateMode) {
-        Utils.showTooltip(section.sectionId + ' (drag to move, click label to rename)');
+        Utils.showTooltip(section.sectionId + ' (drag to move)');
       }
     });
 
@@ -283,16 +284,30 @@ export const SectionManager = {
   },
 
   setupSeatInteractions(seat) {
-    seat.on('pointertap', (e) => {
+    seat.on('pointertap', async (e) => {
+      e.stopPropagation();
+      
+      // In edit seats mode, select/deselect the seat
+      if (State.isEditSeatsMode) {
+        const { ModeManager } = await import('./modeManager.js');
+        
+        if (State.selectedSeats.includes(seat)) {
+          ModeManager.deselectSeat(seat);
+        } else {
+          ModeManager.selectSeat(seat);
+        }
+        return;
+      }
+      
+      // Normal mode behavior
       if (!State.isDeleteMode) {
-        e.stopPropagation();
         console.log('Seat clicked:', seat.seatId);
         Utils.flash(seat, COLORS.FLASH_SEAT);
       }
     });
 
     seat.on('pointerover', () => {
-      if (!State.isDeleteMode) {
+      if (!State.isDeleteMode && !State.isEditSeatsMode) {
         Utils.showTooltip(seat.seatId);
       }
     });

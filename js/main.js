@@ -8,6 +8,8 @@ import { setupGrid, setupExampleSection } from './sceneSetup.js';
 import { ToolManager } from './toolManager.js';
 import { InteractionManager } from './interactionManager.js';
 import { AlignmentManager } from './alignmentManager.js';
+import { FileManager } from './fileManager.js';
+import { ModeManager } from './modeManager.js';
 
 async function initializeApp() {
   State.app = new PIXI.Application();
@@ -43,6 +45,9 @@ function initializeElements() {
   Elements.panToolBtn = document.getElementById('panToolBtn');
   Elements.zoomToFitBtn = document.getElementById('zoomToFitBtn');
   Elements.createBtn = document.getElementById('createSectionBtn');
+  Elements.openBtn = document.getElementById('openBtn');
+  Elements.saveBtn = document.getElementById('saveBtn');
+  Elements.fileInput = document.getElementById('fileInput');
   Elements.confirmBox = document.getElementById('confirmBox');
   Elements.confirmInfo = document.getElementById('confirmInfo');
   Elements.confirmKeep = document.getElementById('confirmKeep');
@@ -90,6 +95,24 @@ function setupResizeHandler() {
   });
 }
 
+function setupFileHandlers() {
+  // Open button
+  Elements.openBtn.addEventListener('click', async () => {
+    try {
+      await FileManager.open(Elements.fileInput);
+    } catch (error) {
+      if (error.message !== 'No file selected') {
+        console.error('Error opening file:', error);
+      }
+    }
+  });
+  
+  // Save button
+  Elements.saveBtn.addEventListener('click', () => {
+    FileManager.save();
+  });
+}
+
 // Start the application
 (async () => {
   await initializeApp();
@@ -99,5 +122,7 @@ function setupResizeHandler() {
   ToolManager.init();
   InteractionManager.init();
   AlignmentManager.init();
+  ModeManager.init();
   setupResizeHandler();
+  setupFileHandlers();
 })();

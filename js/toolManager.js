@@ -179,9 +179,17 @@ export const ToolManager = {
         }
       }
 
-      // Backspace deletes selected sections (with confirmation)
+      // Backspace deletes selected sections OR seats depending on mode
       if (e.code === 'Backspace' && !e.repeat) {
-        if (State.selectedSections.length > 0) {
+        // In edit seats mode, delete selected seats
+        if (State.isEditSeatsMode && State.selectedSeats.length > 0) {
+          e.preventDefault();
+          import('./modeManager.js').then(({ ModeManager }) => {
+            ModeManager.deleteSelectedSeats();
+          });
+        }
+        // In schema mode, delete selected sections
+        else if (State.selectedSections.length > 0) {
           e.preventDefault();
           this.showDeleteConfirmation();
         }
