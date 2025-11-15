@@ -7,13 +7,16 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 - **Drag-to-Create Sections**: Draw rectangular seating sections with real-time preview
 - **Edit Seats Mode**: Select and delete individual seats with drag-to-select functionality
 - **Multi-Section Alignment**: Align and distribute multiple sections with intelligent collision prevention
-- **Advanced Labeling**: Customize row labels (A-Z, AA-ZZ, numbers) with custom starting points and reverse ordering
+- **Advanced Labeling**: Customize row labels (A-Z, AA-ZZ, numbers) with custom starting points, reverse ordering, and hidden mode for viewer use
 - **Smart Seat Numbering**: Configure seat numbering with custom start values and direction control
 - **Row Alignment with Gap Preservation**: Align rows while maintaining original spacing from deleted seats
 - **Section Transformations**: Rotate, curve, and stretch sections with live preview
+- **Section Colors**: Customize background and border colors per section with color picker
+- **Pricing Management**: Set base prices and service fees (fixed amount or percentage) per section
+- **Context Menu**: Right-click sections for quick access to Edit Seats and Delete options
 - **Save & Load**: Export/import venue maps in SMF (Seat Map Format) v2.0.0 with backward compatibility
-- **Collision Detection**: Smooth dragging with automatic edge-sliding and post-alignment separation
-- **Pan & Zoom**: Space+drag to pan, scroll to zoom, double-click to fit
+- **Collision Detection**: Smooth dragging with automatic edge-sliding and post-alignment separation accounting for rotated sections
+- **Pan & Zoom**: Space+drag to pan, scroll to zoom, zoom-to-fit with intelligent bounds calculation
 
 ## 🚀 Quick Start
 
@@ -67,11 +70,13 @@ venue-map-js/
 ### App Modes
 - **Edit Layout (Schema)**: Create, move, and transform sections (default mode)
 - **Edit Seats**: Select and delete individual seats within a section
-- More modes planned: Underlay, Venue Shape, Pricing
+- **Pricing**: Configure ticket pricing with base prices and service fees per section
+- More modes planned: Underlay, Venue Shape
 
 ### Section Transformations
 When a single section is selected, customize:
-- **Row Labels**: Numbers or letters (A-Z, AA-ZZ) with custom start and flip direction
+- **Section Color**: Choose custom background and border color with color picker or hex input
+- **Row Labels**: Numbers or letters (A-Z, AA-ZZ) with custom start, flip direction, and position (left/right/hidden)
 - **Seat Numbering**: Custom starting number and left-to-right/right-to-left order
 - **Align Rows**: Left/center/right alignment with gap preservation for deleted seats
 - **Rotation**: -180° to 180° with live preview
@@ -108,8 +113,10 @@ See the [User Guide](docs/USER_GUIDE.md#advanced-features) for customization exa
 
 - **Space**: Hold to pan canvas
 - **Backspace**: Delete selected sections/seats
-- **Escape**: Exit Edit Seats mode or cancel operation
+- **Escape**: Exit Edit Seats mode, exit Pricing mode, or cancel operation
+- **Shift+Click**: Add to section selection (multi-select)
 - **Shift+Drag**: Add to seat selection in Edit Seats mode
+- **Right-Click**: Open context menu on sections (Edit Seats / Delete Section)
 
 ## 🐛 Known Issues
 

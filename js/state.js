@@ -31,6 +31,9 @@ export const State = {
   seatSelectionRect: null,
   seatSelectionShiftKey: false,
   
+  // Context menu
+  contextMenuSection: null,
+  
   // Creation state
   createStart: null,
   previewRect: null,

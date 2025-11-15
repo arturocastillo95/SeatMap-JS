@@ -1,14 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>PixiJS Venue Map – Modular</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <!-- Correct Material Symbols (Outlined, Light weight) -->
-  <link rel="stylesheet" 
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0"
+  />
 
   <style>
-    html, body {
+    html,
+    body {
       height: 100%;
       margin: 0;
       background: #0f0f13;
@@ -22,9 +27,9 @@
       box-sizing: border-box;
     }
 
-    /* FIXED: use actual Material Symbols family name */
+    /* Material Symbols */
     .material-symbols {
-      font-family: 'Material Symbols Outlined';
+      font-family: "Material Symbols Outlined";
       font-weight: normal;
       font-style: normal;
       font-size: 20px;
@@ -35,15 +40,15 @@
       white-space: nowrap;
       word-wrap: normal;
       direction: ltr;
-      -webkit-font-feature-settings: 'liga';
+      -webkit-font-feature-settings: "liga";
       -webkit-font-smoothing: antialiased;
 
       /* Light weight */
       font-variation-settings:
-        'FILL' 0,
-        'wght' 300,
-        'GRAD' 0,
-        'opsz' 24;
+        "FILL" 0,
+        "wght" 300,
+        "GRAD" 0,
+        "opsz" 24;
     }
 
     .tooltip {
@@ -51,13 +56,13 @@
       pointer-events: none;
       padding: 6px 8px;
       border-radius: 6px;
-      background: rgba(20,20,24,.9);
+      background: rgba(20, 20, 24, 0.9);
       color: #fff;
       font: 12px/1.2 system-ui, sans-serif;
-      transform: translate(8px,8px);
+      transform: translate(8px, 8px);
       opacity: 0;
-      transition: opacity .12s ease;
-      border: 1px solid rgba(255,255,255,.12);
+      transition: opacity 0.12s ease;
+      border: 1px solid rgba(255, 255, 255, 0.12);
       z-index: 400;
     }
 
@@ -66,10 +71,10 @@
       pointer-events: none;
       padding: 10px 14px;
       border-radius: 8px;
-      background: rgba(30,144,255,0.95);
+      background: rgba(30, 144, 255, 0.95);
       color: #fff;
       font: 14px/1.4 system-ui, sans-serif;
-      border: 2px solid rgba(255,255,255,.3);
+      border: 2px solid rgba(255, 255, 255, 0.3);
       display: none;
       z-index: 350;
       font-weight: 500;
@@ -93,17 +98,17 @@
     .toolbar button {
       padding: 8px 16px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.2);
-      background: rgba(30,30,40,.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(30, 30, 40, 0.9);
       color: #fff;
       font: 13px system-ui, sans-serif;
       cursor: pointer;
-      transition: all .2s;
+      transition: all 0.2s;
     }
 
     .toolbar button:hover {
-      background: rgba(50,50,60,.9);
-      border-color: rgba(255,255,255,.4);
+      background: rgba(50, 50, 60, 0.9);
+      border-color: rgba(255, 255, 255, 0.4);
     }
 
     .toolbar button.active {
@@ -115,12 +120,12 @@
       position: fixed;
       padding: 16px;
       border-radius: 8px;
-      background: rgba(30,30,40,0.98);
+      background: rgba(30, 30, 40, 0.98);
       border: 2px solid #1e90ff;
       display: none;
       z-index: 300;
       min-width: 200px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
 
     .confirm-box.show {
@@ -149,16 +154,16 @@
       flex: 1;
       padding: 6px 12px;
       border-radius: 4px;
-      border: 1px solid rgba(255,255,255,.2);
-      background: rgba(50,50,60,.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(50, 50, 60, 0.9);
       color: #fff;
       font: 12px system-ui, sans-serif;
       cursor: pointer;
-      transition: all .2s;
+      transition: all 0.2s;
     }
 
     .confirm-box button:hover {
-      background: rgba(70,70,80,.9);
+      background: rgba(70, 70, 80, 0.9);
     }
 
     .confirm-box button.keep {
@@ -179,6 +184,60 @@
       background: #c82333;
     }
 
+    /* ========= CONTEXT MENU ========= */
+    .context-menu {
+      position: fixed;
+      min-width: 180px;
+      padding: 6px;
+      border-radius: 8px;
+      background: rgba(25, 26, 30, 0.98);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+      display: none;
+      z-index: 400;
+    }
+
+    .context-menu.show {
+      display: block;
+    }
+
+    .context-menu-item {
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 5px;
+      background: transparent;
+      color: #d0d4de;
+      font: 13px system-ui, sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.15s, color 0.15s;
+      text-align: left;
+    }
+
+    .context-menu-item .material-symbols {
+      font-size: 18px;
+      color: #9095a0;
+    }
+
+    .context-menu-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .context-menu-item:hover .material-symbols {
+      color: #d0d4de;
+    }
+
+    .context-menu-item:active {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
     /* ========= ALIGNMENT BAR ========= */
     .align-bar {
       position: fixed;
@@ -188,12 +247,12 @@
       height: 56px;
       padding: 8px 16px;
       border-radius: 999px;
-      background: rgba(25,26,30,0.95);
+      background: rgba(25, 26, 30, 0.95);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       box-shadow:
-        0 10px 30px rgba(0,0,0,0.4),
-        0 0 0 1px rgba(255,255,255,0.08);
+        0 10px 30px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
       display: none;
       align-items: center;
       gap: 8px;
@@ -210,7 +269,7 @@
       color: #9095a0;
       margin-right: 8px;
       padding-right: 12px;
-      border-right: 1px solid rgba(255,255,255,0.12);
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .align-btn {
@@ -224,7 +283,10 @@
       justify-content: center;
       cursor: pointer;
       color: #9095a0;
-      transition: background .16s ease, color .16s ease, transform .1s ease;
+      transition:
+        background 0.16s ease,
+        color 0.16s ease,
+        transform 0.1s ease;
     }
 
     .align-btn .material-symbols {
@@ -232,7 +294,7 @@
     }
 
     .align-btn:hover {
-      background: rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.08);
       color: #d0d4de;
       transform: scale(1.05);
     }
@@ -244,7 +306,7 @@
     .align-separator {
       width: 1px;
       height: 30px;
-      background: rgba(255,255,255,0.12);
+      background: rgba(255, 255, 255, 0.12);
       margin: 0 4px;
     }
 
@@ -256,12 +318,12 @@
       transform: translateY(-50%);
       width: 80px;
       border-radius: 40px;
-      background: rgba(25,26,30,0.95);
+      background: rgba(25, 26, 30, 0.95);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       box-shadow:
-        0 10px 30px rgba(0,0,0,0.4),
-        0 0 0 1px rgba(255,255,255,0.08);
+        0 10px 30px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
       padding: 16px 0;
       display: flex;
       flex-direction: column;
@@ -274,7 +336,7 @@
       width: 36px;
       height: 4px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.12);
+      background: rgba(255, 255, 255, 0.12);
       margin-bottom: 8px;
     }
 
@@ -291,8 +353,10 @@
       cursor: pointer;
       padding: 4px 4px 6px;
       position: relative;
-      transition: background .18s ease, transform .12s ease,
-        box-shadow .18s ease;
+      transition:
+        background 0.18s ease,
+        transform 0.12s ease,
+        box-shadow 0.18s ease;
     }
 
     .mode-item .material-symbols {
@@ -311,9 +375,9 @@
     }
 
     .mode-item:hover {
-      background: rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.08);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
     .mode-item:hover .material-symbols {
@@ -327,8 +391,8 @@
     .mode-item.active {
       background: #1e90ff;
       box-shadow:
-        0 6px 18px rgba(30,144,255,0.4),
-        0 0 0 1px rgba(255,255,255,0.3);
+        0 6px 18px rgba(30, 144, 255, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.3);
     }
 
     .mode-item.active .material-symbols {
@@ -364,12 +428,12 @@
       height: 64px;
       padding: 8px 16px;
       border-radius: 999px;
-      background: rgba(25,26,30,0.95);
+      background: rgba(25, 26, 30, 0.95);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       box-shadow:
-        0 10px 30px rgba(0,0,0,0.4),
-        0 0 0 1px rgba(255,255,255,0.08);
+        0 10px 30px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: stretch;
       gap: 4px;
@@ -392,8 +456,11 @@
       font-weight: 500;
       color: #9095a0;
       text-shadow: none;
-      transition: background .16s ease, color .16s ease,
-        box-shadow .16s ease, transform .1s ease;
+      transition:
+        background 0.16s ease,
+        color 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.1s ease;
     }
 
     .tool-item .material-symbols {
@@ -403,10 +470,10 @@
     }
 
     .tool-item:hover {
-      background: rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.08);
       color: #d0d4de;
       transform: translateY(-1px);
-      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
     }
 
     .tool-item:hover .material-symbols {
@@ -422,8 +489,8 @@
       background: #1e90ff;
       color: #fff;
       box-shadow:
-        0 4px 14px rgba(30,144,255,0.4),
-        0 0 0 1px rgba(255,255,255,0.3);
+        0 4px 14px rgba(30, 144, 255, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.3);
     }
 
     .tool-item.active .material-symbols {
@@ -440,8 +507,8 @@
       align-self: center;
       background: linear-gradient(
         180deg,
-        rgba(255,255,255,0.12),
-        rgba(255,255,255,0.04)
+        rgba(255, 255, 255, 0.12),
+        rgba(255, 255, 255, 0.04)
       );
       margin: 0 2px;
     }
@@ -449,7 +516,7 @@
     @media (max-width: 900px) {
       .mode-bar {
         left: 12px;
-        transform: translateY(-50%) scale(.95);
+        transform: translateY(-50%) scale(0.95);
       }
 
       .tool-island {
@@ -458,19 +525,25 @@
       }
     }
 
-    /* ========= SECTION SIDEBAR ========= */
+    /* ========= SECTION SIDEBAR (UPDATED) ========= */
+
     .section-sidebar {
       position: fixed;
       top: 0;
       right: 0;
-      width: 320px;
+      width: 340px;
       height: 100%;
-      background: rgba(20,21,25,0.98);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      box-shadow: -2px 0 20px rgba(0,0,0,0.3);
-      border-left: 1px solid rgba(255,255,255,0.08);
-      padding: 24px;
+      padding: 20px 20px 24px;
+      background: radial-gradient(
+          circle at top left,
+          #23242c 0,
+          #15161b 55%,
+          #101117 100%
+        );
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: -12px 0 30px rgba(0, 0, 0, 0.6);
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
       overflow-y: auto;
       display: none;
       z-index: 250;
@@ -480,25 +553,91 @@
       display: block;
     }
 
+  .sidebar-title-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 10px 0 14px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar-title-chip {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: transparent;
+    color: #8c92a0;
+    font-weight: 600;
+  }
+
     .sidebar-section {
-      margin-bottom: 32px;
+      margin-bottom: 18px;
     }
 
-    .sidebar-section:last-child {
-      margin-bottom: 0;
+    .sidebar-section + .sidebar-section {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 16px;
     }
 
     .sidebar-header {
       font-size: 11px;
       font-weight: 600;
-      color: #7a7f8d;
+      color: #8e94a5;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 16px;
+      letter-spacing: 0.12em;
+      margin-bottom: 10px;
+    }
+
+    .sidebar-accordion {
+      border-radius: 10px;
+      background: rgba(6, 7, 11, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+      margin-bottom: 10px;
+    }
+
+    .sidebar-accordion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px 9px 12px;
+      cursor: pointer;
+    }
+
+    .sidebar-accordion-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #c5cad9;
+    }
+
+    .sidebar-accordion-chevron {
+      font-size: 20px;
+      color: #7c8291;
+      transition:
+        transform 0.18s ease,
+        color 0.18s ease;
+    }
+
+    .sidebar-accordion-header:hover .sidebar-accordion-chevron {
+      color: #d0d4e3;
+    }
+
+    .sidebar-accordion-header.is-open .sidebar-accordion-chevron {
+      transform: rotate(180deg);
+    }
+
+    .sidebar-accordion-body {
+      padding: 10px 12px 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .sidebar-input-group {
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .sidebar-input-group:last-child {
@@ -506,63 +645,80 @@
     }
 
     .sidebar-label {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
-      color: #9095a0;
-      margin-bottom: 8px;
+      color: #aab0c0;
+      margin-bottom: 6px;
       display: block;
     }
 
     .sidebar-input {
       width: 100%;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      color: #fff;
-      font-size: 14px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 6px;
+      color: #f3f4ff;
+      font-size: 13px;
       font-family: system-ui, sans-serif;
-      transition: background .2s, border-color .2s;
+      box-sizing: border-box;
+      transition:
+        background 0.16s,
+        border-color 0.16s;
+    }
+
+    .sidebar-input::placeholder {
+      color: #5f6470;
     }
 
     .sidebar-input:hover {
-      background: rgba(255,255,255,0.08);
-      border-color: rgba(255,255,255,0.18);
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.18);
     }
 
     .sidebar-input:focus {
       outline: none;
-      background: rgba(255,255,255,0.08);
-      border-color: #1e90ff;
+      background: rgba(255, 255, 255, 0.04);
+      border-color: #3a9cff;
+      box-shadow: none;
+    }
+
+    .sidebar-input:focus-visible {
+      outline: none;
     }
 
     .sidebar-info {
-      font-size: 12px;
-      color: #7a7f8d;
-      margin-top: 8px;
+      font-size: 11px;
+      color: #7f8597;
+      margin-top: 6px;
     }
 
     .sidebar-button-group {
       display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: 6px;
+      margin-bottom: 8px;
     }
 
     .sidebar-toggle-btn {
       flex: 1;
-      padding: 10px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      color: #9095a0;
-      font-size: 13px;
+      padding: 8px 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #a5acbd;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: all .2s;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 4px;
+      transition:
+        background 0.14s,
+        border-color 0.14s,
+        color 0.14s,
+        box-shadow 0.14s,
+        transform 0.08s;
     }
 
     .sidebar-toggle-btn .material-symbols {
@@ -570,16 +726,22 @@
     }
 
     .sidebar-toggle-btn:hover {
-      background: rgba(255,255,255,0.08);
-      border-color: rgba(255,255,255,0.18);
-      color: #d0d4de;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #dde2f5;
     }
 
-    .sidebar-toggle-btn.active {
-      background: #1e90ff;
-      border-color: #1e90ff;
-      color: #fff;
+    .sidebar-toggle-btn:active {
+      transform: scale(0.97);
     }
+
+  .sidebar-toggle-btn.active {
+    background: linear-gradient(135deg, #3a9cff, #1e74ff);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #fff;
+    box-shadow: none; /* no glow */
+  }
+
 
     .sidebar-align-group {
       display: grid;
@@ -588,51 +750,58 @@
     }
 
     .sidebar-align-btn {
-      padding: 8px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 6px;
-      color: #9095a0;
+      padding: 7px 0;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #a5acbd;
       cursor: pointer;
-      transition: all .2s;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition:
+        background 0.14s,
+        border-color 0.14s,
+        color 0.14s,
+        transform 0.08s;
     }
 
     .sidebar-align-btn .material-symbols {
-      font-size: 15px;
+      font-size: 18px;
     }
 
     .sidebar-align-btn:hover {
-      background: rgba(255,255,255,0.08);
-      border-color: rgba(255,255,255,0.18);
-      color: #d0d4de;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #dde2f5;
     }
 
     .sidebar-align-btn:active {
-      transform: scale(0.95);
+      transform: scale(0.96);
     }
 
     .sidebar-increment-group {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
     }
 
     .sidebar-increment-btn {
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.02);
       border-radius: 8px;
-      color: #9095a0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #a5acbd;
       cursor: pointer;
-      transition: all .2s;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition:
+        background 0.14s,
+        border-color 0.14s,
+        color 0.14s,
+        transform 0.08s;
     }
 
     .sidebar-increment-btn .material-symbols {
@@ -640,24 +809,24 @@
     }
 
     .sidebar-increment-btn:hover {
-      background: rgba(255,255,255,0.08);
-      border-color: rgba(255,255,255,0.18);
-      color: #d0d4de;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #dde2f5;
     }
 
     .sidebar-increment-btn:active {
-      transform: scale(0.95);
+      transform: scale(0.96);
     }
 
     .sidebar-slider {
-      margin-top: 12px;
+      margin-top: 4px;
     }
 
     .sidebar-slider-input {
       width: 100%;
       height: 4px;
-      border-radius: 2px;
-      background: rgba(255,255,255,0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
       outline: none;
       -webkit-appearance: none;
       appearance: none;
@@ -669,27 +838,36 @@
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: #1e90ff;
+      background: #3a9cff;
+      border: 2px solid rgba(0, 0, 0, 0.65);
       cursor: pointer;
-      transition: transform .15s;
+      box-shadow: 0 0 0 4px rgba(58, 156, 255, 0.25);
+      transition:
+        transform 0.12s,
+        box-shadow 0.12s;
     }
 
     .sidebar-slider-input::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
+      transform: scale(1.08);
+      box-shadow: 0 0 0 6px rgba(58, 156, 255, 0.35);
     }
 
     .sidebar-slider-input::-moz-range-thumb {
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: #1e90ff;
+      background: #3a9cff;
+      border: 2px solid rgba(0, 0, 0, 0.65);
       cursor: pointer;
-      border: none;
-      transition: transform .15s;
+      box-shadow: 0 0 0 4px rgba(58, 156, 255, 0.25);
+      transition:
+        transform 0.12s,
+        box-shadow 0.12s;
     }
 
     .sidebar-slider-input::-moz-range-thumb:hover {
-      transform: scale(1.2);
+      transform: scale(1.08);
+      box-shadow: 0 0 0 6px rgba(58, 156, 255, 0.35);
     }
   </style>
 </head>
@@ -706,9 +884,14 @@
 
     <!-- Edit Seats -->
     <button class="mode-item" data-mode="seats">
-      <!-- closest to material-symbols-light:grid-on-outline -->
       <span class="material-symbols">grid_on</span>
       <span class="mode-item-label">Edit seats</span>
+    </button>
+
+    <!-- Pricing -->
+    <button class="mode-item" data-mode="pricing">
+      <span class="material-symbols">paid</span>
+      <span class="mode-item-label">Pricing</span>
     </button>
 
     <!-- Underlay -->
@@ -719,15 +902,8 @@
 
     <!-- Venue Shape (stadium) -->
     <button class="mode-item" data-mode="venue-shape">
-      <!-- material-symbols-light:stadium-outline -->
       <span class="material-symbols">stadium</span>
       <span class="mode-item-label">Venue shape</span>
-    </button>
-
-    <!-- Pricing -->
-    <button class="mode-item" data-mode="pricing">
-      <span class="material-symbols">paid</span>
-      <span class="mode-item-label">Pricing</span>
     </button>
   </div>
 
@@ -755,7 +931,6 @@
 
     <!-- Table -->
     <button class="tool-item" title="Table">
-      <!-- closest to table-large-outline -->
       <span class="material-symbols">table_large</span>
       <span class="tool-label">Table</span>
     </button>
@@ -809,219 +984,505 @@
   <!-- Alignment Bar -->
   <div id="alignBar" class="align-bar">
     <span class="align-bar-label">Align</span>
-    
+
     <!-- Align Left -->
     <button class="align-btn" id="alignLeftBtn" title="Align Left">
       <span class="material-symbols">align_horizontal_left</span>
     </button>
-    
+
     <!-- Align Center Horizontal -->
     <button class="align-btn" id="alignCenterHBtn" title="Align Center Horizontal">
       <span class="material-symbols">align_horizontal_center</span>
     </button>
-    
+
     <!-- Align Right -->
     <button class="align-btn" id="alignRightBtn" title="Align Right">
       <span class="material-symbols">align_horizontal_right</span>
     </button>
-    
+
     <div class="align-separator"></div>
-    
+
     <!-- Align Top -->
     <button class="align-btn" id="alignTopBtn" title="Align Top">
       <span class="material-symbols">align_vertical_top</span>
     </button>
-    
+
     <!-- Align Center Vertical -->
     <button class="align-btn" id="alignCenterVBtn" title="Align Center Vertical">
       <span class="material-symbols">align_vertical_center</span>
     </button>
-    
+
     <!-- Align Bottom -->
     <button class="align-btn" id="alignBottomBtn" title="Align Bottom">
       <span class="material-symbols">align_vertical_bottom</span>
     </button>
-    
+
     <div class="align-separator"></div>
-    
+
     <!-- Distribute Horizontal -->
     <button class="align-btn" id="distributeHBtn" title="Distribute Horizontally">
       <span class="material-symbols">align_justify_space_even</span>
     </button>
-    
+
     <!-- Distribute Vertical -->
     <button class="align-btn" id="distributeVBtn" title="Distribute Vertically">
       <span class="material-symbols">align_space_even</span>
     </button>
   </div>
 
-  <!-- Section Sidebar -->
+  <!-- Section Sidebar (UPDATED) -->
   <div class="section-sidebar" id="sectionSidebar">
+    <div class="sidebar-title-bar">
+      <div class="sidebar-title-chip">Section</div>
+    </div>
+
     <!-- SECTION -->
     <div class="sidebar-section">
-      <div class="sidebar-header">SECTION</div>
-      
+      <div class="sidebar-header">Properties</div>
+
       <div class="sidebar-input-group">
         <label class="sidebar-label">Section Title</label>
-        <input type="text" class="sidebar-input" id="sectionNameInput" value="Section One" />
+        <input
+          type="text"
+          class="sidebar-input"
+          id="sectionNameInput"
+          value="Section One"
+        />
       </div>
 
       <div class="sidebar-input-group">
-        <label class="sidebar-label">Row Labels</label>
-        <div class="sidebar-button-group">
-          <button class="sidebar-toggle-btn" id="rowLabelNone">
-            <span class="material-symbols">horizontal_rule</span>
-            <span>None</span>
-          </button>
-          <button class="sidebar-toggle-btn" id="rowLabelNumbers">
-            <span class="material-symbols">format_list_numbered_rtl</span>
-            <span>1 2 3</span>
-          </button>
-          <button class="sidebar-toggle-btn" id="rowLabelLetters">
-            <span class="material-symbols">format_list_bulleted</span>
-            <span>A B C</span>
-          </button>
+        <label class="sidebar-label">Section Color</label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input
+            type="color"
+            id="sectionColorPicker"
+            value="#3b82f6"
+            style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+          />
+          <input
+            type="text"
+            class="sidebar-input"
+            id="sectionColorInput"
+            value="#3b82f6"
+            placeholder="#3b82f6"
+            style="flex: 1; text-transform: uppercase;"
+          />
         </div>
-        
-        <div id="rowLabelPositionSection" style="display: none;">
-          <label class="sidebar-label" style="margin-top: 12px;">Label Position</label>
+      </div>
+
+      <!-- Row Labels -->
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-header" id="rowLabelsHeader">
+          <div class="sidebar-accordion-title">Row Labels</div>
+          <span class="material-symbols sidebar-accordion-chevron"
+            >expand_more</span
+          >
+        </div>
+        <div class="sidebar-accordion-body" id="rowLabelsContent">
           <div class="sidebar-button-group">
-            <button class="sidebar-toggle-btn" id="rowLabelLeft">
-              <span class="material-symbols">align_horizontal_left</span>
-              <span>Left</span>
+            <button class="sidebar-toggle-btn" id="rowLabelNone">
+              <span class="material-symbols">horizontal_rule</span>
+              <span>None</span>
             </button>
-            <button class="sidebar-toggle-btn" id="rowLabelRight">
-              <span class="material-symbols">align_horizontal_right</span>
-              <span>Right</span>
+            <button class="sidebar-toggle-btn" id="rowLabelNumbers">
+              <span class="material-symbols">format_list_numbered_rtl</span>
+              <span>1 2 3</span>
             </button>
-          </div>
-
-          <label class="sidebar-label" style="margin-top: 12px;">Starting Label</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" class="sidebar-input" id="rowLabelStartInput" placeholder="A or 1" style="flex: 1; text-align: center;" />
-            <button class="sidebar-toggle-btn" id="rowLabelFlipBtn" style="flex: 0 0 auto; min-width: 50px;">
-              <span class="material-symbols">swap_vert</span>
+            <button class="sidebar-toggle-btn" id="rowLabelLetters">
+              <span class="material-symbols">format_list_bulleted</span>
+              <span>A B C</span>
             </button>
           </div>
+
+          <div
+            id="rowLabelPositionSection"
+            style="display: none; margin-top: 10px;"
+          >
+            <label class="sidebar-label" style="font-size: 11px;">Position</label>
+            <div class="sidebar-button-group">
+              <button class="sidebar-toggle-btn" id="rowLabelLeft">
+                <span class="material-symbols">align_horizontal_left</span>
+                <span>Left</span>
+              </button>
+              <button class="sidebar-toggle-btn" id="rowLabelRight">
+                <span class="material-symbols">align_horizontal_right</span>
+                <span>Right</span>
+              </button>
+              <button
+                class="sidebar-toggle-btn"
+                id="rowLabelHidden"
+                title="Hide labels in editor view while preserving data for viewer."
+              >
+                <span class="material-symbols">visibility_off</span>
+                <span>Hidden</span>
+              </button>
+            </div>
+
+            <label
+              class="sidebar-label"
+              style="font-size: 11px; margin-top: 8px;"
+              >Numbering</label
+            >
+            <div class="sidebar-increment-group">
+              <input
+                type="text"
+                class="sidebar-input"
+                id="rowLabelStartInput"
+                placeholder="A or 1"
+                style="text-align: center; flex: 1;"
+              />
+              <button
+                class="sidebar-toggle-btn"
+                id="rowLabelFlipBtn"
+                style="flex: 0 0 auto; min-width: 50px;"
+                title="Flip label order"
+              >
+                <span class="material-symbols">swap_vert</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="sidebar-input-group">
-        <label class="sidebar-label">Outline</label>
-        <div class="sidebar-button-group">
-          <button class="sidebar-toggle-btn active">None</button>
-          <button class="sidebar-toggle-btn">Auto</button>
+      <!-- Outline -->
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-header" id="outlineHeader">
+          <div class="sidebar-accordion-title">Outline</div>
+          <span class="material-symbols sidebar-accordion-chevron"
+            >expand_more</span
+          >
+        </div>
+        <div class="sidebar-accordion-body" id="outlineContent">
+          <div class="sidebar-button-group">
+            <button class="sidebar-toggle-btn active">None</button>
+            <button class="sidebar-toggle-btn">Auto</button>
+          </div>
         </div>
       </div>
 
-      <div class="sidebar-input-group">
-        <label class="sidebar-label">Seats</label>
-        <div class="sidebar-info">12 rows / 252 seats</div>
+      <!-- Seats -->
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-header" id="seatsHeader">
+          <div class="sidebar-accordion-title">Seats</div>
+          <span class="material-symbols sidebar-accordion-chevron"
+            >expand_more</span
+          >
+        </div>
+        <div class="sidebar-accordion-body" id="seatsContent">
+          <div class="sidebar-info">12 rows / 252 seats</div>
+        </div>
       </div>
 
-      <div class="sidebar-input-group">
-        <label class="sidebar-label">Seat Numbering</label>
-        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-          <input type="number" class="sidebar-input" id="seatNumberStartInput" placeholder="1" min="1" style="flex: 1; text-align: center;" />
-          <button class="sidebar-toggle-btn" id="seatNumberFlipBtn" style="flex: 0 0 auto; min-width: 50px;">
-            <span class="material-symbols">swap_horiz</span>
-          </button>
+      <!-- Seat Numbering -->
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-header" id="seatNumberingHeader">
+          <div class="sidebar-accordion-title">Seat Numbering</div>
+          <span class="material-symbols sidebar-accordion-chevron"
+            >expand_more</span
+          >
         </div>
-        <div class="sidebar-info" style="font-size: 11px;">Starting number and direction</div>
+        <div class="sidebar-accordion-body" id="seatNumberingContent">
+          <div class="sidebar-input-group">
+            <div class="sidebar-increment-group">
+              <input
+                type="number"
+                class="sidebar-input"
+                id="seatNumberStartInput"
+                placeholder="1"
+                min="1"
+                style="flex: 1; text-align: center;"
+              />
+              <button
+                class="sidebar-toggle-btn"
+                id="seatNumberFlipBtn"
+                style="flex: 0 0 auto; min-width: 50px;"
+                title="Flip numbering direction"
+              >
+                <span class="material-symbols">swap_horiz</span>
+              </button>
+            </div>
+            <div class="sidebar-info">Starting number and direction</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- ALIGN ROWS -->
     <div class="sidebar-section">
-      <div class="sidebar-header">ALIGN ROWS</div>
-      <div class="sidebar-align-group">
-        <button class="sidebar-align-btn" title="Align Left">
-          <span class="material-symbols">align_horizontal_left</span>
-        </button>
-        <button class="sidebar-align-btn" title="Align Center">
-          <span class="material-symbols">align_horizontal_center</span>
-        </button>
-        <button class="sidebar-align-btn" title="Align Right">
-          <span class="material-symbols">align_horizontal_right</span>
-        </button>
+      <div class="sidebar-header">Align Rows</div>
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-body" id="alignRowsContent">
+          <div class="sidebar-align-group">
+            <button class="sidebar-align-btn" title="Align Left">
+              <span class="material-symbols">align_horizontal_left</span>
+            </button>
+            <button class="sidebar-align-btn" title="Align Center">
+              <span class="material-symbols">align_horizontal_center</span>
+            </button>
+            <button class="sidebar-align-btn" title="Align Right">
+              <span class="material-symbols">align_horizontal_right</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- ADD ROWS -->
     <div class="sidebar-section">
-      <div class="sidebar-header">ADD ROWS</div>
-      
-      <div class="sidebar-input-group">
-        <label class="sidebar-label">Top</label>
-        <div class="sidebar-increment-group">
-          <button class="sidebar-increment-btn">
-            <span class="material-symbols">expand_less</span>
-          </button>
-          <input type="text" class="sidebar-input" value="0" style="text-align: center; flex: 1;" />
-        </div>
-      </div>
+      <div class="sidebar-header">Add Rows</div>
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-body" id="addRowsContent">
+          <div class="sidebar-input-group">
+            <label class="sidebar-label">Top</label>
+            <div class="sidebar-increment-group">
+              <button class="sidebar-increment-btn">
+                <span class="material-symbols">expand_less</span>
+              </button>
+              <input
+                type="text"
+                class="sidebar-input"
+                value="0"
+                style="text-align: center; flex: 1;"
+              />
+            </div>
+          </div>
 
-      <div class="sidebar-input-group">
-        <label class="sidebar-label">Bottom</label>
-        <div class="sidebar-increment-group">
-          <button class="sidebar-increment-btn">
-            <span class="material-symbols">expand_more</span>
-          </button>
-          <input type="text" class="sidebar-input" value="0" style="text-align: center; flex: 1;" />
+          <div class="sidebar-input-group">
+            <label class="sidebar-label">Bottom</label>
+            <div class="sidebar-increment-group">
+              <button class="sidebar-increment-btn">
+                <span class="material-symbols">expand_more</span>
+              </button>
+              <input
+                type="text"
+                class="sidebar-input"
+                value="0"
+                style="text-align: center; flex: 1;"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- TRANSFORM -->
     <div class="sidebar-section">
-      <div class="sidebar-header">TRANSFORM</div>
-      
-      <div class="sidebar-input-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <label class="sidebar-label" style="margin-bottom: 0;">Rotate <span id="rotateValue" style="color: #1e90ff;">0°</span></label>
-          <button class="sidebar-increment-btn" id="resetRotateBtn" title="Reset Rotation">
-            <span class="material-symbols">refresh</span>
-          </button>
+      <div class="sidebar-header">Transform</div>
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-body" id="transformContent">
+          <div class="sidebar-input-group">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+              "
+            >
+              <label class="sidebar-label" style="margin-bottom: 0;"
+                >Rotate
+                <span id="rotateValue" style="color: #3a9cff;">0°</span></label
+              >
+              <button
+                class="sidebar-increment-btn"
+                id="resetRotateBtn"
+                title="Reset Rotation"
+              >
+                <span class="material-symbols">refresh</span>
+              </button>
+            </div>
+            <div class="sidebar-slider">
+              <input
+                type="range"
+                class="sidebar-slider-input"
+                id="rotateSlider"
+                min="-180"
+                max="180"
+                value="0"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="sidebar-input-group">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+              "
+            >
+              <label class="sidebar-label" style="margin-bottom: 0;"
+                >Curve
+                <span id="curveValue" style="color: #3a9cff;">0</span></label
+              >
+              <button
+                class="sidebar-increment-btn"
+                id="resetCurveBtn"
+                title="Reset Curve"
+              >
+                <span class="material-symbols">refresh</span>
+              </button>
+            </div>
+            <div class="sidebar-slider">
+              <input
+                type="range"
+                class="sidebar-slider-input"
+                id="curveSlider"
+                min="0"
+                max="100"
+                value="0"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="sidebar-input-group">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+              "
+            >
+              <label class="sidebar-label" style="margin-bottom: 0;"
+                >Stretch Horizontal
+                <span id="stretchHValue" style="color: #3a9cff;">0</span></label
+              >
+              <button
+                class="sidebar-increment-btn"
+                id="resetStretchHBtn"
+                title="Reset Horizontal Stretch"
+              >
+                <span class="material-symbols">refresh</span>
+              </button>
+            </div>
+            <div class="sidebar-slider">
+              <input
+                type="range"
+                class="sidebar-slider-input"
+                id="stretchHSlider"
+                min="0"
+                max="100"
+                value="0"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="sidebar-input-group">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+              "
+            >
+              <label class="sidebar-label" style="margin-bottom: 0;"
+                >Stretch Vertical
+                <span id="stretchVValue" style="color: #3a9cff;">0</span></label
+              >
+              <button
+                class="sidebar-increment-btn"
+                id="resetStretchVBtn"
+                title="Reset Vertical Stretch"
+              >
+                <span class="material-symbols">refresh</span>
+              </button>
+            </div>
+            <div class="sidebar-slider">
+              <input
+                type="range"
+                class="sidebar-slider-input"
+                id="stretchVSlider"
+                min="0"
+                max="100"
+                value="0"
+                step="1"
+              />
+            </div>
+          </div>
         </div>
-        <div class="sidebar-slider">
-          <input type="range" class="sidebar-slider-input" id="rotateSlider" min="-180" max="180" value="0" step="1" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Sidebar -->
+  <div class="section-sidebar" id="pricingSidebar">
+    <div class="sidebar-title-bar">
+      <div class="sidebar-title-chip">Pricing</div>
+    </div>
+
+    <!-- PRICING -->
+    <div class="sidebar-section">
+      <div class="sidebar-header">Section Pricing</div>
+
+      <div class="sidebar-input-group">
+        <label class="sidebar-label">Base Price ($)</label>
+        <input
+          type="number"
+          class="sidebar-input"
+          id="pricingBasePrice"
+          placeholder="0.00"
+          min="0"
+          step="0.01"
+        />
+      </div>
+
+      <div class="sidebar-input-group">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <label class="sidebar-label" style="margin: 0;">Service Fee</label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input
+              type="checkbox"
+              id="pricingServiceFeeToggle"
+              style="cursor: pointer; width: 16px; height: 16px;"
+            />
+            <span style="font-size: 12px; color: #aab0c0; font-weight: 500;">Enable</span>
+          </label>
+        </div>
+        
+        <div id="serviceFeeInputs" style="display: none;">
+          <div class="sidebar-button-group" style="margin-bottom: 8px;">
+            <button class="sidebar-toggle-btn active" id="serviceFeeFixed">
+              <span class="material-symbols">attach_money</span>
+              <span>Fixed</span>
+            </button>
+            <button class="sidebar-toggle-btn" id="serviceFeePercent">
+              <span class="material-symbols">percent</span>
+              <span>Percent</span>
+            </button>
+          </div>
+          
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input
+              type="number"
+              class="sidebar-input"
+              id="pricingServiceFee"
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+              style="flex: 1;"
+            />
+            <span id="serviceFeeUnit" style="font-size: 14px; color: #aab0c0; min-width: 20px;">$</span>
+          </div>
         </div>
       </div>
 
       <div class="sidebar-input-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <label class="sidebar-label" style="margin-bottom: 0;">Curve <span id="curveValue" style="color: #1e90ff;">0</span></label>
-          <button class="sidebar-increment-btn" id="resetCurveBtn" title="Reset Curve">
-            <span class="material-symbols">refresh</span>
-          </button>
-        </div>
-        <div class="sidebar-slider">
-          <input type="range" class="sidebar-slider-input" id="curveSlider" min="0" max="100" value="0" step="1" />
+        <div style="padding: 16px; background: rgba(58, 156, 255, 0.1); border: 1px solid rgba(58, 156, 255, 0.3); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; font-weight: 500; color: #aab0c0;">Total Price</span>
+            <span id="pricingTotalPrice" style="font-size: 20px; font-weight: 600; color: #3a9cff;">$0.00</span>
+          </div>
         </div>
       </div>
 
-      <div class="sidebar-input-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <label class="sidebar-label" style="margin-bottom: 0;">Stretch Horizontal <span id="stretchHValue" style="color: #1e90ff;">0</span></label>
-          <button class="sidebar-increment-btn" id="resetStretchHBtn" title="Reset Horizontal Stretch">
-            <span class="material-symbols">refresh</span>
-          </button>
-        </div>
-        <div class="sidebar-slider">
-          <input type="range" class="sidebar-slider-input" id="stretchHSlider" min="0" max="100" value="0" step="1" />
-        </div>
-      </div>
-
-      <div class="sidebar-input-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <label class="sidebar-label" style="margin-bottom: 0;">Stretch Vertical <span id="stretchVValue" style="color: #1e90ff;">0</span></label>
-          <button class="sidebar-increment-btn" id="resetStretchVBtn" title="Reset Vertical Stretch">
-            <span class="material-symbols">refresh</span>
-          </button>
-        </div>
-        <div class="sidebar-slider">
-          <input type="range" class="sidebar-slider-input" id="stretchVSlider" min="0" max="100" value="0" step="1" />
-        </div>
+      <div class="sidebar-info" style="margin-top: 12px;">
+        Pricing applies to all seats in this section
       </div>
     </div>
   </div>
@@ -1042,6 +1503,18 @@
       <button id="deleteConfirmYes" class="delete">Delete</button>
       <button id="deleteConfirmNo" class="keep">Cancel</button>
     </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="contextMenu" class="context-menu">
+    <button class="context-menu-item" id="contextEditSeats">
+      <span class="material-symbols">grid_on</span>
+      <span>Edit Seats</span>
+    </button>
+    <button class="context-menu-item" id="contextDeleteSection">
+      <span class="material-symbols">delete</span>
+      <span>Delete Section</span>
+    </button>
   </div>
 
   <!-- PixiJS (UMD) -->

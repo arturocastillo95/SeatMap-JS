@@ -107,7 +107,8 @@ export const FileManager = {
         start: section.rowLabelStart !== undefined ? section.rowLabelStart : (section.rowLabelType === 'letters' ? 'A' : 1),
         reversed: section.rowLabelReversed || false,
         showLeft: section.showLeftLabels || false,
-        showRight: section.showRightLabels || false
+        showRight: section.showRightLabels || false,
+        hidden: section.labelsHidden || false
       },
       
       // Seat configuration and numbering
@@ -132,7 +133,21 @@ export const FileManager = {
         fillColor: "#4a5568",
         seatColor: "#ffffff",
         borderColor: "#3b82f6",
+        sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
         opacity: 1.0
+      },
+      
+      // Pricing (v2.0.0+)
+      pricing: section.pricing ? {
+        basePrice: section.pricing.basePrice || 0,
+        serviceFee: section.pricing.serviceFee || 0,
+        serviceFeeEnabled: section.pricing.serviceFeeEnabled || false,
+        serviceFeeType: section.pricing.serviceFeeType || 'fixed'
+      } : {
+        basePrice: 0,
+        serviceFee: 0,
+        serviceFeeEnabled: false,
+        serviceFeeType: 'fixed'
       },
       
       // Extensible metadata
@@ -252,11 +267,30 @@ export const FileManager = {
     section.rowLabelReversed = data.rowLabels.reversed || false;
     section.showLeftLabels = data.rowLabels.showLeft;
     section.showRightLabels = data.rowLabels.showRight;
+    section.labelsHidden = data.rowLabels.hidden || false;
     
     // Restore seat numbering (v2.0.0)
     if (data.seatNumbering) {
       section.seatNumberStart = data.seatNumbering.start || 1;
       section.seatNumberReversed = data.seatNumbering.reversed || false;
+    }
+    
+    // Restore pricing (v2.0.0+)
+    if (data.pricing) {
+      section.pricing = {
+        basePrice: data.pricing.basePrice || 0,
+        serviceFee: data.pricing.serviceFee || 0,
+        serviceFeeEnabled: data.pricing.serviceFeeEnabled || false,
+        serviceFeeType: data.pricing.serviceFeeType || 'fixed'
+      };
+    }
+    
+    // Restore section color (v2.0.0+)
+    if (data.style && data.style.sectionColor !== undefined) {
+      section.sectionColor = data.style.sectionColor;
+      // Redraw section with the restored color
+      const colorHex = '#' + section.sectionColor.toString(16).padStart(6, '0');
+      SectionManager.setSectionColor(section, colorHex);
     }
     
     // Restore transformations

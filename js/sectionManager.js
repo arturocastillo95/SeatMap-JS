@@ -9,11 +9,13 @@ import { Utils } from './utils.js';
 export const SectionManager = {
   createSection(x, y, width, height, rows, seatsPerRow) {
     const section = new PIXI.Graphics();
+    section.sectionColor = COLORS.SECTION_STROKE; // Store the color as a property
     section.rect(0, 0, width, height);
-    section.fill({ color: COLORS.SECTION_FILL, alpha: 0.25 });
-    section.stroke({ width: 2, color: COLORS.SECTION_STROKE, alpha: 0.8 });
+    section.fill({ color: section.sectionColor, alpha: 0.25 });
+    section.stroke({ width: 2, color: section.sectionColor, alpha: 0.8 });
     section.eventMode = 'static';
     section.cursor = 'pointer';
+    section.hitArea = new PIXI.Rectangle(0, 0, width, height);
     section.sectionId = `Section ${State.sectionCounter++}`;
     section.seats = [];
     section.rowLabels = [];
@@ -22,6 +24,7 @@ export const SectionManager = {
     section.rowLabelReversed = false; // Whether to reverse row label order (top to bottom)
     section.showLeftLabels = false;
     section.showRightLabels = false;
+    section.labelsHidden = false; // When true, labels are grayed out (for viewer use)
     section.seatNumberStart = 1; // Starting seat number (default 1)
     section.seatNumberReversed = false; // Whether to reverse seat numbering direction
     section.x = x;
@@ -160,6 +163,23 @@ export const SectionManager = {
       if (State.isDeleteMode || State.isCreateMode || State.isPanningMode) return;
       
       e.stopPropagation();
+      
+      // Right click - show context menu
+      if (e.button === 2) {
+        // Select this section if not already selected
+        if (!State.selectedSections.includes(section)) {
+          State.selectedSections.forEach(s => {
+            this.deselectSection(s);
+          });
+          State.selectedSections = [];
+          State.selectedSections.push(section);
+          this.selectSection(section);
+        }
+        
+        // Show context menu
+        this.showContextMenu(e.global.x, e.global.y, section);
+        return;
+      }
       
       const worldPos = Utils.screenToWorld(e.global.x, e.global.y);
       
@@ -400,7 +420,7 @@ export const SectionManager = {
 
       // Create left label - position at the leftmost seat of this row
       if (section.showLeftLabels) {
-        const leftLabel = this.createRowLabel(labelText);
+        const leftLabel = this.createRowLabel(labelText, section.labelsHidden);
         leftLabel.relativeX = leftmostSeat.relativeX - 10 - LABEL_GAP; // 10 = seat radius
         leftLabel.relativeY = leftmostSeat.relativeY; // Use the seat's Y position (important for curves)
         leftLabel.x = section.x + leftLabel.relativeX;
@@ -411,7 +431,7 @@ export const SectionManager = {
 
       // Create right label - position at the rightmost seat of this row
       if (section.showRightLabels) {
-        const rightLabel = this.createRowLabel(labelText);
+        const rightLabel = this.createRowLabel(labelText, section.labelsHidden);
         rightLabel.relativeX = rightmostSeat.relativeX + 10 + LABEL_GAP; // 10 = seat radius
         rightLabel.relativeY = rightmostSeat.relativeY; // Use the seat's Y position (important for curves)
         rightLabel.x = section.x + rightLabel.relativeX;
@@ -435,15 +455,17 @@ export const SectionManager = {
       maxY = Math.max(maxY, seat.relativeY + 10);
     });
 
-    // Check all labels (use actual bounds)
-    section.rowLabels.forEach(label => {
-      const labelHalfWidth = label.width / 2;
-      const labelHalfHeight = label.height / 2;
-      minX = Math.min(minX, label.relativeX - labelHalfWidth);
-      maxX = Math.max(maxX, label.relativeX + labelHalfWidth);
-      minY = Math.min(minY, label.relativeY - labelHalfHeight);
-      maxY = Math.max(maxY, label.relativeY + labelHalfHeight);
-    });
+    // Check all labels (use actual bounds) - skip if labels are hidden
+    if (!section.labelsHidden) {
+      section.rowLabels.forEach(label => {
+        const labelHalfWidth = label.width / 2;
+        const labelHalfHeight = label.height / 2;
+        minX = Math.min(minX, label.relativeX - labelHalfWidth);
+        maxX = Math.max(maxX, label.relativeX + labelHalfWidth);
+        minY = Math.min(minY, label.relativeY - labelHalfHeight);
+        maxY = Math.max(maxY, label.relativeY + labelHalfHeight);
+      });
+    }
 
     // Add padding
     const EDGE_PADDING = 10;
@@ -543,11 +565,15 @@ export const SectionManager = {
   },
 
   updateSectionGraphics(section) {
-    // Redraw the section rectangle at current size
+    // Redraw the section rectangle at current size using the section's stored color
+    const sectionColor = section.sectionColor || COLORS.SECTION_STROKE;
     section.clear();
     section.rect(0, 0, section.contentWidth, section.contentHeight);
-    section.fill({ color: COLORS.SECTION_FILL, alpha: 0.25 });
-    section.stroke({ width: 2, color: COLORS.SECTION_STROKE, alpha: 0.8 });
+    section.fill({ color: sectionColor, alpha: 0.25 });
+    section.stroke({ width: 2, color: sectionColor, alpha: 0.8 });
+    
+    // Update hit area to match the current rectangle bounds
+    section.hitArea = new PIXI.Rectangle(0, 0, section.contentWidth, section.contentHeight);
   },
 
   getRowLabelText(index, type, startValue) {
@@ -577,7 +603,7 @@ export const SectionManager = {
     return '';
   },
 
-  createRowLabel(text) {
+  createRowLabel(text, isHidden = false) {
     const label = new PIXI.Text({
       text: text,
       style: {
@@ -589,6 +615,7 @@ export const SectionManager = {
       }
     });
     label.anchor.set(0.5, 0.5);
+    label.alpha = isHidden ? 0.60 : 1.0;
     return label;
   },
 
@@ -1058,5 +1085,54 @@ export const SectionManager = {
     });
 
     console.log(`✓ Updated seat numbers (start: ${startNumber}, reversed: ${reversed})`);
+  },
+
+  showContextMenu(x, y, section) {
+    const contextMenu = document.getElementById('contextMenu');
+    
+    // Store the section reference
+    State.contextMenuSection = section;
+    
+    // Position the menu
+    contextMenu.style.left = `${x}px`;
+    contextMenu.style.top = `${y}px`;
+    contextMenu.classList.add('show');
+    
+    // Hide menu when clicking outside
+    const hideMenu = (e) => {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.classList.remove('show');
+        State.contextMenuSection = null;
+        document.removeEventListener('pointerdown', hideMenu);
+      }
+    };
+    
+    // Use setTimeout to avoid immediate hiding
+    setTimeout(() => {
+      document.addEventListener('pointerdown', hideMenu);
+    }, 10);
+  },
+
+  setSectionColor(section, colorHex) {
+    // Convert hex to number (remove # if present)
+    const colorValue = parseInt(colorHex.replace('#', ''), 16);
+    
+    // Store the color
+    section.sectionColor = colorValue;
+    
+    // Clear and redraw the section with the new color for both fill and stroke
+    section.clear();
+    section.rect(0, 0, section.contentWidth, section.contentHeight);
+    section.fill({ color: colorValue, alpha: 0.25 });
+    section.stroke({ width: 2, color: colorValue, alpha: 0.8 });
+    
+    // If section is selected, update the selection border color too
+    if (section.selectionBorder) {
+      section.selectionBorder.clear();
+      section.selectionBorder.rect(-3, -3, section.contentWidth + 6, section.contentHeight + 6);
+      section.selectionBorder.stroke({ width: 3, color: 0x00ff00 });
+    }
+    
+    console.log(`✓ Updated section color to ${colorHex}`);
   }
 };

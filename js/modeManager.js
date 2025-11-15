@@ -12,6 +12,7 @@ export const ModeManager = {
     // Listen for selection changes to update button states
     document.addEventListener('selectionchanged', () => {
       this.updateModeButtonStates();
+      this.handleSelectionChange();
     });
   },
   
@@ -33,28 +34,38 @@ export const ModeManager = {
   
   updateModeButtonStates() {
     const editSeatsBtn = document.querySelector('[data-mode="seats"]');
+    const pricingBtn = document.querySelector('[data-mode="pricing"]');
     
-    if (!editSeatsBtn) return;
+    if (!editSeatsBtn || !pricingBtn) return;
     
     // Don't update if we're already in seats mode (section is locked)
     if (State.currentMode === 'seats') {
       return;
     }
     
-    // Enable Edit Seats only if exactly one section is selected
+    // Enable Edit Seats and Pricing only if exactly one section is selected
     if (State.selectedSections.length === 1) {
       editSeatsBtn.classList.remove('disabled');
+      pricingBtn.classList.remove('disabled');
     } else {
       editSeatsBtn.classList.add('disabled');
+      pricingBtn.classList.add('disabled');
+    }
+  },
+
+  handleSelectionChange() {
+    // If in pricing mode and no section selected, exit pricing mode
+    if (State.currentMode === 'pricing' && State.selectedSections.length === 0) {
+      this.switchMode('schema');
     }
   },
   
   switchMode(mode) {
-    // Check if trying to enter seats mode
-    if (mode === 'seats') {
+    // Check if trying to enter seats or pricing mode
+    if (mode === 'seats' || mode === 'pricing') {
       // Require exactly one selected section
       if (State.selectedSections.length !== 1) {
-        alert('Please select a single section to edit its seats.');
+        alert(`Please select a single section to ${mode === 'seats' ? 'edit its seats' : 'set pricing'}.`);
         return;
       }
     }
@@ -72,8 +83,19 @@ export const ModeManager = {
     // Handle mode-specific logic
     if (mode === 'seats') {
       this.enterEditSeatsMode();
-    } else if (previousMode === 'seats') {
-      this.exitEditSeatsMode();
+      this.hidePricingSidebar();
+    } else if (mode === 'pricing') {
+      if (previousMode === 'seats') {
+        this.exitEditSeatsMode();
+      }
+      this.showPricingSidebar();
+    } else {
+      if (previousMode === 'seats') {
+        this.exitEditSeatsMode();
+      }
+      if (previousMode === 'pricing') {
+        this.hidePricingSidebar();
+      }
     }
     
     console.log(`Switched to mode: ${mode}`);
@@ -205,5 +227,140 @@ export const ModeManager = {
     State.selectedSeats = [];
     
     console.log(`✓ Deleted ${count} seat(s)`);
+  },
+
+  showPricingSidebar() {
+    const pricingSidebar = document.getElementById('pricingSidebar');
+    if (pricingSidebar) {
+      pricingSidebar.classList.add('show');
+      
+      // Load pricing data for the selected section
+      const section = State.selectedSections[0];
+      this.loadPricingData(section);
+    }
+  },
+
+  hidePricingSidebar() {
+    const pricingSidebar = document.getElementById('pricingSidebar');
+    if (pricingSidebar) {
+      pricingSidebar.classList.remove('show');
+    }
+  },
+
+  loadPricingData(section) {
+    // Initialize pricing data if it doesn't exist
+    if (!section.pricing) {
+      section.pricing = {
+        basePrice: 0,
+        serviceFee: 0,
+        serviceFeeEnabled: false,
+        serviceFeeType: 'fixed' // 'fixed' or 'percent'
+      };
+    }
+
+    // Update the UI
+    const basePriceInput = document.getElementById('pricingBasePrice');
+    const serviceFeeInput = document.getElementById('pricingServiceFee');
+    const serviceFeeToggle = document.getElementById('pricingServiceFeeToggle');
+    const serviceFeeInputs = document.getElementById('serviceFeeInputs');
+    const serviceFeeFixed = document.getElementById('serviceFeeFixed');
+    const serviceFeePercent = document.getElementById('serviceFeePercent');
+
+    if (basePriceInput) basePriceInput.value = section.pricing.basePrice || 0;
+    if (serviceFeeInput) serviceFeeInput.value = section.pricing.serviceFee || 0;
+    if (serviceFeeToggle) serviceFeeToggle.checked = section.pricing.serviceFeeEnabled || false;
+    
+    // Show/hide service fee inputs based on toggle
+    if (serviceFeeInputs) {
+      serviceFeeInputs.style.display = section.pricing.serviceFeeEnabled ? 'block' : 'none';
+    }
+    
+    // Set service fee type buttons
+    const feeType = section.pricing.serviceFeeType || 'fixed';
+    if (serviceFeeFixed && serviceFeePercent) {
+      if (feeType === 'fixed') {
+        serviceFeeFixed.classList.add('active');
+        serviceFeePercent.classList.remove('active');
+      } else {
+        serviceFeeFixed.classList.remove('active');
+        serviceFeePercent.classList.add('active');
+      }
+    }
+    
+    this.updateServiceFeeUnit(feeType);
+    this.updateTotalPrice();
+  },
+
+  savePricingData() {
+    if (State.selectedSections.length !== 1) return;
+    
+    const section = State.selectedSections[0];
+    const basePriceInput = document.getElementById('pricingBasePrice');
+    const serviceFeeInput = document.getElementById('pricingServiceFee');
+    const serviceFeeToggle = document.getElementById('pricingServiceFeeToggle');
+    const serviceFeeFixed = document.getElementById('serviceFeeFixed');
+
+    if (!section.pricing) {
+      section.pricing = {};
+    }
+
+    section.pricing.basePrice = parseFloat(basePriceInput.value) || 0;
+    section.pricing.serviceFee = parseFloat(serviceFeeInput.value) || 0;
+    section.pricing.serviceFeeEnabled = serviceFeeToggle.checked;
+    section.pricing.serviceFeeType = serviceFeeFixed.classList.contains('active') ? 'fixed' : 'percent';
+
+    console.log(`✓ Saved pricing for ${section.sectionId}:`, section.pricing);
+  },
+
+  updateTotalPrice() {
+    const basePriceInput = document.getElementById('pricingBasePrice');
+    const serviceFeeInput = document.getElementById('pricingServiceFee');
+    const serviceFeeToggle = document.getElementById('pricingServiceFeeToggle');
+    const serviceFeeFixed = document.getElementById('serviceFeeFixed');
+    const totalPriceDisplay = document.getElementById('pricingTotalPrice');
+
+    if (!totalPriceDisplay) return;
+
+    const basePrice = parseFloat(basePriceInput.value) || 0;
+    const serviceFeeValue = parseFloat(serviceFeeInput.value) || 0;
+    const serviceFeeEnabled = serviceFeeToggle.checked;
+    const isFixed = serviceFeeFixed.classList.contains('active');
+
+    let serviceFeeAmount = 0;
+    if (serviceFeeEnabled) {
+      if (isFixed) {
+        serviceFeeAmount = serviceFeeValue;
+      } else {
+        // Percentage
+        serviceFeeAmount = (basePrice * serviceFeeValue) / 100;
+      }
+    }
+
+    const total = basePrice + serviceFeeAmount;
+    totalPriceDisplay.textContent = `$${total.toFixed(2)}`;
+  },
+
+  updateServiceFeeUnit(type) {
+    const serviceFeeUnit = document.getElementById('serviceFeeUnit');
+    if (serviceFeeUnit) {
+      serviceFeeUnit.textContent = type === 'fixed' ? '$' : '%';
+    }
+  },
+
+  toggleServiceFeeType(type) {
+    const serviceFeeFixed = document.getElementById('serviceFeeFixed');
+    const serviceFeePercent = document.getElementById('serviceFeePercent');
+
+    if (type === 'fixed') {
+      serviceFeeFixed.classList.add('active');
+      serviceFeePercent.classList.remove('active');
+    } else {
+      serviceFeeFixed.classList.remove('active');
+      serviceFeePercent.classList.add('active');
+    }
+
+    this.updateServiceFeeUnit(type);
+    this.savePricingData();
+    this.updateTotalPrice();
   }
 };

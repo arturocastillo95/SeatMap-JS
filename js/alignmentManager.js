@@ -51,6 +51,7 @@ export const AlignmentManager = {
     // Row label position buttons (toggleable)
     Elements.rowLabelLeft.addEventListener('click', () => this.toggleRowLabelPosition('left'));
     Elements.rowLabelRight.addEventListener('click', () => this.toggleRowLabelPosition('right'));
+    Elements.rowLabelHidden.addEventListener('click', () => this.toggleRowLabelPosition('hidden'));
 
     // Row label starting point
     Elements.rowLabelStartInput.addEventListener('input', (e) => this.setRowLabelStart(e.target.value));
@@ -81,6 +82,41 @@ export const AlignmentManager = {
       alignRowsButtons[1].addEventListener('click', () => this.alignRowsCenter());
       alignRowsButtons[2].addEventListener('click', () => this.alignRowsRight());
     }
+
+    // Section color inputs
+    Elements.sectionColorPicker.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const colorHex = e.target.value;
+        // Update text input
+        Elements.sectionColorInput.value = colorHex.toUpperCase();
+        // Apply color to section
+        SectionManager.setSectionColor(State.selectedSections[0], colorHex);
+      }
+    });
+
+    Elements.sectionColorInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        let colorHex = e.target.value.trim();
+        // Add # if missing
+        if (!colorHex.startsWith('#')) {
+          colorHex = '#' + colorHex;
+        }
+        // Validate hex color
+        if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+          // Update color picker
+          Elements.sectionColorPicker.value = colorHex;
+          // Apply color to section
+          SectionManager.setSectionColor(State.selectedSections[0], colorHex);
+          // Update text input to show formatted value
+          Elements.sectionColorInput.value = colorHex.toUpperCase();
+        } else {
+          // Invalid color, reset to current section color
+          const section = State.selectedSections[0];
+          const validColorHex = '#' + (section.sectionColor || 0x3b82f6).toString(16).padStart(6, '0');
+          Elements.sectionColorInput.value = validColorHex.toUpperCase();
+        }
+      }
+    });
   },
 
   setRowLabelType(type) {
@@ -111,12 +147,26 @@ export const AlignmentManager = {
       const section = State.selectedSections[0];
       if (position === 'left') {
         section.showLeftLabels = !section.showLeftLabels;
+        // Unset hidden if enabling left
+        if (section.showLeftLabels) {
+          section.labelsHidden = false;
+        }
       } else if (position === 'right') {
         section.showRightLabels = !section.showRightLabels;
+        // Unset hidden if enabling right
+        if (section.showRightLabels) {
+          section.labelsHidden = false;
+        }
+      } else if (position === 'hidden') {
+        section.labelsHidden = !section.labelsHidden;
+        // If enabling hidden, ensure at least one position is active
+        if (section.labelsHidden && !section.showLeftLabels && !section.showRightLabels) {
+          section.showLeftLabels = true;
+        }
       }
       
-      // If both positions are now off, switch back to 'none'
-      if (!section.showLeftLabels && !section.showRightLabels) {
+      // If both positions are now off and not hidden, switch back to 'none'
+      if (!section.showLeftLabels && !section.showRightLabels && !section.labelsHidden) {
         section.rowLabelType = 'none';
       }
       
@@ -347,6 +397,11 @@ export const AlignmentManager = {
     // Update section name input
     Elements.sectionNameInput.value = section.sectionId || 'Unnamed Section';
     
+    // Update section color inputs
+    const colorHex = '#' + (section.sectionColor || 0x3b82f6).toString(16).padStart(6, '0');
+    Elements.sectionColorPicker.value = colorHex;
+    Elements.sectionColorInput.value = colorHex.toUpperCase();
+    
     // Update row label type buttons
     Elements.rowLabelNone.classList.toggle('active', section.rowLabelType === 'none');
     Elements.rowLabelNumbers.classList.toggle('active', section.rowLabelType === 'numbers');
@@ -359,6 +414,7 @@ export const AlignmentManager = {
     // Update row label position buttons (independently toggleable)
     Elements.rowLabelLeft.classList.toggle('active', section.showLeftLabels);
     Elements.rowLabelRight.classList.toggle('active', section.showRightLabels);
+    Elements.rowLabelHidden.classList.toggle('active', section.labelsHidden || false);
 
     // Update row label starting point input
     if (section.rowLabelType === 'numbers') {
@@ -444,29 +500,29 @@ export const AlignmentManager = {
     // Check each moving section against each static section
     for (const { section, x, y } of dragPositions) {
       for (const other of otherSections) {
-        // Calculate bounds at current position
+        // Calculate bounds at current position (accounting for pivot at center)
         const currentBounds = {
-          minX: x,
-          maxX: x + section.contentWidth,
-          minY: y,
-          maxY: y + section.contentHeight
+          minX: x - section.pivot.x,
+          maxX: x - section.pivot.x + section.contentWidth,
+          minY: y - section.pivot.y,
+          maxY: y - section.pivot.y + section.contentHeight
         };
         
         const otherBounds = {
-          minX: other.x,
-          maxX: other.x + other.contentWidth,
-          minY: other.y,
-          maxY: other.y + other.contentHeight
+          minX: other.x - other.pivot.x,
+          maxX: other.x - other.pivot.x + other.contentWidth,
+          minY: other.y - other.pivot.y,
+          maxY: other.y - other.pivot.y + other.contentHeight
         };
         
         // Check X-axis movement independently
         if (dx !== 0) {
           const testX = x + finalDx;
           const testBoundsX = {
-            minX: testX,
-            maxX: testX + section.contentWidth,
-            minY: y, // Keep Y at original
-            maxY: y + section.contentHeight
+            minX: testX - section.pivot.x,
+            maxX: testX - section.pivot.x + section.contentWidth,
+            minY: y - section.pivot.y, // Keep Y at original
+            maxY: y - section.pivot.y + section.contentHeight
           };
           
           // Would moving on X-axis cause overlap?
@@ -474,10 +530,10 @@ export const AlignmentManager = {
               testBoundsX.maxY > otherBounds.minY && testBoundsX.minY < otherBounds.maxY) {
             // Collision on X-axis - constrain X movement
             if (dx > 0) {
-              const maxDx = otherBounds.minX - (x + section.contentWidth);
+              const maxDx = otherBounds.minX - (x - section.pivot.x + section.contentWidth);
               finalDx = Math.min(finalDx, maxDx);
             } else {
-              const maxDx = otherBounds.maxX - x;
+              const maxDx = otherBounds.maxX - (x - section.pivot.x);
               finalDx = Math.max(finalDx, maxDx);
             }
           }
@@ -487,10 +543,10 @@ export const AlignmentManager = {
         if (dy !== 0) {
           const testY = y + finalDy;
           const testBoundsY = {
-            minX: x, // Keep X at original
-            maxX: x + section.contentWidth,
-            minY: testY,
-            maxY: testY + section.contentHeight
+            minX: x - section.pivot.x, // Keep X at original
+            maxX: x - section.pivot.x + section.contentWidth,
+            minY: testY - section.pivot.y,
+            maxY: testY - section.pivot.y + section.contentHeight
           };
           
           // Would moving on Y-axis cause overlap?
@@ -498,10 +554,10 @@ export const AlignmentManager = {
               testBoundsY.maxY > otherBounds.minY && testBoundsY.minY < otherBounds.maxY) {
             // Collision on Y-axis - constrain Y movement
             if (dy > 0) {
-              const maxDy = otherBounds.minY - (y + section.contentHeight);
+              const maxDy = otherBounds.minY - (y - section.pivot.y + section.contentHeight);
               finalDy = Math.min(finalDy, maxDy);
             } else {
-              const maxDy = otherBounds.maxY - y;
+              const maxDy = otherBounds.maxY - (y - section.pivot.y);
               finalDy = Math.max(finalDy, maxDy);
             }
           }
@@ -521,19 +577,19 @@ export const AlignmentManager = {
    * Returns the smallest push needed on either X or Y axis.
    */
   getCollisionVector(s1, s2, padding = this.COLLISION_PADDING) {
-    // Calculate bounds with padding on s1
+    // Calculate bounds with padding on s1 (accounting for pivot at center)
     const b1 = {
-      minX: s1.x - padding,
-      maxX: s1.x + s1.width + padding,
-      minY: s1.y - padding,
-      maxY: s1.y + s1.height + padding
+      minX: s1.x - s1.pivot.x - padding,
+      maxX: s1.x - s1.pivot.x + s1.contentWidth + padding,
+      minY: s1.y - s1.pivot.y - padding,
+      maxY: s1.y - s1.pivot.y + s1.contentHeight + padding
     };
     
     const b2 = {
-      minX: s2.x,
-      maxX: s2.x + s2.width,
-      minY: s2.y,
-      maxY: s2.y + s2.height
+      minX: s2.x - s2.pivot.x,
+      maxX: s2.x - s2.pivot.x + s2.contentWidth,
+      minY: s2.y - s2.pivot.y,
+      maxY: s2.y - s2.pivot.y + s2.contentHeight
     };
     
     // Calculate overlap on each axis
@@ -614,12 +670,12 @@ export const AlignmentManager = {
   alignLeft() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the leftmost bounding box 'x'
-    const minX = Math.min(...State.selectedSections.map(s => s.x));
+    // Find the leftmost edge (accounting for pivot at center)
+    const minX = Math.min(...State.selectedSections.map(s => s.x - s.pivot.x));
     
-    // Move all sections to that 'x'
+    // Move all sections so their left edge aligns with minX
     State.selectedSections.forEach(section => {
-      section.x = minX;
+      section.x = minX + section.pivot.x;
       this.updateSeatPositions(section);
     });
     
@@ -629,12 +685,12 @@ export const AlignmentManager = {
   alignRight() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the rightmost edge (x + width)
-    const maxX = Math.max(...State.selectedSections.map(s => s.x + s.width));
+    // Find the rightmost edge (accounting for pivot at center)
+    const maxX = Math.max(...State.selectedSections.map(s => s.x - s.pivot.x + s.contentWidth));
     
     // Move all sections so their right edge aligns with maxX
     State.selectedSections.forEach(section => {
-      section.x = maxX - section.contentWidth;
+      section.x = maxX - section.contentWidth + section.pivot.x;
       this.updateSeatPositions(section);
     });
     
@@ -644,13 +700,13 @@ export const AlignmentManager = {
   alignCenterHorizontal() {
     if (State.selectedSections.length < 2) return;
     
-    // Calculate center of bounding box for each section
-    const centers = State.selectedSections.map(s => s.x + s.width / 2);
+    // Calculate center of each section (accounting for pivot at center)
+    const centers = State.selectedSections.map(s => s.x - s.pivot.x + s.contentWidth / 2);
     const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length;
     
     // Move all sections so their centers align
     State.selectedSections.forEach(section => {
-      section.x = avgCenter - section.contentWidth / 2;
+      section.x = avgCenter - section.contentWidth / 2 + section.pivot.x;
       this.updateSeatPositions(section);
     });
     
@@ -660,12 +716,12 @@ export const AlignmentManager = {
   alignTop() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the topmost bounding box 'y'
-    const minY = Math.min(...State.selectedSections.map(s => s.y));
+    // Find the topmost edge (accounting for pivot at center)
+    const minY = Math.min(...State.selectedSections.map(s => s.y - s.pivot.y));
     
-    // Move all sections to that 'y'
+    // Move all sections so their top edge aligns with minY
     State.selectedSections.forEach(section => {
-      section.y = minY;
+      section.y = minY + section.pivot.y;
       this.updateSeatPositions(section);
     });
     
@@ -675,12 +731,12 @@ export const AlignmentManager = {
   alignBottom() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the bottommost edge (y + height)
-    const maxY = Math.max(...State.selectedSections.map(s => s.y + s.contentHeight));
+    // Find the bottommost edge (accounting for pivot at center)
+    const maxY = Math.max(...State.selectedSections.map(s => s.y - s.pivot.y + s.contentHeight));
     
     // Move all sections so their bottom edge aligns with maxY
     State.selectedSections.forEach(section => {
-      section.y = maxY - section.contentHeight;
+      section.y = maxY - section.contentHeight + section.pivot.y;
       this.updateSeatPositions(section);
     });
     
@@ -690,13 +746,13 @@ export const AlignmentManager = {
   alignCenterVertical() {
     if (State.selectedSections.length < 2) return;
     
-    // Calculate center of bounding box for each section
-    const centers = State.selectedSections.map(s => s.y + s.contentHeight / 2);
+    // Calculate center of each section (accounting for pivot at center)
+    const centers = State.selectedSections.map(s => s.y - s.pivot.y + s.contentHeight / 2);
     const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length;
     
     // Move all sections so their centers align
     State.selectedSections.forEach(section => {
-      section.y = avgCenter - section.contentHeight / 2;
+      section.y = avgCenter - section.contentHeight / 2 + section.pivot.y;
       this.updateSeatPositions(section);
     });
     
@@ -710,21 +766,21 @@ export const AlignmentManager = {
   distributeHorizontally() {
     if (State.selectedSections.length < 3) return;
     
-    // Sort by the bounding box 'x' position
-    const sorted = [...State.selectedSections].sort((a, b) => a.x - b.x);
+    // Sort by the left edge (accounting for pivot at center)
+    const sorted = [...State.selectedSections].sort((a, b) => (a.x - a.pivot.x) - (b.x - b.pivot.x));
     
     // Keep first and last in place, distribute middle sections evenly
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
     
     // Calculate available space between first and last
-    const startX = first.x + first.width;
-    const endX = last.x;
+    const startX = (first.x - first.pivot.x) + first.contentWidth;
+    const endX = last.x - last.pivot.x;
     const availableSpace = endX - startX;
     
     // Calculate total width of middle sections
     const middleSections = sorted.slice(1, -1);
-    const totalMiddleWidth = middleSections.reduce((sum, s) => sum + s.width, 0);
+    const totalMiddleWidth = middleSections.reduce((sum, s) => sum + s.contentWidth, 0);
     
     // Calculate gap size
     // Available space minus middle widths, divided by number of gaps
@@ -734,7 +790,7 @@ export const AlignmentManager = {
     // If gap is less than minimum, push last section to make room
     if (gap < this.GAP) {
       const neededSpace = (this.GAP * numGaps) + totalMiddleWidth;
-      last.x = startX + neededSpace;
+      last.x = startX + neededSpace + last.pivot.x;
       this.updateSeatPositions(last);
       gap = this.GAP;
     }
@@ -742,9 +798,9 @@ export const AlignmentManager = {
     // Position middle sections with calculated gap
     let currentX = startX + gap;
     for (let i = 1; i < sorted.length - 1; i++) {
-      sorted[i].x = currentX;
+      sorted[i].x = currentX + sorted[i].pivot.x;
       this.updateSeatPositions(sorted[i]);
-      currentX += sorted[i].width + gap;
+      currentX += sorted[i].contentWidth + gap;
     }
     
     // Resolve collisions for all moved sections
@@ -754,21 +810,21 @@ export const AlignmentManager = {
   distributeVertically() {
     if (State.selectedSections.length < 3) return;
     
-    // Sort by the bounding box 'y' position
-    const sorted = [...State.selectedSections].sort((a, b) => a.y - b.y);
+    // Sort by the top edge (accounting for pivot at center)
+    const sorted = [...State.selectedSections].sort((a, b) => (a.y - a.pivot.y) - (b.y - b.pivot.y));
     
     // Keep first and last in place, distribute middle sections evenly
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
     
     // Calculate available space between first and last
-    const startY = first.y + first.height;
-    const endY = last.y;
+    const startY = (first.y - first.pivot.y) + first.contentHeight;
+    const endY = last.y - last.pivot.y;
     const availableSpace = endY - startY;
     
     // Calculate total height of middle sections
     const middleSections = sorted.slice(1, -1);
-    const totalMiddleHeight = middleSections.reduce((sum, s) => sum + s.height, 0);
+    const totalMiddleHeight = middleSections.reduce((sum, s) => sum + s.contentHeight, 0);
     
     // Calculate gap size
     // Available space minus middle heights, divided by number of gaps
@@ -778,7 +834,7 @@ export const AlignmentManager = {
     // If gap is less than minimum, push last section to make room
     if (gap < this.GAP) {
       const neededSpace = (this.GAP * numGaps) + totalMiddleHeight;
-      last.y = startY + neededSpace;
+      last.y = startY + neededSpace + last.pivot.y;
       this.updateSeatPositions(last);
       gap = this.GAP;
     }
@@ -786,9 +842,9 @@ export const AlignmentManager = {
     // Position middle sections with calculated gap
     let currentY = startY + gap;
     for (let i = 1; i < sorted.length - 1; i++) {
-      sorted[i].y = currentY;
+      sorted[i].y = currentY + sorted[i].pivot.y;
       this.updateSeatPositions(sorted[i]);
-      currentY += sorted[i].height + gap;
+      currentY += sorted[i].contentHeight + gap;
     }
     
     // Resolve collisions for all moved sections

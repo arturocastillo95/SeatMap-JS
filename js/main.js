@@ -67,11 +67,23 @@ function initializeElements() {
   Elements.distributeVBtn = document.getElementById('distributeVBtn');
   Elements.sectionSidebar = document.getElementById('sectionSidebar');
   Elements.sectionNameInput = document.getElementById('sectionNameInput');
+  Elements.contextMenu = document.getElementById('contextMenu');
+  Elements.contextEditSeats = document.getElementById('contextEditSeats');
+  Elements.contextDeleteSection = document.getElementById('contextDeleteSection');
+  Elements.rowLabelsHeader = document.getElementById('rowLabelsHeader');
+  Elements.rowLabelsContent = document.getElementById('rowLabelsContent');
+  Elements.outlineHeader = document.getElementById('outlineHeader');
+  Elements.outlineContent = document.getElementById('outlineContent');
+  Elements.seatsHeader = document.getElementById('seatsHeader');
+  Elements.seatsContent = document.getElementById('seatsContent');
+  Elements.seatNumberingHeader = document.getElementById('seatNumberingHeader');
+  Elements.seatNumberingContent = document.getElementById('seatNumberingContent');
   Elements.rowLabelNone = document.getElementById('rowLabelNone');
   Elements.rowLabelNumbers = document.getElementById('rowLabelNumbers');
   Elements.rowLabelLetters = document.getElementById('rowLabelLetters');
   Elements.rowLabelLeft = document.getElementById('rowLabelLeft');
   Elements.rowLabelRight = document.getElementById('rowLabelRight');
+  Elements.rowLabelHidden = document.getElementById('rowLabelHidden');
   Elements.rowLabelPositionSection = document.getElementById('rowLabelPositionSection');
   Elements.rowLabelStartInput = document.getElementById('rowLabelStartInput');
   Elements.rowLabelFlipBtn = document.getElementById('rowLabelFlipBtn');
@@ -89,6 +101,8 @@ function initializeElements() {
   Elements.stretchVSlider = document.getElementById('stretchVSlider');
   Elements.stretchVValue = document.getElementById('stretchVValue');
   Elements.resetStretchVBtn = document.getElementById('resetStretchVBtn');
+  Elements.sectionColorPicker = document.getElementById('sectionColorPicker');
+  Elements.sectionColorInput = document.getElementById('sectionColorInput');
 }
 
 function setupResizeHandler() {
@@ -117,6 +131,106 @@ function setupFileHandlers() {
   });
 }
 
+function setupCollapsibleSections() {
+  // Helper function to toggle accordion collapse
+  const toggleAccordion = (header, body) => {
+    if (!header || !body) return; // Skip if elements don't exist
+    
+    header.addEventListener('click', () => {
+      const icon = header.querySelector('.sidebar-accordion-chevron');
+      
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        header.classList.add('is-open');
+        if (icon) icon.textContent = 'expand_more';
+      } else {
+        body.style.display = 'none';
+        header.classList.remove('is-open');
+        if (icon) icon.textContent = 'chevron_right';
+      }
+    });
+  };
+
+  // Apply to accordion sections
+  toggleAccordion(Elements.rowLabelsHeader, Elements.rowLabelsContent);
+  toggleAccordion(Elements.outlineHeader, Elements.outlineContent);
+  toggleAccordion(Elements.seatsHeader, Elements.seatsContent);
+  toggleAccordion(Elements.seatNumberingHeader, Elements.seatNumberingContent);
+}
+
+function setupContextMenu() {
+  // Edit Seats option
+  Elements.contextEditSeats.addEventListener('click', () => {
+    if (State.contextMenuSection) {
+      ModeManager.enterEditSeatsMode(State.contextMenuSection);
+      Elements.contextMenu.classList.remove('show');
+      State.contextMenuSection = null;
+    }
+  });
+
+  // Delete Section option
+  Elements.contextDeleteSection.addEventListener('click', () => {
+    if (State.contextMenuSection) {
+      Elements.contextMenu.classList.remove('show');
+      State.contextMenuSection = null;
+      
+      // Show the delete confirmation dialog (same as backspace)
+      ToolManager.showDeleteConfirmation();
+    }
+  });
+  
+  // Prevent context menu from browser
+  State.app.canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+}
+
+function setupPricingHandlers() {
+  const basePriceInput = document.getElementById('pricingBasePrice');
+  const serviceFeeInput = document.getElementById('pricingServiceFee');
+  const serviceFeeToggle = document.getElementById('pricingServiceFeeToggle');
+  const serviceFeeInputs = document.getElementById('serviceFeeInputs');
+  const serviceFeeFixed = document.getElementById('serviceFeeFixed');
+  const serviceFeePercent = document.getElementById('serviceFeePercent');
+
+  if (basePriceInput) {
+    basePriceInput.addEventListener('input', () => {
+      ModeManager.savePricingData();
+      ModeManager.updateTotalPrice();
+    });
+  }
+
+  if (serviceFeeInput) {
+    serviceFeeInput.addEventListener('input', () => {
+      ModeManager.savePricingData();
+      ModeManager.updateTotalPrice();
+    });
+  }
+
+  if (serviceFeeToggle) {
+    serviceFeeToggle.addEventListener('change', () => {
+      // Show/hide service fee inputs
+      if (serviceFeeInputs) {
+        serviceFeeInputs.style.display = serviceFeeToggle.checked ? 'block' : 'none';
+      }
+      ModeManager.savePricingData();
+      ModeManager.updateTotalPrice();
+    });
+  }
+
+  if (serviceFeeFixed) {
+    serviceFeeFixed.addEventListener('click', () => {
+      ModeManager.toggleServiceFeeType('fixed');
+    });
+  }
+
+  if (serviceFeePercent) {
+    serviceFeePercent.addEventListener('click', () => {
+      ModeManager.toggleServiceFeeType('percent');
+    });
+  }
+}
+
 // Start the application
 (async () => {
   await initializeApp();
@@ -129,4 +243,7 @@ function setupFileHandlers() {
   ModeManager.init();
   setupResizeHandler();
   setupFileHandlers();
+  setupCollapsibleSections();
+  setupContextMenu();
+  setupPricingHandlers();
 })();

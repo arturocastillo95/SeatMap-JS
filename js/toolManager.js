@@ -44,18 +44,31 @@ export const ToolManager = {
     let maxY = -Infinity;
 
     State.sections.forEach(section => {
-      // Section bounds
-      minX = Math.min(minX, section.x);
-      minY = Math.min(minY, section.y);
-      maxX = Math.max(maxX, section.x + section.contentWidth);
-      maxY = Math.max(maxY, section.y + section.contentHeight);
+      // Section bounds (accounting for pivot at center)
+      const sectionLeft = section.x - section.pivot.x;
+      const sectionTop = section.y - section.pivot.y;
+      const sectionRight = sectionLeft + section.contentWidth;
+      const sectionBottom = sectionTop + section.contentHeight;
       
-      // Check seats too for more accurate bounds
+      minX = Math.min(minX, sectionLeft);
+      minY = Math.min(minY, sectionTop);
+      maxX = Math.max(maxX, sectionRight);
+      maxY = Math.max(maxY, sectionBottom);
+      
+      // Check seats and labels too for more accurate bounds
       section.seats.forEach(seat => {
         minX = Math.min(minX, seat.x - 15);
         minY = Math.min(minY, seat.y - 15);
         maxX = Math.max(maxX, seat.x + 15);
         maxY = Math.max(maxY, seat.y + 15);
+      });
+      
+      // Check row labels if they exist
+      section.rowLabels.forEach(label => {
+        minX = Math.min(minX, label.x - 20);
+        minY = Math.min(minY, label.y - 20);
+        maxX = Math.max(maxX, label.x + 20);
+        maxY = Math.max(maxY, label.y + 20);
       });
     });
 
