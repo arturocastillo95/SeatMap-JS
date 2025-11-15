@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **General Admission (GA) sections** for standing/open areas without individual seats
+  - GA button in toolbar next to Seat Rows
+  - Drag-to-create rectangular GA areas with grid snapping
+  - Center-aligned section label showing section name
+  - Capacity control instead of seat count
+  - Width and height inputs with grid snapping
+  - Interactive 8-point resize handles (corners + edges) with large hit areas (40px)
+  - Resize handles rotate with section rotation
+  - Handles update in real-time during section drag and rotation
+  - Handles only visible when single GA section selected
+  - Auto-exit GA creation mode after drawing
+  - Hide Edit Seats option for GA sections in context menu
+  - Custom drag info showing dimensions instead of seat count
+  - Conditional sidebar showing capacity and size controls instead of seat options
+  - Hide stretch controls for GA sections (not applicable)
+  - Grid-snapped dimensions when resizing with handles
+  - Collision detection and resolution for GA sections
+  - Bounding box updates correctly when resizing
 - Edit Seats mode with drag-to-select functionality
 - Live visual feedback during seat selection with green highlighting
 - Multi-select support with Shift key
@@ -19,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Row label hidden mode with 65% opacity (for viewer mode)
 - Seat numbering starting point control
 - Seat numbering direction flip (left-to-right or right-to-left)
-- ESC key to exit Edit Seats mode and Pricing mode
-- Input field focus protection (Backspace works normally when typing)
+- ESC key to exit Edit Seats mode, Pricing mode, and GA creation mode
+- Input field focus protection (Backspace and Space work normally when typing)
 - Letter labeling pattern: AA, BB, CC after Z
 - Section color customization with color picker and hex input
 - Pricing mode for setting base prices and service fees per section
@@ -36,11 +54,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File format now includes individual seat data
 - File format supports deleted seats
 - File format includes section colors and pricing data
+- **File format supports GA sections** with `type: "ga"` and `ga.capacity` fields
+- Total venue capacity calculation includes GA section capacity
 - Bounding box calculation includes row labels (excluding hidden labels)
 - Section remains selected during Edit Seats mode
 - Edit Seats button disabled when no section selected
 - Pricing button disabled when no section selected
 - Section graphics use stored color instead of hardcoded values
+- Resize handles added to section layer instead of as section children for better event handling
 
 ### Fixed
 - Bounding box not resizing after row label removal
@@ -54,6 +75,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Section alignment not accounting for pivot point
 - Section selection hit area not matching visual bounds
 - Zoom to fit not accounting for pivot point and labels
+- Resize handles not rotating with GA section rotation
+- Resize handles not moving with section during drag
+- Resize handles remaining visible after deselection
+- Space key preventing input in text fields
+- Resize handle hit areas too small for easy interaction
+- Resize handles not working outside section bounds
+- Circular dependency between SectionManager and AlignmentManager resolved with events
 
 ## [0.1.0] - Initial Release
 

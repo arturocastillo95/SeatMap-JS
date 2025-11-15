@@ -13,6 +13,7 @@ export const State = {
   
   // Tool modes
   isCreateMode: false,
+  isCreateGAMode: false,
   isDeleteMode: false,
   isCreating: false,
   isPanning: false,

@@ -55,6 +55,357 @@ export const SectionManager = {
     return section;
   },
 
+  createGASection(x, y, width, height) {
+    const section = new PIXI.Graphics();
+    section.sectionColor = COLORS.SECTION_STROKE; // Store the color as a property
+    section.rect(0, 0, width, height);
+    section.fill({ color: section.sectionColor, alpha: 0.25 });
+    section.stroke({ width: 2, color: section.sectionColor, alpha: 0.8 });
+    section.eventMode = 'static';
+    section.cursor = 'pointer';
+    section.hitArea = new PIXI.Rectangle(0, 0, width, height);
+    section.sectionId = `GA ${State.sectionCounter++}`;
+    section.isGeneralAdmission = true; // Mark as GA section
+    section.gaCapacity = 0; // Default capacity
+    section.seats = []; // Empty array (no individual seats)
+    section.rowLabels = [];
+    section.rowLabelType = 'none';
+    section.rowLabelStart = 1;
+    section.rowLabelReversed = false;
+    section.showLeftLabels = false;
+    section.showRightLabels = false;
+    section.labelsHidden = false;
+    section.seatNumberStart = 1;
+    section.seatNumberReversed = false;
+    section.x = x;
+    section.y = y;
+    
+    // Use custom properties for logical dimensions
+    section.contentWidth = width;
+    section.contentHeight = height;
+    section.baseWidth = width;
+    section.baseHeight = height;
+    section.rotationDegrees = 0;
+    section.stretchH = 0;
+    section.stretchV = 0;
+    section.curve = 0;
+    
+    // Set pivot to center for rotation
+    section.pivot.set(width / 2, height / 2);
+    // Adjust position to compensate for pivot (keep visual position the same)
+    section.x = x + width / 2;
+    section.y = y + height / 2;
+    
+    // Create center label for GA section
+    const gaLabel = new PIXI.Text({
+      text: section.sectionId,
+      style: {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 18,
+        fontWeight: 'bold',
+        fill: 0xffffff,
+        align: 'center'
+      }
+    });
+    gaLabel.anchor.set(0.5, 0.5);
+    gaLabel.x = width / 2;
+    gaLabel.y = height / 2;
+    gaLabel.eventMode = 'none'; // Don't intercept clicks
+    section.addChild(gaLabel);
+    section.gaLabel = gaLabel; // Store reference for later updates
+    
+    this.setupSectionInteractions(section);
+    State.sectionLayer.addChild(section);
+    State.sections.push(section);
+    
+    return section;
+  },
+
+  resizeGASection(section, newWidth, newHeight) {
+    if (!section.isGeneralAdmission) return;
+    
+    // Update dimensions
+    section.contentWidth = newWidth;
+    section.contentHeight = newHeight;
+    section.baseWidth = newWidth;
+    section.baseHeight = newHeight;
+    
+    // Clear and redraw graphics
+    section.clear();
+    section.rect(0, 0, newWidth, newHeight);
+    section.fill({ color: section.sectionColor, alpha: 0.25 });
+    section.stroke({ width: 2, color: section.sectionColor, alpha: 0.8 });
+    
+    // Update pivot
+    section.pivot.set(newWidth / 2, newHeight / 2);
+    
+    // Update hit area (bounding box for collision detection)
+    section.hitArea = new PIXI.Rectangle(0, 0, newWidth, newHeight);
+    
+    // Update center label position
+    if (section.gaLabel) {
+      section.gaLabel.x = newWidth / 2;
+      section.gaLabel.y = newHeight / 2;
+    }
+    
+    // Update selection border if section is selected
+    if (section.selectionBorder) {
+      section.selectionBorder.clear();
+      section.selectionBorder.rect(-3, -3, newWidth + 6, newHeight + 6);
+      section.selectionBorder.stroke({ width: 3, color: 0x00ff00 });
+    }
+    
+    // Update resize handles if they exist
+    if (section.resizeHandles) {
+      this.updateResizeHandles(section);
+    }
+  },
+
+  addResizeHandles(section) {
+    if (!section.isGeneralAdmission) return;
+    
+    // Remove existing handles first to avoid duplicates
+    if (section.resizeHandles) {
+      this.removeResizeHandles(section);
+    }
+    
+    const handleSize = 8;
+    const hitAreaSize = 40; // Larger hit area for easier grabbing
+    const handleColor = 0x4ade80; // Green color
+    const positions = [
+      { x: -3, y: -3, cursor: 'nwse-resize', corner: 'nw' }, // Top-left
+      { x: section.contentWidth / 2, y: -3, cursor: 'ns-resize', corner: 'n' }, // Top-center
+      { x: section.contentWidth + 3, y: -3, cursor: 'nesw-resize', corner: 'ne' }, // Top-right
+      { x: section.contentWidth + 3, y: section.contentHeight / 2, cursor: 'ew-resize', corner: 'e' }, // Middle-right
+      { x: section.contentWidth + 3, y: section.contentHeight + 3, cursor: 'nwse-resize', corner: 'se' }, // Bottom-right
+      { x: section.contentWidth / 2, y: section.contentHeight + 3, cursor: 'ns-resize', corner: 's' }, // Bottom-center
+      { x: -3, y: section.contentHeight + 3, cursor: 'nesw-resize', corner: 'sw' }, // Bottom-left
+      { x: -3, y: section.contentHeight / 2, cursor: 'ew-resize', corner: 'w' } // Middle-left
+    ];
+    
+    section.resizeHandles = [];
+    
+    positions.forEach(pos => {
+      const handle = new PIXI.Graphics();
+      handle.rect(-handleSize / 2, -handleSize / 2, handleSize, handleSize);
+      handle.fill({ color: handleColor });
+      handle.stroke({ width: 1, color: 0xffffff });
+      handle.eventMode = 'static';
+      handle.cursor = pos.cursor;
+      handle.corner = pos.corner;
+      
+      // Add larger hit area for easier interaction
+      handle.hitArea = new PIXI.Rectangle(-hitAreaSize / 2, -hitAreaSize / 2, hitAreaSize, hitAreaSize);
+      
+      // Store reference to parent section
+      handle.parentSection = section;
+      
+      this.setupResizeHandleInteractions(handle);
+      
+      // Add to section layer (not as child of section) so it can receive events outside section bounds
+      State.sectionLayer.addChild(handle);
+      section.resizeHandles.push(handle);
+    });
+    
+    // Update handle positions with rotation
+    this.updateResizeHandles(section);
+  },
+
+  updateResizeHandles(section) {
+    if (!section.resizeHandles) return;
+    
+    const positions = [
+      { x: -3, y: -3 }, // Top-left
+      { x: section.contentWidth / 2, y: -3 }, // Top-center
+      { x: section.contentWidth + 3, y: -3 }, // Top-right
+      { x: section.contentWidth + 3, y: section.contentHeight / 2 }, // Middle-right
+      { x: section.contentWidth + 3, y: section.contentHeight + 3 }, // Bottom-right
+      { x: section.contentWidth / 2, y: section.contentHeight + 3 }, // Bottom-center
+      { x: -3, y: section.contentHeight + 3 }, // Bottom-left
+      { x: -3, y: section.contentHeight / 2 } // Middle-left
+    ];
+    
+    // Get rotation angle in radians
+    const angleRad = (section.rotationDegrees || 0) * Math.PI / 180;
+    
+    section.resizeHandles.forEach((handle, i) => {
+      // Get local position relative to pivot
+      const localX = positions[i].x - section.pivot.x;
+      const localY = positions[i].y - section.pivot.y;
+      
+      // Rotate the local position
+      const rotatedX = localX * Math.cos(angleRad) - localY * Math.sin(angleRad);
+      const rotatedY = localX * Math.sin(angleRad) + localY * Math.cos(angleRad);
+      
+      // Position handle in world coordinates
+      handle.x = section.x + rotatedX;
+      handle.y = section.y + rotatedY;
+      
+      // Rotate the handle itself to match section rotation
+      handle.rotation = angleRad;
+    });
+  },
+
+  removeResizeHandles(section) {
+    if (!section.resizeHandles) return;
+    
+    section.resizeHandles.forEach(handle => {
+      State.sectionLayer.removeChild(handle);
+      handle.destroy();
+    });
+    section.resizeHandles = null;
+  },
+
+  setupResizeHandleInteractions(handle) {
+    let isDragging = false;
+    let startX, startY;
+    let startWidth, startHeight;
+    let startSectionX, startSectionY;
+    
+    const onPointerMove = (event) => {
+      if (!isDragging) return;
+      
+      const section = handle.parentSection;
+      if (!section) return;
+      
+      const worldPos = Utils.screenToWorld(event.global.x, event.global.y);
+      const dx = worldPos.x - startX;
+      const dy = worldPos.y - startY;
+      
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+      let newX = startSectionX;
+      let newY = startSectionY;
+      
+      // Calculate new dimensions based on corner
+      switch (handle.corner) {
+        case 'nw': // Top-left
+          newWidth = Math.max(50, startWidth - dx);
+          newHeight = Math.max(50, startHeight - dy);
+          newX = startSectionX + (startWidth - newWidth) / 2;
+          newY = startSectionY + (startHeight - newHeight) / 2;
+          break;
+        case 'n': // Top-center
+          newHeight = Math.max(50, startHeight - dy);
+          newY = startSectionY + (startHeight - newHeight) / 2;
+          break;
+        case 'ne': // Top-right
+          newWidth = Math.max(50, startWidth + dx);
+          newHeight = Math.max(50, startHeight - dy);
+          newX = startSectionX + (newWidth - startWidth) / 2;
+          newY = startSectionY + (startHeight - newHeight) / 2;
+          break;
+        case 'e': // Middle-right
+          newWidth = Math.max(50, startWidth + dx);
+          newX = startSectionX + (newWidth - startWidth) / 2;
+          break;
+        case 'se': // Bottom-right
+          newWidth = Math.max(50, startWidth + dx);
+          newHeight = Math.max(50, startHeight + dy);
+          newX = startSectionX + (newWidth - startWidth) / 2;
+          newY = startSectionY + (newHeight - startHeight) / 2;
+          break;
+        case 's': // Bottom-center
+          newHeight = Math.max(50, startHeight + dy);
+          newY = startSectionY + (newHeight - startHeight) / 2;
+          break;
+        case 'sw': // Bottom-left
+          newWidth = Math.max(50, startWidth - dx);
+          newHeight = Math.max(50, startHeight + dy);
+          newX = startSectionX + (startWidth - newWidth) / 2;
+          newY = startSectionY + (newHeight - startHeight) / 2;
+          break;
+        case 'w': // Middle-left
+          newWidth = Math.max(50, startWidth - dx);
+          newX = startSectionX + (startWidth - newWidth) / 2;
+          break;
+      }
+      
+      // Snap dimensions to grid
+      const snappedDims = Utils.calculateSeatDimensions(newWidth, newHeight);
+      const snappedWidth = snappedDims.snappedWidth;
+      const snappedHeight = snappedDims.snappedHeight;
+      
+      // Recalculate position based on snapped dimensions
+      // We need to keep the opposite corner fixed when resizing
+      switch (handle.corner) {
+        case 'nw': // Top-left (fix bottom-right)
+          newX = startSectionX + (startWidth - snappedWidth) / 2;
+          newY = startSectionY + (startHeight - snappedHeight) / 2;
+          break;
+        case 'n': // Top-center (fix bottom)
+          newY = startSectionY + (startHeight - snappedHeight) / 2;
+          break;
+        case 'ne': // Top-right (fix bottom-left)
+          newX = startSectionX + (snappedWidth - startWidth) / 2;
+          newY = startSectionY + (startHeight - snappedHeight) / 2;
+          break;
+        case 'e': // Middle-right (fix left)
+          newX = startSectionX + (snappedWidth - startWidth) / 2;
+          break;
+        case 'se': // Bottom-right (fix top-left)
+          newX = startSectionX + (snappedWidth - startWidth) / 2;
+          newY = startSectionY + (snappedHeight - startHeight) / 2;
+          break;
+        case 's': // Bottom-center (fix top)
+          newY = startSectionY + (snappedHeight - startHeight) / 2;
+          break;
+        case 'sw': // Bottom-left (fix top-right)
+          newX = startSectionX + (startWidth - snappedWidth) / 2;
+          newY = startSectionY + (snappedHeight - startHeight) / 2;
+          break;
+        case 'w': // Middle-left (fix right)
+          newX = startSectionX + (startWidth - snappedWidth) / 2;
+          break;
+      }
+      
+      // Update section position and size
+      section.x = newX;
+      section.y = newY;
+      this.resizeGASection(section, snappedWidth, snappedHeight);
+      
+      // Update sidebar values via event
+      document.dispatchEvent(new CustomEvent('gaResizing', { detail: { section } }));
+    };
+    
+    const onPointerUp = (event) => {
+      if (!isDragging) return;
+      isDragging = false;
+      
+      // Remove event listeners
+      State.app.stage.off('pointermove', onPointerMove);
+      State.app.stage.off('pointerup', onPointerUp);
+      State.app.stage.off('pointerupoutside', onPointerUp);
+      
+      // Dispatch event to check for collisions after resize
+      const section = handle.parentSection;
+      if (section) {
+        document.dispatchEvent(new CustomEvent('gaResizeEnd', { detail: { section } }));
+      }
+    };
+    
+    handle.on('pointerdown', (event) => {
+      if (event.button !== 0) return; // Only left click
+      
+      isDragging = true;
+      const section = handle.parentSection;
+      const worldPos = Utils.screenToWorld(event.global.x, event.global.y);
+      startX = worldPos.x;
+      startY = worldPos.y;
+      startWidth = section.contentWidth;
+      startHeight = section.contentHeight;
+      startSectionX = section.x;
+      startSectionY = section.y;
+      
+      // Add event listeners
+      State.app.stage.on('pointermove', onPointerMove);
+      State.app.stage.on('pointerup', onPointerUp);
+      State.app.stage.on('pointerupoutside', onPointerUp);
+      
+      event.stopPropagation();
+    });
+  },
+
   // Deprecated: Section labels no longer used
   createSectionLabel(section) {
     // Create background for label
@@ -639,7 +990,7 @@ export const SectionManager = {
     // Apply green tint to the section background
     section.tint = 0x00ff00;
     
-    // Dispatch selection change event
+    // Dispatch selection change event (handles will be managed by observeSelectionChanges)
     document.dispatchEvent(new CustomEvent('selectionchanged'));
   },
 
@@ -649,6 +1000,11 @@ export const SectionManager = {
     }
     // Reset tint to white (default)
     section.tint = 0xffffff;
+    
+    // Remove resize handles if they exist
+    if (section.resizeHandles) {
+      this.removeResizeHandles(section);
+    }
     
     // Dispatch selection change event
     document.dispatchEvent(new CustomEvent('selectionchanged'));
@@ -1089,9 +1445,17 @@ export const SectionManager = {
 
   showContextMenu(x, y, section) {
     const contextMenu = document.getElementById('contextMenu');
+    const editSeatsOption = document.getElementById('contextEditSeats');
     
     // Store the section reference
     State.contextMenuSection = section;
+    
+    // Hide "Edit Seats" option for GA sections
+    if (section.isGeneralAdmission) {
+      editSeatsOption.style.display = 'none';
+    } else {
+      editSeatsOption.style.display = 'flex';
+    }
     
     // Position the menu
     contextMenu.style.left = `${x}px`;

@@ -30,10 +30,17 @@ export const InteractionManager = {
       return;
     }
 
-    // Create mode
+    // Create mode (Seat Rows)
     if (State.isCreateMode) {
       const worldPos = Utils.screenToWorld(e.global.x, e.global.y);
       ToolManager.handleCreateStart(worldPos);
+      return;
+    }
+    
+    // Create GA mode
+    if (State.isCreateGAMode) {
+      const worldPos = Utils.screenToWorld(e.global.x, e.global.y);
+      ToolManager.handleCreateGAStart(worldPos);
       return;
     }
     
@@ -116,6 +123,11 @@ export const InteractionManager = {
         
         // Update seat and label positions (handles rotation if needed)
         AlignmentManager.updateSeatPositions(section);
+        
+        // Update resize handles if they exist (for GA sections)
+        if (section.resizeHandles) {
+          SectionManager.updateResizeHandles(section);
+        }
       });
       return;
     }
@@ -123,7 +135,11 @@ export const InteractionManager = {
     // Handle create mode preview
     if (State.isCreating && State.createStart && State.previewRect) {
       const worldPos = Utils.screenToWorld(e.global.x, e.global.y);
-      ToolManager.handleCreateMove(worldPos, e.global.x, e.global.y);
+      if (State.isCreateMode) {
+        ToolManager.handleCreateMove(worldPos, e.global.x, e.global.y);
+      } else if (State.isCreateGAMode) {
+        ToolManager.handleCreateGAMove(worldPos, e.global.x, e.global.y);
+      }
       return;
     }
     
@@ -272,14 +288,18 @@ export const InteractionManager = {
     // Handle create mode end
     if (State.isCreating && State.createStart && State.previewRect) {
       const worldPos = Utils.screenToWorld(e.clientX, e.clientY);
-      ToolManager.handleCreateEnd(worldPos);
+      if (State.isCreateMode) {
+        ToolManager.handleCreateEnd(worldPos);
+      } else if (State.isCreateGAMode) {
+        ToolManager.handleCreateGAEnd(worldPos);
+      }
       return;
     }
     
     // Handle panning end
     if (State.isPanning) {
       State.isPanning = false;
-      State.app.stage.cursor = State.isPanningMode ? 'grab' : (State.isCreateMode ? 'crosshair' : (State.isDeleteMode ? 'not-allowed' : 'default'));
+      State.app.stage.cursor = State.isPanningMode ? 'grab' : ((State.isCreateMode || State.isCreateGAMode) ? 'crosshair' : (State.isDeleteMode ? 'not-allowed' : 'default'));
       return;
     }
 

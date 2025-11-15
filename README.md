@@ -4,18 +4,20 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 
 ## ✨ Key Features
 
-- **Drag-to-Create Sections**: Draw rectangular seating sections with real-time preview
+- **Drag-to-Create Sections**: Draw rectangular seating sections with real-time preview and grid snapping
+- **General Admission (GA) Sections**: Create standing/GA areas without individual seats, with capacity control and interactive resize handles
 - **Edit Seats Mode**: Select and delete individual seats with drag-to-select functionality
 - **Multi-Section Alignment**: Align and distribute multiple sections with intelligent collision prevention
 - **Advanced Labeling**: Customize row labels (A-Z, AA-ZZ, numbers) with custom starting points, reverse ordering, and hidden mode for viewer use
 - **Smart Seat Numbering**: Configure seat numbering with custom start values and direction control
 - **Row Alignment with Gap Preservation**: Align rows while maintaining original spacing from deleted seats
 - **Section Transformations**: Rotate, curve, and stretch sections with live preview
-- **Section Colors**: Customize background and border colors per section with color picker
+- **Interactive Resize Handles**: Resize GA sections with 8-point handles (corners and edges) that rotate with the section
+- **Section Colors**: Customize background and border colors per section with color picker and hex input
 - **Pricing Management**: Set base prices and service fees (fixed amount or percentage) per section
 - **Context Menu**: Right-click sections for quick access to Edit Seats and Delete options
-- **Save & Load**: Export/import venue maps in SMF (Seat Map Format) v2.0.0 with backward compatibility
-- **Collision Detection**: Smooth dragging with automatic edge-sliding and post-alignment separation accounting for rotated sections
+- **Save & Load**: Export/import venue maps in SMF (Seat Map Format) v2.0.0 with GA section support and backward compatibility
+- **Collision Detection**: Smooth dragging with automatic edge-sliding and post-alignment separation accounting for rotated sections and resized GA areas
 - **Pan & Zoom**: Space+drag to pan, scroll to zoom, zoom-to-fit with intelligent bounds calculation
 
 ## 🚀 Quick Start
@@ -73,15 +75,34 @@ venue-map-js/
 - **Pricing**: Configure ticket pricing with base prices and service fees per section
 - More modes planned: Underlay, Venue Shape
 
+### Section Types
+
+#### Regular Sections (with Seats)
+- Individual seat management with grid-based layout
+- Row labels (numbers/letters) and custom seat numbering
+- Transformations: rotation, curve, horizontal/vertical stretch
+- Row alignment with gap preservation for deleted seats
+
+#### General Admission (GA) Sections
+- Standing or open areas without individual seats
+- Capacity-based (no seat grid)
+- Width/height controls with grid snapping
+- Interactive 8-point resize handles (corners + edges)
+- Center-aligned section label
+- Supports rotation (handles rotate with section)
+- No row labels, seat numbering, or stretch controls
+
 ### Section Transformations
 When a single section is selected, customize:
 - **Section Color**: Choose custom background and border color with color picker or hex input
-- **Row Labels**: Numbers or letters (A-Z, AA-ZZ) with custom start, flip direction, and position (left/right/hidden)
-- **Seat Numbering**: Custom starting number and left-to-right/right-to-left order
-- **Align Rows**: Left/center/right alignment with gap preservation for deleted seats
-- **Rotation**: -180° to 180° with live preview
-- **Curve**: Stadium-style curved seating with auto-calculated safety limits
-- **Stretch**: Horizontal and vertical spacing between seats
+- **Row Labels** (Regular sections): Numbers or letters (A-Z, AA-ZZ) with custom start, flip direction, and position (left/right/hidden)
+- **Seat Numbering** (Regular sections): Custom starting number and left-to-right/right-to-left order
+- **Capacity** (GA sections): Set maximum occupancy for general admission areas
+- **Size** (GA sections): Width and height controls with interactive resize handles
+- **Align Rows** (Regular sections): Left/center/right alignment with gap preservation for deleted seats
+- **Rotation**: -180° to 180° with live preview (handles rotate for GA sections)
+- **Curve** (Regular sections): Stadium-style curved seating with auto-calculated safety limits
+- **Stretch** (Regular sections): Horizontal and vertical spacing between seats
 
 ### Multi-Section Alignment
 Select 2+ sections to access:

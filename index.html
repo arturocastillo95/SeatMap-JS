@@ -924,9 +924,15 @@
     <div class="tool-separator"></div>
 
     <!-- Add Seat Rows -->
-    <button class="tool-item" id="createSectionBtn" title="Add Seat Rows">
+    <button class="tool-item" id="createSectionBtn" title="Seat Rows">
       <span class="material-symbols">background_dot_small</span>
       <span class="tool-label">Seat Rows</span>
+    </button>
+
+    <!-- General Admission -->
+    <button class="tool-item" id="createGABtn" title="General Admission">
+      <span class="material-symbols">group</span>
+      <span class="tool-label">GA</span>
     </button>
 
     <!-- Table -->
@@ -1157,24 +1163,68 @@
             <button class="sidebar-toggle-btn active">None</button>
             <button class="sidebar-toggle-btn">Auto</button>
           </div>
+          
+          <!-- Size controls for GA sections -->
+          <div id="gaSizeControls" style="display: none; margin-top: 12px;">
+            <div class="sidebar-input-group">
+              <label class="sidebar-label">Width</label>
+              <input
+                type="number"
+                class="sidebar-input"
+                id="gaWidthInput"
+                placeholder="0"
+                min="0"
+                step="10"
+                style="text-align: center;"
+              />
+            </div>
+            <div class="sidebar-input-group">
+              <label class="sidebar-label">Height</label>
+              <input
+                type="number"
+                class="sidebar-input"
+                id="gaHeightInput"
+                placeholder="0"
+                min="0"
+                step="10"
+                style="text-align: center;"
+              />
+            </div>
+            <div class="sidebar-info">Dimensions in pixels</div>
+          </div>
         </div>
       </div>
 
-      <!-- Seats -->
-      <div class="sidebar-accordion">
+      <!-- Seats / Capacity -->
+      <div class="sidebar-accordion" id="seatsSection">
         <div class="sidebar-accordion-header" id="seatsHeader">
-          <div class="sidebar-accordion-title">Seats</div>
+          <div class="sidebar-accordion-title" id="seatsTitle">Seats</div>
           <span class="material-symbols sidebar-accordion-chevron"
             >expand_more</span
           >
         </div>
         <div class="sidebar-accordion-body" id="seatsContent">
-          <div class="sidebar-info">12 rows / 252 seats</div>
+          <!-- For regular sections -->
+          <div class="sidebar-info" id="seatsInfo">12 rows / 252 seats</div>
+          
+          <!-- For GA sections -->
+          <div class="sidebar-input-group" id="capacityInput" style="display: none;">
+            <label class="sidebar-label">Capacity</label>
+            <input
+              type="number"
+              class="sidebar-input"
+              id="gaCapacityInput"
+              placeholder="0"
+              min="0"
+              style="text-align: center;"
+            />
+            <div class="sidebar-info">Maximum occupancy</div>
+          </div>
         </div>
       </div>
 
       <!-- Seat Numbering -->
-      <div class="sidebar-accordion">
+      <div class="sidebar-accordion" id="seatNumberingSection">
         <div class="sidebar-accordion-header" id="seatNumberingHeader">
           <div class="sidebar-accordion-title">Seat Numbering</div>
           <span class="material-symbols sidebar-accordion-chevron"
@@ -1208,7 +1258,7 @@
     </div>
 
     <!-- ALIGN ROWS -->
-    <div class="sidebar-section">
+    <div class="sidebar-section" id="alignRowsSection">
       <div class="sidebar-header">Align Rows</div>
       <div class="sidebar-accordion">
         <div class="sidebar-accordion-body" id="alignRowsContent">
@@ -1228,7 +1278,7 @@
     </div>
 
     <!-- ADD ROWS -->
-    <div class="sidebar-section">
+    <div class="sidebar-section" id="addRowsSection">
       <div class="sidebar-header">Add Rows</div>
       <div class="sidebar-accordion">
         <div class="sidebar-accordion-body" id="addRowsContent">
@@ -1338,7 +1388,7 @@
             </div>
           </div>
 
-          <div class="sidebar-input-group">
+          <div class="sidebar-input-group" id="stretchHSection">
             <div
               style="
                 display: flex;
@@ -1372,7 +1422,7 @@
             </div>
           </div>
 
-          <div class="sidebar-input-group">
+          <div class="sidebar-input-group" id="stretchVSection">
             <div
               style="
                 display: flex;

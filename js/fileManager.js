@@ -60,7 +60,90 @@ export const FileManager = {
    * Serialize a single section to JSON format
    */
   serializeSection(section) {
-    // Calculate base configuration from seats
+    // Handle GA sections differently
+    if (section.isGeneralAdmission) {
+      return {
+        // Identity
+        id: section.sectionId,
+        name: section.sectionId,
+        groupId: null,
+        type: 'ga', // Mark as General Admission
+        
+        // Position and dimensions
+        x: section.x - section.pivot.x,  // Convert from center to top-left
+        y: section.y - section.pivot.y,
+        width: section.contentWidth,
+        height: section.contentHeight,
+        
+        // Base configuration
+        base: {
+          rows: 0,
+          columns: 0,
+          baseWidth: section.baseWidth,
+          baseHeight: section.baseHeight
+        },
+        
+        // GA specific properties
+        ga: {
+          capacity: section.gaCapacity || 0
+        },
+        
+        // Transformations
+        transform: {
+          rotation: section.rotationDegrees || 0,
+          curve: 0,
+          stretchH: 0,
+          stretchV: 0
+        },
+        
+        // Row labels (not used for GA)
+        rowLabels: {
+          type: "none",
+          start: 1,
+          reversed: false,
+          showLeft: false,
+          showRight: false,
+          hidden: false
+        },
+        
+        // Seat configuration (not used for GA)
+        seatNumbering: {
+          start: 1,
+          reversed: false,
+          perRow: true
+        },
+        
+        // No individual seats for GA
+        seats: [],
+        
+        // Visual styling
+        style: {
+          fillColor: "#4a5568",
+          seatColor: "#ffffff",
+          borderColor: "#3b82f6",
+          sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
+          opacity: 1.0
+        },
+        
+        // Pricing
+        pricing: section.pricing ? {
+          basePrice: section.pricing.basePrice || 0,
+          serviceFee: section.pricing.serviceFee || 0,
+          serviceFeeEnabled: section.pricing.serviceFeeEnabled || false,
+          serviceFeeType: section.pricing.serviceFeeType || 'fixed'
+        } : {
+          basePrice: 0,
+          serviceFee: 0,
+          serviceFeeEnabled: false,
+          serviceFeeType: 'fixed'
+        },
+        
+        // Extensible metadata
+        metadata: {}
+      };
+    }
+    
+    // Regular section with seats
     const seats = section.seats;
     if (seats.length === 0) {
       return null;
@@ -160,6 +243,9 @@ export const FileManager = {
    */
   calculateTotalCapacity() {
     return State.sections.reduce((total, section) => {
+      if (section.isGeneralAdmission) {
+        return total + (section.gaCapacity || 0);
+      }
       return total + section.seats.length;
     }, 0);
   },
@@ -245,6 +331,56 @@ export const FileManager = {
    * Deserialize a single section from JSON
    */
   deserializeSection(data, SectionManager) {
+    // Check if this is a GA section
+    if (data.type === 'ga') {
+      // Create GA section
+      const section = SectionManager.createGASection(
+        data.x,
+        data.y,
+        data.base.baseWidth,
+        data.base.baseHeight
+      );
+      
+      // Restore section name
+      section.sectionId = data.name;
+      
+      // Update GA label with section name
+      if (section.gaLabel) {
+        section.gaLabel.text = data.name;
+      }
+      
+      // Restore GA capacity
+      if (data.ga) {
+        section.gaCapacity = data.ga.capacity || 0;
+      }
+      
+      // Restore section color
+      if (data.style && data.style.sectionColor !== undefined) {
+        section.sectionColor = data.style.sectionColor;
+        const colorHex = '#' + section.sectionColor.toString(16).padStart(6, '0');
+        SectionManager.setSectionColor(section, colorHex);
+      }
+      
+      // Restore pricing
+      if (data.pricing) {
+        section.pricing = {
+          basePrice: data.pricing.basePrice || 0,
+          serviceFee: data.pricing.serviceFee || 0,
+          serviceFeeEnabled: data.pricing.serviceFeeEnabled || false,
+          serviceFeeType: data.pricing.serviceFeeType || 'fixed'
+        };
+      }
+      
+      // Restore rotation
+      section.rotationDegrees = data.transform.rotation || 0;
+      if (section.rotationDegrees !== 0) {
+        section.angle = section.rotationDegrees;
+      }
+      
+      return section;
+    }
+    
+    // Regular section with seats
     // Determine if this is v2.0.0 format with individual seat data
     const hasIndividualSeats = Array.isArray(data.seats) && data.seats.length > 0 && data.seats[0].rowIndex !== undefined;
     

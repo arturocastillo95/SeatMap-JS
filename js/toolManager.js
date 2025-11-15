@@ -11,6 +11,7 @@ export const ToolManager = {
   init() {
     this.setupPanTool();
     this.setupCreateTool();
+    this.setupCreateGATool();
     this.setupDialogHandlers();
     this.handleDeleteConfirmation();
     this.setupZoomToFit();
@@ -107,7 +108,7 @@ export const ToolManager = {
         if (State.isCreateMode) {
           State.isCreateMode = false;
           Elements.createBtn.classList.remove('active');
-          this.updateButtonLabel(Elements.createBtn, 'Add Seat Rows');
+          this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
         }
         if (State.isDeleteMode) {
           State.isDeleteMode = false;
@@ -139,7 +140,7 @@ export const ToolManager = {
       if (State.isCreateMode) {
         State.isCreateMode = false;
         Elements.createBtn.classList.remove('active');
-        this.updateButtonLabel(Elements.createBtn, 'Add Seat Rows');
+        this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
       }
       if (State.isDeleteMode) {
         State.isDeleteMode = false;
@@ -152,6 +153,12 @@ export const ToolManager = {
       State.isCreateMode = !State.isCreateMode;
       
       if (State.isCreateMode) {
+        // Turn off GA mode if active
+        if (State.isCreateGAMode) {
+          State.isCreateGAMode = false;
+          Elements.createGABtn.classList.remove('active');
+          this.updateButtonLabel(Elements.createGABtn, 'GA');
+        }
         if (State.isPanningMode) {
           State.isPanningMode = false;
           Elements.panToolBtn.classList.remove('active');
@@ -162,8 +169,34 @@ export const ToolManager = {
       }
       
       Elements.createBtn.classList.toggle('active', State.isCreateMode);
-      this.updateButtonLabel(Elements.createBtn, State.isCreateMode ? 'Cancel' : 'Add Seat Rows');
+      this.updateButtonLabel(Elements.createBtn, State.isCreateMode ? 'Cancel' : 'Seat Rows');
       State.app.stage.cursor = State.isCreateMode ? 'crosshair' : 'default';
+    });
+  },
+
+  setupCreateGATool() {
+    Elements.createGABtn.addEventListener('click', () => {
+      State.isCreateGAMode = !State.isCreateGAMode;
+      
+      if (State.isCreateGAMode) {
+        // Turn off seat rows mode if active
+        if (State.isCreateMode) {
+          State.isCreateMode = false;
+          Elements.createBtn.classList.remove('active');
+          this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
+        }
+        if (State.isPanningMode) {
+          State.isPanningMode = false;
+          Elements.panToolBtn.classList.remove('active');
+        }
+        if (State.isDeleteMode) {
+          State.isDeleteMode = false;
+        }
+      }
+      
+      Elements.createGABtn.classList.toggle('active', State.isCreateGAMode);
+      this.updateButtonLabel(Elements.createGABtn, State.isCreateGAMode ? 'Cancel' : 'GA');
+      State.app.stage.cursor = State.isCreateGAMode ? 'crosshair' : 'default';
     });
   },
 
@@ -171,6 +204,12 @@ export const ToolManager = {
     window.addEventListener('keydown', (e) => {
       // Spacebar toggles pan mode
       if (e.code === 'Space' && !e.repeat) {
+        // Don't trigger pan mode if user is typing in an input field
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          return; // Let the input handle space normally
+        }
+        
         e.preventDefault();
         if (!State.isPanningMode) {
           State.isPanningMode = true;
@@ -180,7 +219,7 @@ export const ToolManager = {
           if (State.isCreateMode) {
             State.isCreateMode = false;
             Elements.createBtn.classList.remove('active');
-            this.updateButtonLabel(Elements.createBtn, 'Add Seat Rows');
+            this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
           }
           if (State.isDeleteMode) {
             State.isDeleteMode = false;
@@ -228,7 +267,15 @@ export const ToolManager = {
           e.preventDefault();
           State.isCreateMode = false;
           Elements.createBtn.classList.remove('active');
-          this.updateButtonLabel(Elements.createBtn, 'Add Seat Rows');
+          this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
+          State.app.stage.cursor = 'default';
+        }
+        // Cancel GA mode (if not currently drawing)
+        else if (State.isCreateGAMode && !State.isCreating) {
+          e.preventDefault();
+          State.isCreateGAMode = false;
+          Elements.createGABtn.classList.remove('active');
+          this.updateButtonLabel(Elements.createGABtn, 'GA');
           State.app.stage.cursor = 'default';
         }
       }
@@ -306,7 +353,7 @@ export const ToolManager = {
       // Exit create mode after keeping section
       State.isCreateMode = false;
       Elements.createBtn.classList.remove('active');
-      this.updateButtonLabel(Elements.createBtn, 'Add Seat Rows');
+      this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
       State.app.stage.cursor = 'default';
       
       State.pendingSection = null;
@@ -322,7 +369,7 @@ export const ToolManager = {
       // Exit create mode after deleting section
       State.isCreateMode = false;
       Elements.createBtn.classList.remove('active');
-      this.updateButtonLabel(Elements.createBtn, 'Add Seat Rows');
+      this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
       State.app.stage.cursor = 'default';
       
       State.pendingSection = null;
@@ -406,6 +453,66 @@ export const ToolManager = {
       Elements.confirmBox.classList.add('show');
       
       State.pendingSection = { section, x, y, width: snappedWidth, height: snappedHeight, rows, seats };
+    }
+  },
+
+  handleCreateGAStart(worldPos) {
+    State.isCreating = true;
+    State.createStart = { x: worldPos.x, y: worldPos.y };
+    State.previewRect = new PIXI.Graphics();
+    State.world.addChild(State.previewRect);
+  },
+
+  handleCreateGAMove(worldPos, screenX, screenY) {
+    const rawWidth = Math.abs(worldPos.x - State.createStart.x);
+    const rawHeight = Math.abs(worldPos.y - State.createStart.y);
+    
+    // Snap to seat grid dimensions
+    const { seats, rows, snappedWidth, snappedHeight } = Utils.calculateSeatDimensions(rawWidth, rawHeight);
+    
+    // Calculate position based on drag direction
+    const x = worldPos.x < State.createStart.x ? State.createStart.x - snappedWidth : State.createStart.x;
+    const y = worldPos.y < State.createStart.y ? State.createStart.y - snappedHeight : State.createStart.y;
+    
+    State.previewRect.clear();
+    State.previewRect.rect(x, y, snappedWidth, snappedHeight);
+    State.previewRect.stroke({ width: 2, color: COLORS.PREVIEW, alpha: 0.8 });
+    State.previewRect.fill({ color: COLORS.PREVIEW, alpha: 0.15 });
+    
+    // Show dimensions info (without seat/row count for GA)
+    Elements.dragInfo.innerHTML = `${Math.round(snappedWidth)} × ${Math.round(snappedHeight)}<br><strong>General Admission</strong>`;
+    Elements.dragInfo.style.left = (screenX + 15) + 'px';
+    Elements.dragInfo.style.top = (screenY + 15) + 'px';
+    Elements.dragInfo.classList.add('show');
+  },
+
+  handleCreateGAEnd(worldPos) {
+    Utils.hideDragInfo();
+    
+    const rawWidth = Math.abs(worldPos.x - State.createStart.x);
+    const rawHeight = Math.abs(worldPos.y - State.createStart.y);
+    
+    // Snap to seat grid dimensions
+    const { seats, rows, snappedWidth, snappedHeight } = Utils.calculateSeatDimensions(rawWidth, rawHeight);
+    
+    const x = worldPos.x < State.createStart.x ? State.createStart.x - snappedWidth : State.createStart.x;
+    const y = worldPos.y < State.createStart.y ? State.createStart.y - snappedHeight : State.createStart.y;
+    
+    // Clean up preview
+    State.world.removeChild(State.previewRect);
+    State.previewRect = null;
+    State.createStart = null;
+    State.isCreating = false;
+    
+    // Create GA section if large enough
+    if (snappedWidth > CONFIG.MIN_SECTION_SIZE && snappedHeight > CONFIG.MIN_SECTION_SIZE) {
+      SectionManager.createGASection(x, y, snappedWidth, snappedHeight);
+      
+      // Exit GA creation mode
+      State.isCreateGAMode = false;
+      Elements.createGABtn.classList.remove('active');
+      this.updateButtonLabel(Elements.createGABtn, 'GA');
+      State.app.stage.cursor = 'default';
     }
   }
 };

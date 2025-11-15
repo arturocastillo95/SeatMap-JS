@@ -16,6 +16,20 @@ export const AlignmentManager = {
     this.setupAlignmentControls();
     this.setupSidebarControls();
     this.observeSelectionChanges();
+    this.setupResizeHandleListeners();
+  },
+
+  setupResizeHandleListeners() {
+    // Listen for GA resize events
+    document.addEventListener('gaResizing', (e) => {
+      const section = e.detail.section;
+      this.updateSidebarValues(section);
+    });
+    
+    document.addEventListener('gaResizeEnd', (e) => {
+      const section = e.detail.section;
+      this.resolveCollisions([section]);
+    });
   },
 
   setupAlignmentControls() {
@@ -40,6 +54,10 @@ export const AlignmentManager = {
       if (State.selectedSections.length === 1) {
         const section = State.selectedSections[0];
         section.sectionId = e.target.value;
+        // Update GA label if it exists
+        if (section.gaLabel) {
+          section.gaLabel.text = e.target.value;
+        }
       }
     });
 
@@ -114,6 +132,46 @@ export const AlignmentManager = {
           const section = State.selectedSections[0];
           const validColorHex = '#' + (section.sectionColor || 0x3b82f6).toString(16).padStart(6, '0');
           Elements.sectionColorInput.value = validColorHex.toUpperCase();
+        }
+      }
+    });
+
+    // GA Capacity input
+    Elements.gaCapacityInput.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission) {
+          section.gaCapacity = parseInt(e.target.value) || 0;
+        }
+      }
+    });
+
+    // GA Width input
+    Elements.gaWidthInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission) {
+          const newWidth = parseFloat(e.target.value) || 0;
+          if (newWidth > 0) {
+            SectionManager.resizeGASection(section, newWidth, section.contentHeight);
+            // Check for collisions after resize and resolve them
+            this.resolveCollisions([section]);
+          }
+        }
+      }
+    });
+
+    // GA Height input
+    Elements.gaHeightInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission) {
+          const newHeight = parseFloat(e.target.value) || 0;
+          if (newHeight > 0) {
+            SectionManager.resizeGASection(section, section.contentWidth, newHeight);
+            // Check for collisions after resize and resolve them
+            this.resolveCollisions([section]);
+          }
         }
       }
     });
@@ -273,6 +331,11 @@ export const AlignmentManager = {
       // Update seat and label positions to rotate them around section center
       SectionManager.positionSeatsAndLabels(section);
       
+      // Update resize handles if they exist (for GA sections)
+      if (section.resizeHandles) {
+        SectionManager.updateResizeHandles(section);
+      }
+      
       // Update the UI
       this.updateSidebarValues(section);
     }
@@ -387,8 +450,20 @@ export const AlignmentManager = {
         const section = State.selectedSections[0];
         Elements.sectionSidebar.classList.add('show');
         this.updateSidebarValues(section);
+        
+        // Show resize handles only for single GA section selection
+        if (section.isGeneralAdmission && !section.resizeHandles) {
+          SectionManager.addResizeHandles(section);
+        }
       } else {
         Elements.sectionSidebar.classList.remove('show');
+        
+        // Remove resize handles from all sections (not just selected ones)
+        State.sections.forEach(section => {
+          if (section.resizeHandles) {
+            SectionManager.removeResizeHandles(section);
+          }
+        });
       }
     });
   },
@@ -401,6 +476,42 @@ export const AlignmentManager = {
     const colorHex = '#' + (section.sectionColor || 0x3b82f6).toString(16).padStart(6, '0');
     Elements.sectionColorPicker.value = colorHex;
     Elements.sectionColorInput.value = colorHex.toUpperCase();
+    
+    // Check if this is a GA section
+    const isGA = section.isGeneralAdmission === true;
+    
+    // Show/hide sections based on section type
+    if (isGA) {
+      // GA section - show capacity, size controls, hide row labels, seat numbering, align rows, add rows, stretch controls
+      Elements.seatsTitle.textContent = 'Capacity';
+      Elements.seatsInfo.style.display = 'none';
+      Elements.capacityInput.style.display = 'block';
+      Elements.gaCapacityInput.value = section.gaCapacity || 0;
+      Elements.gaSizeControls.style.display = 'block';
+      Elements.gaWidthInput.value = Math.round(section.contentWidth);
+      Elements.gaHeightInput.value = Math.round(section.contentHeight);
+      Elements.rowLabelsHeader.parentElement.style.display = 'none';
+      Elements.seatNumberingSection.style.display = 'none';
+      Elements.alignRowsSection.style.display = 'none';
+      Elements.addRowsSection.style.display = 'none';
+      Elements.stretchHSection.style.display = 'none';
+      Elements.stretchVSection.style.display = 'none';
+      Elements.outlineHeader.parentElement.style.display = 'block';
+      return; // Skip the rest of the updates
+    } else {
+      // Regular section - show all seat-related controls, hide GA size controls, show stretch controls
+      Elements.seatsTitle.textContent = 'Seats';
+      Elements.seatsInfo.style.display = 'block';
+      Elements.capacityInput.style.display = 'none';
+      Elements.gaSizeControls.style.display = 'none';
+      Elements.rowLabelsHeader.parentElement.style.display = 'block';
+      Elements.seatNumberingSection.style.display = 'block';
+      Elements.alignRowsSection.style.display = 'block';
+      Elements.addRowsSection.style.display = 'block';
+      Elements.stretchHSection.style.display = 'block';
+      Elements.stretchVSection.style.display = 'block';
+      Elements.outlineHeader.parentElement.style.display = 'block';
+    }
     
     // Update row label type buttons
     Elements.rowLabelNone.classList.toggle('active', section.rowLabelType === 'none');

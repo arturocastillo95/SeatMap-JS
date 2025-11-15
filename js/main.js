@@ -45,6 +45,7 @@ function initializeElements() {
   Elements.panToolBtn = document.getElementById('panToolBtn');
   Elements.zoomToFitBtn = document.getElementById('zoomToFitBtn');
   Elements.createBtn = document.getElementById('createSectionBtn');
+  Elements.createGABtn = document.getElementById('createGABtn');
   Elements.openBtn = document.getElementById('openBtn');
   Elements.saveBtn = document.getElementById('saveBtn');
   Elements.fileInput = document.getElementById('fileInput');
@@ -76,8 +77,16 @@ function initializeElements() {
   Elements.outlineContent = document.getElementById('outlineContent');
   Elements.seatsHeader = document.getElementById('seatsHeader');
   Elements.seatsContent = document.getElementById('seatsContent');
+  Elements.seatsSection = document.getElementById('seatsSection');
+  Elements.seatsTitle = document.getElementById('seatsTitle');
+  Elements.seatsInfo = document.getElementById('seatsInfo');
+  Elements.capacityInput = document.getElementById('capacityInput');
+  Elements.gaCapacityInput = document.getElementById('gaCapacityInput');
+  Elements.seatNumberingSection = document.getElementById('seatNumberingSection');
   Elements.seatNumberingHeader = document.getElementById('seatNumberingHeader');
   Elements.seatNumberingContent = document.getElementById('seatNumberingContent');
+  Elements.alignRowsSection = document.getElementById('alignRowsSection');
+  Elements.addRowsSection = document.getElementById('addRowsSection');
   Elements.rowLabelNone = document.getElementById('rowLabelNone');
   Elements.rowLabelNumbers = document.getElementById('rowLabelNumbers');
   Elements.rowLabelLetters = document.getElementById('rowLabelLetters');
@@ -98,11 +107,16 @@ function initializeElements() {
   Elements.stretchHSlider = document.getElementById('stretchHSlider');
   Elements.stretchHValue = document.getElementById('stretchHValue');
   Elements.resetStretchHBtn = document.getElementById('resetStretchHBtn');
+  Elements.stretchHSection = document.getElementById('stretchHSection');
   Elements.stretchVSlider = document.getElementById('stretchVSlider');
   Elements.stretchVValue = document.getElementById('stretchVValue');
   Elements.resetStretchVBtn = document.getElementById('resetStretchVBtn');
+  Elements.stretchVSection = document.getElementById('stretchVSection');
   Elements.sectionColorPicker = document.getElementById('sectionColorPicker');
   Elements.sectionColorInput = document.getElementById('sectionColorInput');
+  Elements.gaSizeControls = document.getElementById('gaSizeControls');
+  Elements.gaWidthInput = document.getElementById('gaWidthInput');
+  Elements.gaHeightInput = document.getElementById('gaHeightInput');
 }
 
 function setupResizeHandler() {
