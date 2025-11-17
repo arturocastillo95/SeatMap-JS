@@ -53,7 +53,14 @@ venue-map-js/
 │   ├── main.js            # Entry point
 │   ├── config.js          # Configuration and colors
 │   ├── state.js           # Global state management
-│   ├── sectionManager.js  # Section and seat operations
+│   ├── Section.js         # Type-safe Section class with validation
+│   ├── sectionManager.js  # Unified section coordinator (delegates to managers)
+│   ├── managers/          # Focused, single-responsibility modules
+│   │   ├── SectionFactory.js           # Section creation & deletion
+│   │   ├── SeatManager.js              # Seat operations
+│   │   ├── SectionInteractionHandler.js # User interactions
+│   │   ├── ResizeHandleManager.js      # GA resize handles
+│   │   └── SectionTransformations.js   # Stretch, curve, alignment
 │   ├── alignmentManager.js # Multi-section alignment & transforms
 │   ├── modeManager.js     # App mode switching
 │   ├── interactionManager.js # Mouse/touch interactions
@@ -64,7 +71,8 @@ venue-map-js/
 └── docs/                   # Documentation
     ├── USER_GUIDE.md      # How to use the app
     ├── FILE_FORMAT.md     # SMF specification
-    └── CHANGELOG.md       # Version history
+    ├── CHANGELOG.md       # Version history
+    └── REFACTORING_GUIDE.md # Architecture & refactoring details
 ```
 
 ## 🎯 Core Concepts
@@ -115,6 +123,18 @@ Export venue maps to JSON format:
 - **Version 2.0.0**: Includes individual seat data, custom labels, transformations
 - **Backward Compatible**: Reads v1.0.0 files
 - **Viewer-Ready**: Complete data for read-only venue map viewers
+
+## 🏛️ Architecture
+
+SeatMap JS follows **SOLID principles** with a modular architecture:
+
+- **Type-safe Section class** - Built-in validation prevents runtime errors
+- **Single-responsibility modules** - Each manager handles one concern (~150-350 lines)
+- **Centralized configuration** - No magic numbers, easy customization
+- **Loose coupling** - Modules don't depend on each other
+- **Easy testing** - Each manager can be tested independently
+
+See [Refactoring Guide](docs/REFACTORING_GUIDE.md) for architectural details.
 
 ## 📦 Dependencies
 

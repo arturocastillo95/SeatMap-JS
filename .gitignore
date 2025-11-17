@@ -34,6 +34,15 @@ tmp/
 temp/
 *.tmp
 
+# Backup files
+backups/
+*.old.js
+*.backup
+
+# Migration/refactoring tools (temporary)
+migrate-refactor.sh
+MIGRATION_CHECKLIST.md
+
 # OS generated files
 Thumbs.db
 .DS_Store

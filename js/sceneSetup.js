@@ -3,7 +3,7 @@
 // ============================================
 
 import { State } from './state.js';
-import { CONFIG, COLORS } from './config.js';
+import { CONFIG, VISUAL_CONFIG, COLORS } from './config.js';
 import { SectionManager } from './sectionManager.js';
 
 export function setupGrid() {
@@ -23,8 +23,8 @@ export function setupGrid() {
 export function setupExampleSection() {
   const section = new PIXI.Graphics();
   section.poly([150, 150, 550, 150, 520, 350, 180, 350]);
-  section.fill({ color: COLORS.SECTION_FILL, alpha: 0.25 });
-  section.stroke({ width: 2, color: COLORS.SECTION_STROKE, alpha: 0.8 });
+  section.fill({ color: COLORS.SECTION_FILL, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
+  section.stroke({ width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, color: COLORS.SECTION_STROKE, alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA });
   section.eventMode = 'static';
   section.cursor = 'pointer';
   section.sectionId = 'Orchestra A';

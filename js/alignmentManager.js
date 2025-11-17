@@ -542,7 +542,11 @@ export const AlignmentManager = {
     Elements.seatNumberFlipBtn.classList.toggle('active', section.seatNumberReversed || false);
     
     // Update rotation slider and display value
-    const rotation = section.rotationDegrees || 0;
+    // Convert from 0-360 range to -180 to 180 range for the slider
+    let rotation = section.rotationDegrees || 0;
+    if (rotation > 180) {
+      rotation = rotation - 360;
+    }
     Elements.rotateSlider.value = rotation;
     Elements.rotateValue.textContent = `${rotation}°`;
 
@@ -730,6 +734,51 @@ export const AlignmentManager = {
     SectionManager.positionSeatsAndLabels(section);
   },
 
+  /**
+   * Align a section, handling curve/stretch transformations properly
+   * Temporarily flattens the section, aligns it, then reapplies transformations
+   * @param {Section} section - The section to align
+   * @param {Function} alignFunc - Function that sets the new x/y position
+   */
+  alignSectionWithTransforms(section, alignFunc) {
+    // Store transformation values
+    const savedCurve = section.curve;
+    const savedStretchH = section.stretchH;
+    const savedStretchV = section.stretchV;
+    const hadLabels = section.rowLabels.length > 0;
+    
+    // Flatten section for alignment (if curved or stretched)
+    if (savedCurve || savedStretchH || savedStretchV) {
+      section.curve = 0;
+      section.stretchH = 0;
+      section.stretchV = 0;
+      SectionManager.applyStretch(section);
+      
+      // If section had labels, reapply them to get correct flat dimensions
+      if (hadLabels) {
+        SectionManager.updateRowLabels(section);
+      }
+    }
+    
+    // Perform the alignment on the flattened section
+    alignFunc(section);
+    
+    // Reapply transformations
+    if (savedCurve || savedStretchH || savedStretchV) {
+      section.curve = savedCurve;
+      section.stretchH = savedStretchH;
+      section.stretchV = savedStretchV;
+      
+      if (savedCurve) {
+        SectionManager.applyCurve(section);
+      } else {
+        SectionManager.applyStretch(section);
+      }
+    } else {
+      this.updateSeatPositions(section);
+    }
+  },
+
   // ============================================
   // HELPER FUNCTIONS
   // ============================================
@@ -781,13 +830,13 @@ export const AlignmentManager = {
   alignLeft() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the leftmost edge (accounting for pivot at center)
-    const minX = Math.min(...State.selectedSections.map(s => s.x - s.pivot.x));
-    
-    // Move all sections so their left edge aligns with minX
+    // Temporarily flatten sections for proper alignment calculation
     State.selectedSections.forEach(section => {
-      section.x = minX + section.pivot.x;
-      this.updateSeatPositions(section);
+      this.alignSectionWithTransforms(section, (s) => {
+        // Calculate minX from all flattened sections
+        const minX = Math.min(...State.selectedSections.map(sec => sec.x - sec.pivot.x));
+        s.x = minX + s.pivot.x;
+      });
     });
     
     this.resolveCollisions(State.selectedSections);
@@ -796,13 +845,13 @@ export const AlignmentManager = {
   alignRight() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the rightmost edge (accounting for pivot at center)
-    const maxX = Math.max(...State.selectedSections.map(s => s.x - s.pivot.x + s.contentWidth));
-    
-    // Move all sections so their right edge aligns with maxX
+    // Temporarily flatten sections for proper alignment calculation
     State.selectedSections.forEach(section => {
-      section.x = maxX - section.contentWidth + section.pivot.x;
-      this.updateSeatPositions(section);
+      this.alignSectionWithTransforms(section, (s) => {
+        // Calculate maxX from all flattened sections
+        const maxX = Math.max(...State.selectedSections.map(sec => sec.x - sec.pivot.x + sec.contentWidth));
+        s.x = maxX - s.contentWidth + s.pivot.x;
+      });
     });
     
     this.resolveCollisions(State.selectedSections);
@@ -811,14 +860,14 @@ export const AlignmentManager = {
   alignCenterHorizontal() {
     if (State.selectedSections.length < 2) return;
     
-    // Calculate center of each section (accounting for pivot at center)
-    const centers = State.selectedSections.map(s => s.x - s.pivot.x + s.contentWidth / 2);
-    const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length;
-    
-    // Move all sections so their centers align
+    // Temporarily flatten sections for proper alignment calculation
     State.selectedSections.forEach(section => {
-      section.x = avgCenter - section.contentWidth / 2 + section.pivot.x;
-      this.updateSeatPositions(section);
+      this.alignSectionWithTransforms(section, (s) => {
+        // Calculate average center from all flattened sections
+        const centers = State.selectedSections.map(sec => sec.x - sec.pivot.x + sec.contentWidth / 2);
+        const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length;
+        s.x = avgCenter - s.contentWidth / 2 + s.pivot.x;
+      });
     });
     
     this.resolveCollisions(State.selectedSections);
@@ -827,13 +876,13 @@ export const AlignmentManager = {
   alignTop() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the topmost edge (accounting for pivot at center)
-    const minY = Math.min(...State.selectedSections.map(s => s.y - s.pivot.y));
-    
-    // Move all sections so their top edge aligns with minY
+    // Temporarily flatten sections for proper alignment calculation
     State.selectedSections.forEach(section => {
-      section.y = minY + section.pivot.y;
-      this.updateSeatPositions(section);
+      this.alignSectionWithTransforms(section, (s) => {
+        // Calculate minY from all flattened sections
+        const minY = Math.min(...State.selectedSections.map(sec => sec.y - sec.pivot.y));
+        s.y = minY + s.pivot.y;
+      });
     });
     
     this.resolveCollisions(State.selectedSections);
@@ -842,13 +891,13 @@ export const AlignmentManager = {
   alignBottom() {
     if (State.selectedSections.length < 2) return;
     
-    // Find the bottommost edge (accounting for pivot at center)
-    const maxY = Math.max(...State.selectedSections.map(s => s.y - s.pivot.y + s.contentHeight));
-    
-    // Move all sections so their bottom edge aligns with maxY
+    // Temporarily flatten sections for proper alignment calculation
     State.selectedSections.forEach(section => {
-      section.y = maxY - section.contentHeight + section.pivot.y;
-      this.updateSeatPositions(section);
+      this.alignSectionWithTransforms(section, (s) => {
+        // Calculate maxY from all flattened sections
+        const maxY = Math.max(...State.selectedSections.map(sec => sec.y - sec.pivot.y + sec.contentHeight));
+        s.y = maxY - s.contentHeight + s.pivot.y;
+      });
     });
     
     this.resolveCollisions(State.selectedSections);
@@ -857,14 +906,14 @@ export const AlignmentManager = {
   alignCenterVertical() {
     if (State.selectedSections.length < 2) return;
     
-    // Calculate center of each section (accounting for pivot at center)
-    const centers = State.selectedSections.map(s => s.y - s.pivot.y + s.contentHeight / 2);
-    const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length;
-    
-    // Move all sections so their centers align
+    // Temporarily flatten sections for proper alignment calculation
     State.selectedSections.forEach(section => {
-      section.y = avgCenter - section.contentHeight / 2 + section.pivot.y;
-      this.updateSeatPositions(section);
+      this.alignSectionWithTransforms(section, (s) => {
+        // Calculate average center from all flattened sections
+        const centers = State.selectedSections.map(sec => sec.y - sec.pivot.y + sec.contentHeight / 2);
+        const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length;
+        s.y = avgCenter - s.contentHeight / 2 + s.pivot.y;
+      });
     });
     
     this.resolveCollisions(State.selectedSections);

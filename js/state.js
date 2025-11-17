@@ -51,7 +51,8 @@ export const State = {
   // Section dragging state
   isDraggingSections: false,
   dragStartPos: null,
-  dragOriginalPositions: null
+  dragOriginalPositions: null,
+  potentialDragStart: null  // Stores initial click position before drag threshold is reached
 };
 
 export const Elements = {};

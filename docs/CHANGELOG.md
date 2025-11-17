@@ -62,6 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pricing button disabled when no section selected
 - Section graphics use stored color instead of hardcoded values
 - Resize handles added to section layer instead of as section children for better event handling
+- **Refactored monolithic SectionManager (1500+ lines) into focused modules**:
+  - `managers/SectionFactory.js` - Section creation and deletion (~120 lines)
+  - `managers/SeatManager.js` - Seat operations (~200 lines)
+  - `managers/SectionInteractionHandler.js` - User interactions (~180 lines)
+  - `managers/ResizeHandleManager.js` - GA resize handles (~300 lines)
+  - `managers/SectionTransformations.js` - Stretch, curve, alignment (~350 lines)
+  - Unified SectionManager delegates to specialized managers
+  - Maintains 100% backward compatibility
+  - Follows SOLID principles for better maintainability
+- **Code quality improvements**:
+  - Added type-safe Section class with validation (prevents runtime errors)
+  - Centralized visual constants to VISUAL_CONFIG (no more magic numbers)
+  - Removed 80% code duplication between createSection and createGASection
 
 ### Fixed
 - Bounding box not resizing after row label removal
@@ -82,6 +95,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resize handle hit areas too small for easy interaction
 - Resize handles not working outside section bounds
 - Circular dependency between SectionManager and AlignmentManager resolved with events
+- **Alignment tool now properly handles curved and stretched sections**
+- **Drag threshold prevents accidental drags (5px minimum movement)**
+- **Rotation slider displays correctly in -180 to 180 range**
+- **Section selection immediately updates sidebar values**
 
 ## [0.1.0] - Initial Release
 

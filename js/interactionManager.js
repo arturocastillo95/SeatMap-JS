@@ -83,6 +83,26 @@ export const InteractionManager = {
   },
 
   handlePointerMove(e) {
+    // Check if we should start dragging (threshold to distinguish click from drag)
+    if (State.potentialDragStart && !State.isDraggingSections) {
+      const dx = e.global.x - State.potentialDragStart.screenPos.x;
+      const dy = e.global.y - State.potentialDragStart.screenPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Only start drag if moved more than 5 pixels
+      if (distance > 5) {
+        State.isDraggingSections = true;
+        State.dragStartPos = State.potentialDragStart.worldPos;
+        State.dragOriginalPositions = State.selectedSections.map(s => ({
+          section: s,
+          x: s.x,
+          y: s.y
+        }));
+        State.potentialDragStart = null;
+        State.app.stage.cursor = 'grabbing';
+      }
+    }
+    
     // Handle section dragging
     if (State.isDraggingSections && State.dragStartPos && State.dragOriginalPositions) {
       const worldPos = Utils.screenToWorld(e.global.x, e.global.y);
@@ -267,6 +287,11 @@ export const InteractionManager = {
   },
 
   handlePointerUp(e) {
+    // Clear potential drag start (if it was just a click)
+    if (State.potentialDragStart) {
+      State.potentialDragStart = null;
+    }
+    
     // Handle section dragging end
     if (State.isDraggingSections) {
       State.isDraggingSections = false;
@@ -382,6 +407,13 @@ export const InteractionManager = {
         SectionManager.selectSection(section);
       }
     });
+    
+    // Dispatch selection changed event to update sidebar
+    if (State.selectedSections.length > 0) {
+      document.dispatchEvent(new CustomEvent('selectionchanged', { 
+        detail: { selectedSections: State.selectedSections } 
+      }));
+    }
   },
 
   processSeatSelection(e) {
