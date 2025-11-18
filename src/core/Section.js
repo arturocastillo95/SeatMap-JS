@@ -97,6 +97,7 @@ export class Section extends PIXI.Graphics {
     this._showLeftLabels = config.showLeftLabels || false;
     this._showRightLabels = config.showRightLabels || false;
     this._labelsHidden = config.labelsHidden || false;
+    this._rowLabelSpacing = config.rowLabelSpacing || 20; // Distance between label and seats (5-50px)
     
     // Seat numbering
     this._seatNumberStart = config.seatNumberStart || 1;
@@ -398,6 +399,17 @@ export class Section extends PIXI.Graphics {
       throw new Error('Labels hidden must be a boolean');
     }
     this._labelsHidden = value;
+  }
+
+  get rowLabelSpacing() {
+    return this._rowLabelSpacing;
+  }
+
+  set rowLabelSpacing(value) {
+    if (typeof value !== 'number' || value < 5 || value > 50) {
+      throw new Error('Row label spacing must be between 5 and 50');
+    }
+    this._rowLabelSpacing = value;
   }
 
   get seatNumberStart() {

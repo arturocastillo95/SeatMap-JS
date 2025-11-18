@@ -207,7 +207,8 @@ export const FileManager = {
         reversed: section.rowLabelReversed || false,
         showLeft: section.showLeftLabels || false,
         showRight: section.showRightLabels || false,
-        hidden: section.labelsHidden || false
+        hidden: section.labelsHidden || false,
+        spacing: section.rowLabelSpacing || 20
       },
       
       // Seat configuration and numbering
@@ -221,12 +222,15 @@ export const FileManager = {
       rowAlignment: section.rowAlignment || 'center',
       
       // Individual seats (for supporting deleted seats and special needs)
+      // Save BOTH base and current (transformed) positions
       seats: seats.map(seat => ({
         rowIndex: seat.rowIndex,
         colIndex: seat.colIndex,
         number: seat.children[1] ? seat.children[1].text : (seat.colIndex + 1).toString(),
         baseX: seat.baseRelativeX,
         baseY: seat.baseRelativeY,
+        relativeX: seat.relativeX,  // Current position with transformations applied
+        relativeY: seat.relativeY,
         specialNeeds: seat.specialNeeds || false,
         metadata: {}
       })),
@@ -436,6 +440,7 @@ export const FileManager = {
     section.showLeftLabels = data.rowLabels.showLeft;
     section.showRightLabels = data.rowLabels.showRight;
     section.labelsHidden = data.rowLabels.hidden || false;
+    section.rowLabelSpacing = data.rowLabels.spacing || 20;
     
     // Restore seat numbering (v2.0.0)
     if (data.seatNumbering) {
@@ -494,11 +499,30 @@ export const FileManager = {
           // Restore seat positions from saved data
           if (seatData.baseX !== undefined) {
             seat.baseRelativeX = seatData.baseX;
-            seat.relativeX = seatData.baseX;
           }
           if (seatData.baseY !== undefined) {
             seat.baseRelativeY = seatData.baseY;
+          }
+          
+          // Restore transformed positions if available (v2.0.0+)
+          if (seatData.relativeX !== undefined) {
+            seat.relativeX = seatData.relativeX;
+          } else if (seatData.baseX !== undefined) {
+            // Fallback for older files without relativeX/Y
+            seat.relativeX = seatData.baseX;
+          }
+          
+          if (seatData.relativeY !== undefined) {
+            seat.relativeY = seatData.relativeY;
+          } else if (seatData.baseY !== undefined) {
+            // Fallback for older files without relativeX/Y
             seat.relativeY = seatData.baseY;
+          }
+          
+          // Restore seat number if available
+          if (seatData.number !== undefined && seat.children[1]) {
+            seat.children[1].text = seatData.number;
+            seat.seatNumber = seatData.number;
           }
           
           // Restore special needs status
@@ -510,12 +534,15 @@ export const FileManager = {
       }
       section.seats = keptSeats;
       
-      // Update seat positions after restoring base positions
-      SectionManager.positionSeatsAndLabels(section);
+      // Mark section as loaded from file BEFORE applying transformations
+      // This prevents transformation functions from recalculating seat positions
+      section._loadedFromFile = true;
     }
     
     // Apply transformations in correct order
-    if (data.transform.curve > 0 || data.transform.stretchH > 0 || data.transform.stretchV > 0) {
+    // If section has individual seat data, transformations should be skipped
+    // because seats already have correct transformed positions from the file
+    if (!hasIndividualSeats && (data.transform.curve > 0 || data.transform.stretchH > 0 || data.transform.stretchV > 0)) {
       if (data.transform.curve > 0) {
         SectionManager.applyCurve(section);
       } else {
@@ -530,13 +557,20 @@ export const FileManager = {
     }
     
     // Update seat numbers if custom numbering
-    if (data.seatNumbering && (data.seatNumbering.start !== 1 || data.seatNumbering.reversed)) {
+    // Skip if we have individual seat data - numbers are already restored from the file
+    if (!hasIndividualSeats && data.seatNumbering && (data.seatNumbering.start !== 1 || data.seatNumbering.reversed)) {
       SectionManager.updateSeatNumbers(section);
     }
     
     // Update row labels if needed
+    // The _loadedFromFile flag (set earlier) ensures updateRowLabels doesn't reset seat positions
     if (data.rowLabels.type !== 'none') {
       SectionManager.updateRowLabels(section);
+    }
+    
+    // Clear the flag after all positioning is done
+    if (hasIndividualSeats) {
+      delete section._loadedFromFile;
     }
     
     // Restore exact center position if available (v2.0.0+)

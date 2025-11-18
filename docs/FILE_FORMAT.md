@@ -311,6 +311,7 @@ Initial format with basic section, transformation, and styling support.
 - `showLeft`: Display labels on left side
 - `showRight`: Display labels on right side
 - `hidden`: Gray out labels for viewer mode (still rendered but less visible)
+- `spacing`: Distance in pixels between row labels and seats (5-50, default: 20)
 
 ### Seat Numbering (Regular Sections Only)
 
@@ -323,12 +324,15 @@ Initial format with basic section, transformation, and styling support.
 Each seat object contains:
 - `rowIndex`: 0-based row index
 - `colIndex`: 0-based column index
-- `number`: Display number as string
-- `baseX`, `baseY`: Base position relative to section (required for proper alignment restoration)
+- `number`: Display number as string (preserved exactly as shown, critical for deleted seats)
+- `baseX`, `baseY`: Base position relative to section (before transformations)
+- `relativeX`, `relativeY`: Current position with transformations applied (v2.0.0+)
 - `specialNeeds`: Boolean indicating wheelchair-accessible seat (default: false)
 - `metadata`: Extensible custom data
 
-**Note:** The `baseX` and `baseY` values are critical for restoring row alignment (left/center/right) when loading files.
+**Note:** The `baseX/baseY` store untransformed positions for editing, while `relativeX/relativeY` store the final transformed positions (including row alignment, curve, stretch) for accurate restoration.
+
+**Important:** The `number` field preserves the exact seat numbering, which is critical when seats have been deleted. For example, if seats 1, 2, and 5 remain after deleting 3 and 4, the numbers "1", "2", "5" are preserved exactly. Do not recalculate seat numbers from position - always restore from saved data.
 
 **Special Needs Seats:**
 - When `specialNeeds: true`, the seat should be rendered with:

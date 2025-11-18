@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Row Label Spacing Control** - Adjust distance between row labels and seats
+  - Slider control (5-50px) in Row Labels section of sidebar
+  - Real-time visual feedback as spacing changes
+  - Defaults to 20px for backward compatibility
+  - Persists in file save/load format
+  - Independent per-section configuration
 - **Multi-section dragging** - Drag multiple selected sections together as a group
 - **Special Needs Seats** for wheelchair-accessible seating
   - Toggle special needs status for individual seats or groups
@@ -107,6 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed 80% code duplication between createSection and createGASection
 
 ### Fixed
+- **Seat positioning on file load** - Fixed critical issue where seats appeared outside the bounding box after loading files. Root cause: layout shift was being applied twice - once by modifying `relativeX/Y` in `updateRowLabels()` and again by `positionSeatsAndLabels()` during positioning. Solution: Only apply shift to labels, let `positionSeatsAndLabels()` handle seat positioning using `seat.x = section.x + (seat.relativeX + layoutShiftX) - pivot.x`
+- **Seat number preservation** - Fixed issue where seat numbers were being recalculated on file load instead of preserving the exact numbers shown. This is critical when seats have been deleted - remaining seats must keep their original numbers (e.g., seats 1, 2, 5 after deleting 3, 4). Solution: Restore `number` field from saved data and skip `updateSeatNumbers()` call when loading files with individual seat data
+- **Row alignment and transformation restoration** - Fixed critical issue where rows with different lengths (e.g., rows A-D with fewer seats) would lose their right/left alignment after save/load, and sections with curve/stretch transformations would revert to base positions. Root causes: (1) Only saving `baseX/baseY` without transformed positions, (2) Transformation recalculation was skipped but positions weren't preserved. Solution: Now save BOTH `baseX/baseY` (for editing) AND `relativeX/relativeY` (final transformed positions). On load, restore transformed positions, calculate proper layout shift for bounding box, and use `_loadedFromFile` flag to prevent repositioning. After load completes, flag is cleared so future edits work correctly
 - **Row alignment not persisting** - Left/right aligned seats now maintain alignment after save/load
 - **Section positions drifting** - Exact center positions stored to prevent floating-point errors
 - **Seat positions misaligned** - Base seat positions restored from file and recalculated on load

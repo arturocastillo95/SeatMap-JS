@@ -536,6 +536,15 @@ export const AlignmentManager = {
       Elements.rowLabelStartInput.placeholder = 'A';
     }
     Elements.rowLabelFlipBtn.classList.toggle('active', section.rowLabelReversed || false);
+    
+    // Update row label spacing controls
+    const spacing = section.rowLabelSpacing || 20;
+    if (Elements.rowLabelSpacingSlider) {
+      Elements.rowLabelSpacingSlider.value = spacing;
+    }
+    if (Elements.rowLabelSpacingValue) {
+      Elements.rowLabelSpacingValue.textContent = `${spacing}px`;
+    }
 
     // Update seat numbering controls
     Elements.seatNumberStartInput.value = section.seatNumberStart || 1;

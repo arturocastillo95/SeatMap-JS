@@ -287,24 +287,28 @@ export const SeatManager = {
     });
     section.rowLabels = [];
 
-    // ALWAYS reset seats to their true base positions (from creation)
-    // But then reapply transformations (stretch and curve) if they exist
-    const stretchH = section.stretchH || 0;
-    const stretchV = section.stretchV || 0;
-    const curve = section.curve || 0;
-    
-    if (curve !== 0) {
-      // Curve takes precedence and includes stretch
-      SectionTransformations.applyCurveTransform(section);
-    } else if (stretchH !== 0 || stretchV !== 0) {
-      // Just apply stretch
-      SectionTransformations.applyStretchTransform(section);
-    } else {
-      // No transformations, just use base positions
-      section.seats.forEach(seat => {
-        seat.relativeX = seat.baseRelativeX;
-        seat.relativeY = seat.baseRelativeY;
-      });
+    // If section was loaded from file, seats already have correct positions
+    // Don't reset or recalculate them
+    if (!section._loadedFromFile) {
+      // ALWAYS reset seats to their true base positions (from creation)
+      // But then reapply transformations (stretch and curve) if they exist
+      const stretchH = section.stretchH || 0;
+      const stretchV = section.stretchV || 0;
+      const curve = section.curve || 0;
+      
+      if (curve !== 0) {
+        // Curve takes precedence and includes stretch
+        SectionTransformations.applyCurveTransform(section);
+      } else if (stretchH !== 0 || stretchV !== 0) {
+        // Just apply stretch
+        SectionTransformations.applyStretchTransform(section);
+      } else {
+        // No transformations, just use base positions
+        section.seats.forEach(seat => {
+          seat.relativeX = seat.baseRelativeX;
+          seat.relativeY = seat.baseRelativeY;
+        });
+      }
     }
 
     // Don't create labels if type is 'none' or neither position is enabled
@@ -346,7 +350,8 @@ export const SeatManager = {
     });
 
     const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
-    const LABEL_GAP = 30;
+    // Use section's rowLabelSpacing property (defaults to 20px)
+    const labelSpacing = section.rowLabelSpacing || 20;
     
     rows.forEach(([rowIndex, seatsInRow], arrayIndex) => {
       const totalRows = rows.length;
@@ -359,7 +364,7 @@ export const SeatManager = {
 
       if (section.showLeftLabels) {
         const leftLabel = this.createRowLabel(labelText, section.labelsHidden);
-        leftLabel.relativeX = leftmostSeat.relativeX - 10 - LABEL_GAP;
+        leftLabel.relativeX = leftmostSeat.relativeX - 10 - labelSpacing;
         leftLabel.relativeY = leftmostSeat.relativeY;
         leftLabel.x = section.x + leftLabel.relativeX;
         leftLabel.y = section.y + leftLabel.relativeY;
@@ -369,7 +374,7 @@ export const SeatManager = {
 
       if (section.showRightLabels) {
         const rightLabel = this.createRowLabel(labelText, section.labelsHidden);
-        rightLabel.relativeX = rightmostSeat.relativeX + 10 + LABEL_GAP;
+        rightLabel.relativeX = rightmostSeat.relativeX + 10 + labelSpacing;
         rightLabel.relativeY = rightmostSeat.relativeY;
         rightLabel.x = section.x + rightLabel.relativeX;
         rightLabel.y = section.y + rightLabel.relativeY;
@@ -409,6 +414,9 @@ export const SeatManager = {
     section.layoutShiftX = shiftX;
     section.layoutShiftY = shiftY;
     
+    // Apply shift to labels only
+    // Seats get the shift applied by positionSeatsAndLabels() which uses:
+    // seat.x = section.x + (seat.relativeX + layoutShiftX) - pivot.x
     section.rowLabels.forEach(label => {
       label.relativeX += shiftX;
       label.relativeY += shiftY;

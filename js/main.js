@@ -99,6 +99,8 @@ function initializeElements() {
   Elements.rowLabelPositionSection = document.getElementById('rowLabelPositionSection');
   Elements.rowLabelStartInput = document.getElementById('rowLabelStartInput');
   Elements.rowLabelFlipBtn = document.getElementById('rowLabelFlipBtn');
+  Elements.rowLabelSpacingSlider = document.getElementById('rowLabelSpacingSlider');
+  Elements.rowLabelSpacingValue = document.getElementById('rowLabelSpacingValue');
   Elements.seatNumberStartInput = document.getElementById('seatNumberStartInput');
   Elements.seatNumberFlipBtn = document.getElementById('seatNumberFlipBtn');
   Elements.rotateSlider = document.getElementById('rotateSlider');
@@ -464,6 +466,27 @@ function setupSeatHandlers() {
   }
 }
 
+function setupRowLabelSpacingHandler() {
+  if (!Elements.rowLabelSpacingSlider || !Elements.rowLabelSpacingValue) return;
+  
+  Elements.rowLabelSpacingSlider.addEventListener('input', async (e) => {
+    const spacing = parseInt(e.target.value);
+    Elements.rowLabelSpacingValue.textContent = `${spacing}px`;
+    
+    // Apply to selected section
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      section.rowLabelSpacing = spacing;
+      
+      // Update row labels if they exist
+      if (section.rowLabelType !== 'none') {
+        const { SectionManager } = await import('../src/managers/sectionManager.js');
+        await SectionManager.updateRowLabels(section);
+      }
+    }
+  });
+}
+
 // Start the application
 (async () => {
   await initializeApp();
@@ -482,4 +505,5 @@ function setupSeatHandlers() {
   setupPricingHandlers();
   setupUnderlayHandlers();
   setupSeatHandlers();
+  setupRowLabelSpacingHandler();
 })();
