@@ -1460,6 +1460,132 @@
     </div>
   </div>
 
+  <!-- Underlay Sidebar -->
+  <div class="section-sidebar" id="underlaySidebar">
+    <div class="sidebar-title-bar">
+      <div class="sidebar-title-chip">Underlay</div>
+    </div>
+
+    <!-- UNDERLAY IMAGE -->
+    <div class="sidebar-section">
+      <div class="sidebar-header">Background Image</div>
+
+      <div class="sidebar-input-group">
+        <label class="sidebar-label">Import Image</label>
+        <input
+          type="file"
+          id="underlayFileInput"
+          accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+          style="display: none;"
+        />
+        <button
+          class="sidebar-toggle-btn"
+          id="underlayUploadBtn"
+          style="width: 100%; justify-content: center;"
+        >
+          <span class="material-symbols">upload_file</span>
+          <span>Choose Image</span>
+        </button>
+        <div class="sidebar-info" id="underlayFileInfo" style="display: none; margin-top: 8px;">
+          No image loaded
+        </div>
+      </div>
+
+      <div id="underlayControls" style="display: none;">
+        <div class="sidebar-input-group">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <label class="sidebar-label" style="margin-bottom: 0;">
+              Opacity
+              <span id="underlayOpacityValue" style="color: #3a9cff;">50%</span>
+            </label>
+          </div>
+          <div class="sidebar-slider">
+            <input
+              type="range"
+              class="sidebar-slider-input"
+              id="underlayOpacitySlider"
+              min="0"
+              max="100"
+              value="50"
+              step="1"
+            />
+          </div>
+        </div>
+
+        <div class="sidebar-input-group">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <label class="sidebar-label" style="margin-bottom: 0;">
+              Scale
+              <span id="underlayScaleValue" style="color: #3a9cff;">100%</span>
+            </label>
+            <button
+              class="sidebar-increment-btn"
+              id="underlayResetScaleBtn"
+              title="Reset Scale"
+            >
+              <span class="material-symbols">refresh</span>
+            </button>
+          </div>
+          <div class="sidebar-slider">
+            <input
+              type="range"
+              class="sidebar-slider-input"
+              id="underlayScaleSlider"
+              min="10"
+              max="500"
+              value="100"
+              step="5"
+            />
+          </div>
+        </div>
+
+        <div class="sidebar-input-group">
+          <label class="sidebar-label">Position</label>
+          <div style="display: flex; gap: 8px;">
+            <input
+              type="number"
+              class="sidebar-input"
+              id="underlayXInput"
+              placeholder="X"
+              value="0"
+              step="10"
+              style="flex: 1; text-align: center;"
+            />
+            <input
+              type="number"
+              class="sidebar-input"
+              id="underlayYInput"
+              placeholder="Y"
+              value="0"
+              step="10"
+              style="flex: 1; text-align: center;"
+            />
+          </div>
+          <div class="sidebar-info">X and Y coordinates</div>
+        </div>
+
+        <div class="sidebar-button-group">
+          <button
+            class="sidebar-toggle-btn active"
+            id="underlayVisibleBtn"
+            style="flex: 1;"
+          >
+            <span class="material-symbols">visibility</span>
+            <span>Visible</span>
+          </button>
+          <button
+            class="sidebar-toggle-btn"
+            id="underlayClearBtn"
+            style="flex: 1;"
+          >
+            <span class="material-symbols">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Pricing Sidebar -->
   <div class="section-sidebar" id="pricingSidebar">
     <div class="sidebar-title-bar">

@@ -101,6 +101,61 @@ When a single GA section is selected, interactive resize handles appear:
 - Handles update in real-time during drag and rotation
 - Collision detection prevents overlap with other sections
 
+## Underlay Mode
+
+Use the Underlay feature to import venue blueprints or floor plans as background images.
+
+### Importing an Image
+
+1. Click **Underlay** in the left mode bar
+2. Click **Choose Image** button
+3. Select a PNG, SVG, or JPG file
+4. Image appears at origin (0,0) with default settings
+
+### Positioning the Underlay
+
+**Drag to Move:**
+- Click and drag anywhere on the image to reposition
+- Real-time position updates in X/Y inputs
+
+**Manual Position:**
+- Enter exact X and Y coordinates in the input fields
+
+### Resizing the Underlay
+
+**Interactive Resize:**
+- **8 handles:** 4 corners + 4 edges (green squares)
+- **Corner handles:** Scale proportionally
+- **Edge handles:** Scale in one direction
+- Handles stay aligned during resize
+
+**Scale Control:**
+- Use the scale slider (10-500%)
+- Click reset button to return to 100%
+
+### Adjusting Appearance
+
+**Opacity:**
+- Slider control from 0% (transparent) to 100% (opaque)
+- Useful for tracing sections over blueprints
+
+**Visibility:**
+- Toggle button to show/hide underlay
+- Hidden underlays are still saved in file
+
+### Removing Underlay
+
+1. Click **Clear/Remove** button
+2. Confirm removal
+3. Underlay is deleted from the venue map
+
+### Tips
+- Underlay is only interactive in Underlay mode
+- Switch to Schema mode to work on sections
+- Underlay renders behind sections (layer order: Grid → Underlay → Sections)
+- Images are saved as Base64 in the venue file
+- Large images may increase file size significantly
+
 ## Edit Seats Mode
 
 **Note:** Edit Seats mode is only available for regular sections with individual seats. GA sections cannot enter this mode.
@@ -176,6 +231,7 @@ When 2+ sections are selected, the alignment bar appears at the bottom:
 - GA section capacity data
 - Row label and seat numbering configurations
 - Section colors and pricing information
+- Underlay images (Base64-encoded with position, scale, opacity)
 - Canvas zoom and pan state
 
 ## Keyboard Shortcuts

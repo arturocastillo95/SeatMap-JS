@@ -84,17 +84,34 @@ export const ModeManager = {
     if (mode === 'seats') {
       this.enterEditSeatsMode();
       this.hidePricingSidebar();
+      this.hideUnderlaySidebar();
+      this.disableUnderlayInteractions();
     } else if (mode === 'pricing') {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
       }
       this.showPricingSidebar();
+      this.hideUnderlaySidebar();
+      this.disableUnderlayInteractions();
+    } else if (mode === 'underlay') {
+      if (previousMode === 'seats') {
+        this.exitEditSeatsMode();
+      }
+      if (previousMode === 'pricing') {
+        this.hidePricingSidebar();
+      }
+      this.showUnderlaySidebar();
+      this.enableUnderlayInteractions();
     } else {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
       }
       if (previousMode === 'pricing') {
         this.hidePricingSidebar();
+      }
+      if (previousMode === 'underlay') {
+        this.hideUnderlaySidebar();
+        this.disableUnderlayInteractions();
       }
     }
     
@@ -362,5 +379,39 @@ export const ModeManager = {
     this.updateServiceFeeUnit(type);
     this.savePricingData();
     this.updateTotalPrice();
+  },
+
+  // ============================================
+  // UNDERLAY MODE
+  // ============================================
+
+  showUnderlaySidebar() {
+    const underlaySidebar = document.getElementById('underlaySidebar');
+    if (underlaySidebar) {
+      underlaySidebar.classList.add('show');
+    }
+  },
+
+  hideUnderlaySidebar() {
+    const underlaySidebar = document.getElementById('underlaySidebar');
+    if (underlaySidebar) {
+      underlaySidebar.classList.remove('show');
+    }
+  },
+
+  enableUnderlayInteractions() {
+    // Dynamically import UnderlayManager
+    import('./managers/UnderlayManager.js').then(module => {
+      module.UnderlayManager.enableInteractions();
+      module.UnderlayManager.addResizeHandles();
+    });
+  },
+
+  disableUnderlayInteractions() {
+    // Dynamically import UnderlayManager
+    import('./managers/UnderlayManager.js').then(module => {
+      module.UnderlayManager.disableInteractions();
+      module.UnderlayManager.removeResizeHandles();
+    });
   }
 };

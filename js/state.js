@@ -6,9 +6,11 @@ export const State = {
   app: null,
   world: null,
   gridLayer: null,
+  underlayLayer: null,  // Layer for background images
   sectionLayer: null,
   seatLayer: null,
   sections: [],
+  selectedSections: [],
   sectionCounter: 1,
   
   // Tool modes
@@ -52,7 +54,18 @@ export const State = {
   isDraggingSections: false,
   dragStartPos: null,
   dragOriginalPositions: null,
-  potentialDragStart: null  // Stores initial click position before drag threshold is reached
+  potentialDragStart: null,  // Stores initial click position before drag threshold is reached
+
+  // Underlay state
+  underlaySprite: null,
+  underlayData: null,
+  underlayFileName: null,
+  underlayX: 0,
+  underlayY: 0,
+  underlayScale: 1,
+  underlayOpacity: 0.5,
+  underlayVisible: true,
+  underlayResizeHandles: null,
 };
 
 export const Elements = {};

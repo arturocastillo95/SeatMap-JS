@@ -10,11 +10,13 @@ import { InteractionManager } from './interactionManager.js';
 import { AlignmentManager } from './alignmentManager.js';
 import { FileManager } from './fileManager.js';
 import { ModeManager } from './modeManager.js';
+import { UnderlayManager } from './managers/UnderlayManager.js';
 
 async function initializeApp() {
   State.app = new PIXI.Application();
   State.world = new PIXI.Container();
   State.gridLayer = new PIXI.Container();
+  State.underlayLayer = new PIXI.Container();
   State.sectionLayer = new PIXI.Container();
   State.seatLayer = new PIXI.Container();
 
@@ -25,9 +27,10 @@ async function initializeApp() {
     background: CONFIG.BACKGROUND,
   });
 
-  // Add layers in correct z-order: grid -> sections -> seats
+  // Add layers in correct z-order: grid -> underlay -> sections -> seats
   State.app.stage.addChild(State.world);
   State.world.addChild(State.gridLayer);
+  State.world.addChild(State.underlayLayer);
   State.world.addChild(State.sectionLayer);
   State.world.addChild(State.seatLayer);
   
@@ -245,6 +248,166 @@ function setupPricingHandlers() {
   }
 }
 
+function setupUnderlayHandlers() {
+  const underlayFileInput = document.getElementById('underlayFileInput');
+  const underlayUploadBtn = document.getElementById('underlayUploadBtn');
+  const underlayOpacitySlider = document.getElementById('underlayOpacitySlider');
+  const underlayOpacityValue = document.getElementById('underlayOpacityValue');
+  const underlayScaleSlider = document.getElementById('underlayScaleSlider');
+  const underlayScaleValue = document.getElementById('underlayScaleValue');
+  const underlayResetScaleBtn = document.getElementById('underlayResetScaleBtn');
+  const underlayXInput = document.getElementById('underlayXInput');
+  const underlayYInput = document.getElementById('underlayYInput');
+  const underlayVisibleBtn = document.getElementById('underlayVisibleBtn');
+  const underlayClearBtn = document.getElementById('underlayClearBtn');
+  const underlayControls = document.getElementById('underlayControls');
+  const underlayFileInfo = document.getElementById('underlayFileInfo');
+
+  // Upload button - trigger file input
+  if (underlayUploadBtn && underlayFileInput) {
+    underlayUploadBtn.addEventListener('click', () => {
+      underlayFileInput.click();
+    });
+  }
+
+  // File input change - load image
+  if (underlayFileInput) {
+    underlayFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        try {
+          await UnderlayManager.loadImage(file);
+          // UI updates handled by 'underlayLoaded' event
+        } catch (error) {
+          alert(error.message);
+        }
+      }
+      // Reset input so same file can be loaded again
+      underlayFileInput.value = '';
+    });
+  }
+
+  // Opacity slider
+  if (underlayOpacitySlider && underlayOpacityValue) {
+    underlayOpacitySlider.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      underlayOpacityValue.textContent = `${value}%`;
+      UnderlayManager.setOpacity(value / 100);
+    });
+  }
+
+  // Scale slider
+  if (underlayScaleSlider && underlayScaleValue) {
+    underlayScaleSlider.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      underlayScaleValue.textContent = `${value}%`;
+      UnderlayManager.setScale(value / 100);
+    });
+  }
+
+  // Reset scale button
+  if (underlayResetScaleBtn && underlayScaleSlider && underlayScaleValue) {
+    underlayResetScaleBtn.addEventListener('click', () => {
+      underlayScaleSlider.value = 100;
+      underlayScaleValue.textContent = '100%';
+      UnderlayManager.setScale(1);
+    });
+  }
+
+  // Position inputs
+  if (underlayXInput) {
+    underlayXInput.addEventListener('input', (e) => {
+      const x = parseInt(e.target.value) || 0;
+      const y = parseInt(underlayYInput?.value) || 0;
+      UnderlayManager.setPosition(x, y);
+    });
+  }
+
+  if (underlayYInput) {
+    underlayYInput.addEventListener('input', (e) => {
+      const y = parseInt(e.target.value) || 0;
+      const x = parseInt(underlayXInput?.value) || 0;
+      UnderlayManager.setPosition(x, y);
+    });
+  }
+
+  // Visibility toggle
+  if (underlayVisibleBtn) {
+    underlayVisibleBtn.addEventListener('click', () => {
+      const isVisible = !State.underlayVisible;
+      UnderlayManager.setVisible(isVisible);
+      
+      if (isVisible) {
+        underlayVisibleBtn.classList.add('active');
+        underlayVisibleBtn.querySelector('span:last-child').textContent = 'Visible';
+        underlayVisibleBtn.querySelector('.material-symbols').textContent = 'visibility';
+      } else {
+        underlayVisibleBtn.classList.remove('active');
+        underlayVisibleBtn.querySelector('span:last-child').textContent = 'Hidden';
+        underlayVisibleBtn.querySelector('.material-symbols').textContent = 'visibility_off';
+      }
+    });
+  }
+
+  // Clear button
+  if (underlayClearBtn) {
+    underlayClearBtn.addEventListener('click', () => {
+      if (confirm('Remove the underlay image?')) {
+        UnderlayManager.clear();
+      }
+    });
+  }
+
+  // Listen for underlay loaded event
+  document.addEventListener('underlayLoaded', (e) => {
+    if (underlayControls && underlayFileInfo) {
+      underlayControls.style.display = 'block';
+      underlayFileInfo.style.display = 'block';
+      underlayFileInfo.textContent = `${e.detail.fileName} (${e.detail.width}×${e.detail.height})`;
+    }
+  });
+
+  // Listen for underlay cleared event
+  document.addEventListener('underlayCleared', () => {
+    if (underlayControls && underlayFileInfo) {
+      underlayControls.style.display = 'none';
+      underlayFileInfo.style.display = 'none';
+      underlayFileInfo.textContent = 'No image loaded';
+    }
+    
+    // Reset controls to defaults
+    if (underlayOpacitySlider && underlayOpacityValue) {
+      underlayOpacitySlider.value = 50;
+      underlayOpacityValue.textContent = '50%';
+    }
+    if (underlayScaleSlider && underlayScaleValue) {
+      underlayScaleSlider.value = 100;
+      underlayScaleValue.textContent = '100%';
+    }
+    if (underlayXInput) underlayXInput.value = '0';
+    if (underlayYInput) underlayYInput.value = '0';
+    if (underlayVisibleBtn) {
+      underlayVisibleBtn.classList.add('active');
+      underlayVisibleBtn.querySelector('span:last-child').textContent = 'Visible';
+      underlayVisibleBtn.querySelector('.material-symbols').textContent = 'visibility';
+    }
+  });
+
+  // Listen for position changes from drag
+  document.addEventListener('underlayPositionChanged', (e) => {
+    if (underlayXInput) underlayXInput.value = e.detail.x;
+    if (underlayYInput) underlayYInput.value = e.detail.y;
+  });
+
+  // Listen for scale changes from resize
+  document.addEventListener('underlayScaleChanged', (e) => {
+    if (underlayScaleSlider && underlayScaleValue) {
+      underlayScaleSlider.value = e.detail.scale;
+      underlayScaleValue.textContent = `${e.detail.scale}%`;
+    }
+  });
+}
+
 // Start the application
 (async () => {
   await initializeApp();
@@ -255,9 +418,11 @@ function setupPricingHandlers() {
   InteractionManager.init();
   AlignmentManager.init();
   ModeManager.init();
+  UnderlayManager.init();
   setupResizeHandler();
   setupFileHandlers();
   setupCollapsibleSections();
   setupContextMenu();
   setupPricingHandlers();
+  setupUnderlayHandlers();
 })();

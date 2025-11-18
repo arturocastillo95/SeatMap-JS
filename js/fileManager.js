@@ -35,6 +35,17 @@ export const FileManager = {
         panY: State.world.position.y
       },
       
+      // Underlay image (background)
+      underlay: State.underlayData ? {
+        dataUrl: State.underlayData,
+        fileName: State.underlayFileName,
+        x: State.underlayX,
+        y: State.underlayY,
+        scale: State.underlayScale,
+        opacity: State.underlayOpacity,
+        visible: State.underlayVisible
+      } : null,
+      
       // Section groups (for future use)
       groups: [],
       
@@ -309,6 +320,12 @@ export const FileManager = {
       if (jsonData.canvas) {
         State.world.scale.set(jsonData.canvas.zoom);
         State.world.position.set(jsonData.canvas.panX, jsonData.canvas.panY);
+      }
+      
+      // Restore underlay if present
+      if (jsonData.underlay) {
+        const { UnderlayManager } = await import('./managers/UnderlayManager.js');
+        await UnderlayManager.restore(jsonData.underlay);
       }
       
       // Import sections

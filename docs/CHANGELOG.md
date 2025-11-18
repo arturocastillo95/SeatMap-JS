@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Underlay feature** for background images in venue maps
+  - Import PNG, SVG, or JPG images as venue background/blueprint
+  - Accessible via Underlay mode button in left sidebar
+  - Drag and drop image positioning with click-and-drag
+  - Interactive 8-point resize handles (corners + edges) for scaling
+  - Real-time opacity control (0-100%) with slider
+  - Scale control (10-500%) with slider and reset button
+  - Manual position adjustment with X/Y coordinate inputs
+  - Visibility toggle to show/hide underlay
+  - Clear/remove underlay functionality
+  - Images saved in SMF format as Base64-encoded dataURL
+  - Layer ordering: Grid → Underlay → Sections → Seats
+  - Non-interactive when not in underlay mode
+  - Resize handles maintain constant screen size across zoom levels
+  - Automatic UI updates when dragging/resizing via custom events
+  - File info display showing image name and dimensions
 - **General Admission (GA) sections** for standing/open areas without individual seats
   - GA button in toolbar next to Seat Rows
   - Drag-to-create rectangular GA areas with grid snapping
@@ -55,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File format supports deleted seats
 - File format includes section colors and pricing data
 - **File format supports GA sections** with `type: "ga"` and `ga.capacity` fields
+- **File format supports underlay images** with Base64 dataURL, position, scale, opacity, and visibility
 - Total venue capacity calculation includes GA section capacity
 - Bounding box calculation includes row labels (excluding hidden labels)
 - Section remains selected during Edit Seats mode
@@ -68,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `managers/SectionInteractionHandler.js` - User interactions (~180 lines)
   - `managers/ResizeHandleManager.js` - GA resize handles (~300 lines)
   - `managers/SectionTransformations.js` - Stretch, curve, alignment (~350 lines)
+  - `managers/UnderlayManager.js` - Background image management (~550 lines)
   - Unified SectionManager delegates to specialized managers
   - Maintains 100% backward compatibility
   - Follows SOLID principles for better maintainability
