@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Multi-section dragging** - Drag multiple selected sections together as a group
 - **Special Needs Seats** for wheelchair-accessible seating
   - Toggle special needs status for individual seats or groups
   - Visual distinction: blue color (#2563eb) with accessibility icon
@@ -76,9 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - SMF format upgraded to v2.0.0
-- File format now includes individual seat data
+- File format now includes individual seat data with position data (baseX, baseY)
 - File format supports deleted seats
 - File format includes section colors and pricing data
+- File format stores row alignment preference (left/center/right)
+- File format includes exact center position (centerX, centerY) for pixel-perfect positioning
 - **File format supports GA sections** with `type: "ga"` and `ga.capacity` fields
 - **File format supports underlay images** with Base64 dataURL, position, scale, opacity, and visibility
 - Total venue capacity calculation includes GA section capacity
@@ -104,6 +107,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed 80% code duplication between createSection and createGASection
 
 ### Fixed
+- **Row alignment not persisting** - Left/right aligned seats now maintain alignment after save/load
+- **Section positions drifting** - Exact center positions stored to prevent floating-point errors
+- **Seat positions misaligned** - Base seat positions restored from file and recalculated on load
+- **Multi-section drag not working** - Fixed by preserving selection when clicking already-selected section
+- **Delete section errors** - Added safety checks for undefined objects (labels, handles)
 - Bounding box not resizing after row label removal
 - Bounding box includes hidden labels in calculations
 - Section deselection on canvas click in Edit Seats mode

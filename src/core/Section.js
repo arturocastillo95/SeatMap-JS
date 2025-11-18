@@ -102,6 +102,9 @@ export class Section extends PIXI.Graphics {
     this._seatNumberStart = config.seatNumberStart || 1;
     this._seatNumberReversed = config.seatNumberReversed || false;
     
+    // Row alignment
+    this._rowAlignment = config.rowAlignment || 'center'; // 'left', 'center', 'right'
+    
     // GA-specific properties
     if (this._isGeneralAdmission) {
       this._gaCapacity = config.gaCapacity || 0;
@@ -417,6 +420,18 @@ export class Section extends PIXI.Graphics {
       throw new Error('Seat number reversed must be a boolean');
     }
     this._seatNumberReversed = value;
+  }
+
+  get rowAlignment() {
+    return this._rowAlignment;
+  }
+
+  set rowAlignment(value) {
+    const validAlignments = ['left', 'center', 'right'];
+    if (!validAlignments.includes(value)) {
+      throw new Error('Row alignment must be left, center, or right');
+    }
+    this._rowAlignment = value;
   }
 
   // ============================================

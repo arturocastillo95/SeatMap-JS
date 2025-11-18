@@ -222,7 +222,8 @@ The optional `underlay` object contains background image data:
 - `dataUrl`: Base64-encoded image data URL (supports PNG, SVG, JPG)
 - `fileName`: Original filename for reference
 - `sourceUrl`: Optional original URL if loaded from external source (can be `null`)
-- `x`, `y`: Position coordinates in world space
+- `x`, `y`: Top-left position coordinates in world space
+- `centerX`, `centerY`: Exact center position for pixel-perfect positioning (v2.0.0+)
 - `scale`: Scale factor (0.1 to 5.0, where 1.0 is 100%)
 - `opacity`: Transparency level (0.0 to 1.0)
 - `visible`: Whether underlay is currently visible
@@ -239,8 +240,10 @@ The optional `underlay` object contains background image data:
 ### v2.0.0 (Current)
 
 **New Features:**
-- Individual seat data with row/column indices
+- Individual seat data with row/column indices and base positions (baseX, baseY)
 - Support for deleted seats (seats not in array are considered deleted)
+- Row alignment preference (left/center/right) stored in `rowAlignment` field
+- Exact center position (centerX, centerY) for pixel-perfect section positioning
 - Row label starting point and direction
 - Seat numbering starting point and direction
 - **General Admission (GA) sections** with capacity-based tracking
@@ -321,9 +324,11 @@ Each seat object contains:
 - `rowIndex`: 0-based row index
 - `colIndex`: 0-based column index
 - `number`: Display number as string
-- `baseX`, `baseY`: Base position relative to section
+- `baseX`, `baseY`: Base position relative to section (required for proper alignment restoration)
 - `specialNeeds`: Boolean indicating wheelchair-accessible seat (default: false)
 - `metadata`: Extensible custom data
+
+**Note:** The `baseX` and `baseY` values are critical for restoring row alignment (left/center/right) when loading files.
 
 **Special Needs Seats:**
 - When `specialNeeds: true`, the seat should be rendered with:

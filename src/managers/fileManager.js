@@ -84,6 +84,8 @@ export const FileManager = {
         // Position and dimensions
         x: section.x - section.pivot.x,  // Convert from center to top-left
         y: section.y - section.pivot.y,
+        centerX: section.x,  // Store exact center position
+        centerY: section.y,
         width: section.contentWidth,
         height: section.contentHeight,
         
@@ -177,6 +179,8 @@ export const FileManager = {
       // Position and dimensions
       x: section.x - section.pivot.x,  // Convert from center to top-left
       y: section.y - section.pivot.y,
+      centerX: section.x,  // Store exact center position  
+      centerY: section.y,
       width: section.contentWidth,
       height: section.contentHeight,
       
@@ -212,6 +216,9 @@ export const FileManager = {
         reversed: section.seatNumberReversed || false,
         perRow: true
       },
+      
+      // Row alignment
+      rowAlignment: section.rowAlignment || 'center',
       
       // Individual seats (for supporting deleted seats and special needs)
       seats: seats.map(seat => ({
@@ -396,6 +403,12 @@ export const FileManager = {
         section.angle = section.rotationDegrees;
       }
       
+      // Restore exact center position if available (v2.0.0+)
+      if (data.centerX !== undefined && data.centerY !== undefined) {
+        section.x = data.centerX;
+        section.y = data.centerY;
+      }
+      
       return section;
     }
     
@@ -428,6 +441,11 @@ export const FileManager = {
     if (data.seatNumbering) {
       section.seatNumberStart = data.seatNumbering.start || 1;
       section.seatNumberReversed = data.seatNumbering.reversed || false;
+    }
+    
+    // Restore row alignment (v2.0.0+)
+    if (data.rowAlignment) {
+      section.rowAlignment = data.rowAlignment;
     }
     
     // Restore pricing (v2.0.0+)
@@ -473,6 +491,16 @@ export const FileManager = {
           State.seatLayer.removeChild(seat);
           seat.destroy();
         } else {
+          // Restore seat positions from saved data
+          if (seatData.baseX !== undefined) {
+            seat.baseRelativeX = seatData.baseX;
+            seat.relativeX = seatData.baseX;
+          }
+          if (seatData.baseY !== undefined) {
+            seat.baseRelativeY = seatData.baseY;
+            seat.relativeY = seatData.baseY;
+          }
+          
           // Restore special needs status
           if (seatData.specialNeeds) {
             SeatManager.setSpecialNeeds(seat, true);
@@ -481,6 +509,9 @@ export const FileManager = {
         }
       }
       section.seats = keptSeats;
+      
+      // Update seat positions after restoring base positions
+      SectionManager.positionSeatsAndLabels(section);
     }
     
     // Apply transformations in correct order
@@ -506,6 +537,15 @@ export const FileManager = {
     // Update row labels if needed
     if (data.rowLabels.type !== 'none') {
       SectionManager.updateRowLabels(section);
+    }
+    
+    // Restore exact center position if available (v2.0.0+)
+    if (data.centerX !== undefined && data.centerY !== undefined) {
+      section.x = data.centerX;
+      section.y = data.centerY;
+      
+      // Update all seat positions to match the new section position
+      SectionManager.positionSeatsAndLabels(section);
     }
     
     return section;

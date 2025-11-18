@@ -221,6 +221,9 @@ export const SectionTransformations = {
   alignRows(section, alignment) {
     if (section.isGeneralAdmission) return;
     
+    // Store the alignment preference
+    section.rowAlignment = alignment;
+    
     // Group seats by row
     const rowMap = new Map();
     section.seats.forEach(seat => {

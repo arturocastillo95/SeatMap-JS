@@ -85,21 +85,38 @@ export const SectionFactory = {
       State.selectedSections.splice(selectionIndex, 1);
     }
     
+    // Remove resize handles (for GA sections)
+    if (section.resizeHandles && section.resizeHandles.length > 0) {
+      section.resizeHandles.forEach(handle => {
+        if (handle && handle.parent) {
+          handle.parent.removeChild(handle);
+          handle.destroy();
+        }
+      });
+      section.resizeHandles = [];
+    }
+    
     // Remove seats
     if (section.seats && section.seats.length > 0) {
       section.seats.forEach(seat => {
-        State.seatLayer.removeChild(seat);
-        seat.destroy({ children: true });
+        if (seat) {
+          State.seatLayer.removeChild(seat);
+          seat.destroy({ children: true });
+        }
       });
     }
     
     // Remove row labels
     if (section.rowLabels && section.rowLabels.length > 0) {
       section.rowLabels.forEach(label => {
-        State.seatLayer.removeChild(label.labelObj);
-        State.seatLayer.removeChild(label.labelBg);
-        label.labelObj.destroy();
-        label.labelBg.destroy();
+        if (label.labelObj) {
+          State.seatLayer.removeChild(label.labelObj);
+          label.labelObj.destroy();
+        }
+        if (label.labelBg) {
+          State.seatLayer.removeChild(label.labelBg);
+          label.labelBg.destroy();
+        }
       });
     }
     

@@ -31,12 +31,9 @@ export const SectionInteractionHandler = {
           }
           this.selectSection(section);
           selectionChanged = true;
-        } else if (!e.shiftKey && State.selectedSections.length > 1) {
-          // If clicking on an already-selected section while others are selected, make it the only selection
-          this.deselectAll();
-          this.selectSection(section);
-          selectionChanged = true;
         }
+        // If clicking on an already-selected section, keep the selection as-is
+        // This allows dragging multiple selected sections together
         
         // Always ensure resize handles for GA sections when there's only one selected
         if (section.isGeneralAdmission && State.selectedSections.length === 1) {
