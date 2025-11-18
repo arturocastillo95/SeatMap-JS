@@ -81,31 +81,85 @@ This directory contains focused, single-responsibility modules that were extract
 ---
 
 ### **SectionTransformations.js** (~350 lines)
-**Purpose**: Geometric transformations
+**Purpose**: Geometric transformations with deleted seat support
 
 **Responsibilities**:
 - Applying stretch (horizontal/vertical) with negative value support
-- Applying curve transformations
+- Applying curve transformations (theater-style upward arc)
 - Calculating safe curve limits
 - Aligning rows (left/center/right)
+- Preserving alignment and gaps when seats are deleted
 - Recalculating section dimensions
 - Rebuilding corrupted base positions from row/column indices
 
 **Key Functions**:
 - `applyStretch(section, { skipLayout })` - Apply stretch with optional dimension recalculation skip
+- `applyStretchTransform(section)` - Core stretch logic preserving alignment
 - `applyCurve(section, { skipLayout })` - Apply curve with optional dimension recalculation skip
+- `applyCurveTransform(section)` - Core curve logic with virtual grid concept
 - `calculateMaxCurve(section)`
 - `alignRows(section, alignment)`
 - `recalculateSectionDimensions(section)`
 - `positionSeatsAndLabels(section)`
-- `rebuildBasePositions(section)` - NEW: Reconstructs clean 24px grid from rowIndex/colIndex
+- `rebuildBasePositions(section)` - Reconstructs clean 24px grid from rowIndex/colIndex
 
-**Recent Changes**:
-- Added `skipLayout` parameter to `applyStretch()` and `applyCurve()` for use during multi-section alignment
-- Added `rebuildBasePositions()` function to fix corrupted base positions in loaded files
-- Extended stretch range to support negative values (-80 to 100)
-- Added MIN_SPACING constant (22px) to prevent seat overlap during compression
-- When `skipLayout: true`, transformations apply without recalculating section dimensions/pivot
+**Virtual Grid Concept**:
+All transformations treat seats as if they exist on a complete virtual grid, where deleted seats leave logical gaps but don't affect calculations. This ensures:
+- Alignment (left/center/right) is preserved during transformations
+- Gaps from deleted seats remain consistent
+- Stretch and curve work correctly with edited sections
+
+**Stretch Transformation Algorithm**:
+```javascript
+// 1. Group seats by row (baseRelativeY)
+// 2. For each row independently:
+//    - Sort by colIndex (not position!)
+//    - Find min/max colIndex to determine virtual row width
+//    - Calculate alignment offset based on section.rowAlignment
+//    - Position each seat: baseX + alignmentOffset + (colIndex offset * effectiveSpacing)
+// 3. Vertical: Apply stretch delta based on row array index
+```
+
+**Key Principles**:
+- Uses `colIndex` to preserve logical grid positions (not compact array indices)
+- Calculates alignment offset per row based on width difference
+- Standard 24px `GRID_SPACING` defines logical structure
+- `effectiveSpacing = GRID_SPACING + stretch` for visual spacing
+- Processes each row independently to maintain row-specific alignment
+
+**Curve Transformation Algorithm**:
+```javascript
+// 1. Find longest row (by width) and use its center as curve's vertical axis
+// 2. Calculate stable logical columns for ALL seats:
+//    _logicalCol = round((baseX - worldCenterX) / GRID_SPACING)
+//    Uses BASE spacing (24px), not stretched spacing!
+// 3. For each row:
+//    rowFlatY = topBaseY + rowIndex * effectiveSpacingY
+//    r = baseR + rowIndex * effectiveSpacingY
+// 4. For each seat:
+//    theta = (effectiveSpacingX / r) * _logicalCol
+//    x = worldCenterX + r * sin(theta)
+//    y = rowFlatY - r * (1 - cos(theta))  // Subtract for upward curve!
+```
+
+**Key Principles**:
+- Longest row's center defines the curve's axis of symmetry
+- Logical columns calculated from BASE spacing (stable across stretch values)
+- `effectiveSpacingX` affects arc length spacing, not logical positions
+- Subtracts `curveDY` to create upward theater-style curve
+- Works correctly with left/center/right alignments
+
+**Recent Changes (November 2024)**:
+- **MAJOR REWRITE**: Complete overhaul of stretch and curve algorithms
+- Stretch now preserves row alignment (left/center/right) with deleted seats
+- Curve now uses longest row center as axis, maintaining alignment
+- Logical columns calculated from base spacing, not stretched spacing
+- Fixed curve direction (now curves upward, not downward)
+- Added early exit when stretch/curve is zero (performance)
+- Clearer variable names: `rowFlatY`, `curveDY`, `worldCenterX`, `_logicalCol`
+- Added `skipLayout` parameter for multi-section alignment
+- Added `rebuildBasePositions()` for fixing corrupted files
+- Extended stretch range to -80 to 100 with MIN_SPACING enforcement
 
 ---
 

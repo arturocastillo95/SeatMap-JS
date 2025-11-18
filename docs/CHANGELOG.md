@@ -126,16 +126,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Centralized visual constants to VISUAL_CONFIG (no more magic numbers)
   - Removed 80% code duplication between createSection and createGASection
 
-### In Progress
-- **Multi-section alignment preserving row alignment** - Work in progress to fix corruption of seat spacing when aligning multiple sections
+### Fixed
+- **Stretch and curve transformations now preserve alignment with deleted seats** - Complete rewrite of transformation algorithms to properly handle sections where seats have been deleted
+  - **Virtual Grid Concept**: Transformations treat seats as if they exist on a complete virtual grid, with deleted seats leaving logical gaps
+  - **Stretch transformation improvements**:
+    - Uses `colIndex` to calculate logical column positions (preserves gaps from deleted seats)
+    - Processes each row independently to maintain row-specific alignment
+    - Calculates alignment offset per row based on `section.rowAlignment` (left/center/right)
+    - Uses standard 24px grid spacing as base for logical structure
+    - Stretch affects spacing only, not logical grid positions
+    - Vertical stretch applied consistently across all rows
+  - **Curve transformation improvements**:
+    - Finds longest row and uses its center as the curve's vertical axis of symmetry
+    - Calculates stable logical columns using BASE spacing (24px), not stretched spacing
+    - Logical column indices remain constant when stretch is applied
+    - Uses polar-to-Cartesian conversion for proper circular arc
+    - Subtracts `curveDY` to create upward theater-style curve (not downward)
+    - Stretch affects arc length spacing while preserving logical grid structure
+    - Works correctly with all alignment types (left/center/right)
+  - **Row alignment improvements**:
+    - Calculates virtual row width including gaps from deleted seats
+    - Uses `colIndex` offsets to preserve spacing for missing seats
+    - Properly positions seats based on logical grid positions
+  - **Key benefits**:
+    - Alignment (left/center/right) is preserved during all transformations
+    - Deleted seats create consistent gaps regardless of transformation
+    - Curve creates proper theater-style upward arc
+    - More intuitive and maintainable code with clear variable names
+- **Multi-section alignment preserving row alignment**
   - Added `rebuildBasePositions()` function to reconstruct clean 24px grid from row/column indices
   - Added `skipLayout` option to prevent dimension recalculation during transformations
   - Rewrote all 6 alignment methods (alignLeft, alignRight, alignTop, alignBottom, alignCenterHorizontal, alignCenterVertical) to treat sections as rigid blocks
   - Removed three-phase flatten/restore pattern that was causing dimension recalculation
   - New approach: Apply transforms with skipLayout → Align positions → Position seats
-  - **Status**: Implementation complete, requires testing to verify fix
-
-### Fixed
 - **Seat positioning on file load** - Fixed critical issue where seats appeared outside the bounding box after loading files. Root cause: layout shift was being applied twice - once by modifying `relativeX/Y` in `updateRowLabels()` and again by `positionSeatsAndLabels()` during positioning. Solution: Only apply shift to labels, let `positionSeatsAndLabels()` handle seat positioning using `seat.x = section.x + (seat.relativeX + layoutShiftX) - pivot.x`
 - **Seat number preservation** - Fixed issue where seat numbers were being recalculated on file load instead of preserving the exact numbers shown. This is critical when seats have been deleted - remaining seats must keep their original numbers (e.g., seats 1, 2, 5 after deleting 3, 4). Solution: Restore `number` field from saved data and skip `updateSeatNumbers()` call when loading files with individual seat data
 - **Row alignment and transformation restoration** - Fixed critical issue where rows with different lengths (e.g., rows A-D with fewer seats) would lose their right/left alignment after save/load, and sections with curve/stretch transformations would revert to base positions. Root causes: (1) Only saving `baseX/baseY` without transformed positions, (2) Transformation recalculation was skipped but positions weren't preserved. Solution: Now save BOTH `baseX/baseY` (for editing) AND `relativeX/relativeY` (final transformed positions). On load, restore transformed positions, calculate proper layout shift for bounding box, and use `_loadedFromFile` flag to prevent repositioning. After load completes, flag is cleared so future edits work correctly
