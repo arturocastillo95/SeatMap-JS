@@ -2,10 +2,10 @@
 // SECTION INTERACTION HANDLER - Section user interactions
 // ============================================
 
-import { State } from '../state.js';
-import { VISUAL_CONFIG } from '../config.js';
-import { Utils } from '../utils.js';
-import { COLORS } from '../config.js';
+import { State } from '../core/state.js';
+import { VISUAL_CONFIG } from '../core/config.js';
+import { Utils } from '../core/utils.js';
+import { COLORS } from '../core/config.js';
 
 /**
  * Handler for section interactions

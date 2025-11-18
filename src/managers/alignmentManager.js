@@ -2,7 +2,7 @@
 // ALIGNMENT MANAGER (OPTIMIZED)
 // ============================================
 
-import { State, Elements } from './state.js';
+import { State, Elements } from '../core/state.js';
 import { SectionManager } from './sectionManager.js';
 
 export const AlignmentManager = {

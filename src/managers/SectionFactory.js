@@ -2,8 +2,8 @@
 // SECTION FACTORY - Section creation logic
 // ============================================
 
-import { State } from '../state.js';
-import { Section } from '../Section.js';
+import { State } from '../core/state.js';
+import { Section } from '../core/Section.js';
 
 /**
  * Factory for creating sections

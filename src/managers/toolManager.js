@@ -2,9 +2,9 @@
 // TOOL MANAGER
 // ============================================
 
-import { State, Elements } from './state.js';
-import { CONFIG, COLORS } from './config.js';
-import { Utils } from './utils.js';
+import { State, Elements } from '../core/state.js';
+import { CONFIG, COLORS } from '../core/config.js';
+import { Utils } from '../core/utils.js';
 import { SectionManager } from './sectionManager.js';
 
 export const ToolManager = {

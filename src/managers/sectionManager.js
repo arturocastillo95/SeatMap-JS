@@ -4,11 +4,11 @@
 // This is the main entry point that coordinates all section-related operations
 // by delegating to focused, single-responsibility modules.
 
-import { SectionFactory } from './managers/SectionFactory.js';
-import { SeatManager } from './managers/SeatManager.js';
-import { SectionInteractionHandler } from './managers/SectionInteractionHandler.js';
-import { ResizeHandleManager } from './managers/ResizeHandleManager.js';
-import { SectionTransformations } from './managers/SectionTransformations.js';
+import { SectionFactory } from './SectionFactory.js';
+import { SeatManager } from './SeatManager.js';
+import { SectionInteractionHandler } from './SectionInteractionHandler.js';
+import { ResizeHandleManager } from './ResizeHandleManager.js';
+import { SectionTransformations } from './SectionTransformations.js';
 
 /**
  * Unified SectionManager that delegates to specialized managers

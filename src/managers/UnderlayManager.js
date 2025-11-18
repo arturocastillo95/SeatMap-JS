@@ -2,8 +2,8 @@
 // UNDERLAY MANAGER - Background image management
 // ============================================
 
-import { State } from '../state.js';
-import { Utils } from '../utils.js';
+import { State } from '../core/state.js';
+import { Utils } from '../core/utils.js';
 
 /**
  * Manager for background underlay images (PNG/SVG)

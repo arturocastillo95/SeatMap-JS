@@ -4,7 +4,7 @@
 
 import { State } from './state.js';
 import { CONFIG, VISUAL_CONFIG, COLORS } from './config.js';
-import { SectionManager } from './sectionManager.js';
+import { SectionManager } from '../managers/sectionManager.js';
 
 export function setupGrid() {
   const grid = new PIXI.Graphics();

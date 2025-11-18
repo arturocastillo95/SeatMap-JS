@@ -2,15 +2,15 @@
 // MAIN APPLICATION
 // ============================================
 
-import { State, Elements } from './state.js';
-import { CONFIG } from './config.js';
-import { setupGrid, setupExampleSection } from './sceneSetup.js';
-import { ToolManager } from './toolManager.js';
-import { InteractionManager } from './interactionManager.js';
-import { AlignmentManager } from './alignmentManager.js';
-import { FileManager } from './fileManager.js';
-import { ModeManager } from './modeManager.js';
-import { UnderlayManager } from './managers/UnderlayManager.js';
+import { State, Elements } from '../src/core/state.js';
+import { CONFIG } from '../src/core/config.js';
+import { setupGrid, setupExampleSection } from '../src/core/sceneSetup.js';
+import { ToolManager } from '../src/managers/toolManager.js';
+import { InteractionManager } from '../src/managers/interactionManager.js';
+import { AlignmentManager } from '../src/managers/alignmentManager.js';
+import { FileManager } from '../src/managers/fileManager.js';
+import { ModeManager } from '../src/managers/modeManager.js';
+import { UnderlayManager } from '../src/managers/UnderlayManager.js';
 
 async function initializeApp() {
   State.app = new PIXI.Application();

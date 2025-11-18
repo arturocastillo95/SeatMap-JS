@@ -2,7 +2,7 @@
 // MODE MANAGER - Handle app mode switching
 // ============================================
 
-import { State } from './state.js';
+import { State } from '../core/state.js';
 
 export const ModeManager = {
   init() {
@@ -401,7 +401,7 @@ export const ModeManager = {
 
   enableUnderlayInteractions() {
     // Dynamically import UnderlayManager
-    import('./managers/UnderlayManager.js').then(module => {
+    import('./UnderlayManager.js').then(module => {
       module.UnderlayManager.enableInteractions();
       module.UnderlayManager.addResizeHandles();
     });
@@ -409,7 +409,7 @@ export const ModeManager = {
 
   disableUnderlayInteractions() {
     // Dynamically import UnderlayManager
-    import('./managers/UnderlayManager.js').then(module => {
+    import('./UnderlayManager.js').then(module => {
       module.UnderlayManager.disableInteractions();
       module.UnderlayManager.removeResizeHandles();
     });

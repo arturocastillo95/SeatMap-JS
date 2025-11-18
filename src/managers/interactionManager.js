@@ -2,8 +2,8 @@
 // INTERACTION MANAGER
 // ============================================
 
-import { State } from './state.js';
-import { Utils } from './utils.js';
+import { State } from '../core/state.js';
+import { Utils } from '../core/utils.js';
 import { ToolManager } from './toolManager.js';
 import { SectionManager } from './sectionManager.js';
 import { AlignmentManager } from './alignmentManager.js';

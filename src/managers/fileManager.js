@@ -2,7 +2,7 @@
 // FILE MANAGER - Save/Load Venue Maps
 // ============================================
 
-import { State } from './state.js';
+import { State } from '../core/state.js';
 
 export const FileManager = {
   /**
@@ -325,7 +325,7 @@ export const FileManager = {
       
       // Restore underlay if present
       if (jsonData.underlay) {
-        const { UnderlayManager } = await import('./managers/UnderlayManager.js');
+        const { UnderlayManager } = await import('./UnderlayManager.js');
         await UnderlayManager.restore(jsonData.underlay);
       }
       

@@ -2,9 +2,9 @@
 // SEAT MANAGER - Seat creation and management
 // ============================================
 
-import { State } from '../state.js';
-import { CONFIG, COLORS, VISUAL_CONFIG } from '../config.js';
-import { Utils } from '../utils.js';
+import { State } from '../core/state.js';
+import { CONFIG, COLORS, VISUAL_CONFIG } from '../core/config.js';
+import { Utils } from '../core/utils.js';
 import { SectionTransformations } from './SectionTransformations.js';
 
 /**

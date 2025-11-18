@@ -2,9 +2,9 @@
 // RESIZE HANDLE MANAGER - GA section resize handles
 // ============================================
 
-import { State } from '../state.js';
-import { VISUAL_CONFIG } from '../config.js';
-import { Utils } from '../utils.js';
+import { State } from '../core/state.js';
+import { VISUAL_CONFIG } from '../core/config.js';
+import { Utils } from '../core/utils.js';
 
 /**
  * Manager for GA section resize handles
