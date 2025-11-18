@@ -444,6 +444,26 @@ function setupUnderlayHandlers() {
   });
 }
 
+function setupSeatHandlers() {
+  const specialNeedsToggle = document.getElementById('specialNeedsToggle');
+  
+  if (specialNeedsToggle) {
+    specialNeedsToggle.addEventListener('change', async (e) => {
+      const isChecked = e.target.checked;
+      
+      // Import SeatManager dynamically
+      const { SeatManager } = await import('../src/managers/SeatManager.js');
+      
+      // Apply to all selected seats
+      State.selectedSeats.forEach(seat => {
+        SeatManager.setSpecialNeeds(seat, isChecked);
+      });
+      
+      console.log(`Set ${State.selectedSeats.length} seats to special needs: ${isChecked}`);
+    });
+  }
+}
+
 // Start the application
 (async () => {
   await initializeApp();
@@ -461,4 +481,5 @@ function setupUnderlayHandlers() {
   setupContextMenu();
   setupPricingHandlers();
   setupUnderlayHandlers();
+  setupSeatHandlers();
 })();

@@ -190,6 +190,26 @@ Use the Underlay feature to import venue blueprints or floor plans as background
 2. Press **Backspace** to delete
 3. Seats are removed immediately
 
+### Special Needs Seats
+
+Mark seats as wheelchair-accessible:
+
+1. **Select seats** in Edit Seats mode (single or multiple)
+2. **Seat Properties sidebar** appears on the right
+3. Check **"Special Needs Seat"** checkbox
+4. Selected seats turn **blue** with **accessibility icon** (♿)
+5. Changes are saved in the venue file
+
+**Visual Indicators:**
+- Regular seats: Gray with seat number
+- Special needs seats: Blue (#2563eb) with accessibility icon
+
+**Features:**
+- Toggle on/off for individual or multiple seats
+- Indeterminate checkbox state when selection has mixed types
+- Persists through file save/load
+- Icon uses Material Symbols font (accessible_forward)
+
 ### Exiting Edit Seats Mode
 
 - Press **ESC** key

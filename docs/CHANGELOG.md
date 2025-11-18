@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Special Needs Seats** for wheelchair-accessible seating
+  - Toggle special needs status for individual seats or groups
+  - Visual distinction: blue color (#2563eb) with accessibility icon
+  - Material Symbols "accessible_forward" icon replaces seat number
+  - Toggle checkbox in seat properties sidebar when seats are selected
+  - Sidebar appears only when seats are selected
+  - Multi-seat toggle support with indeterminate state
+  - Special needs status persists in file save/load
+  - Works with Edit Seats mode selection
 - **Underlay feature** for background images in venue maps
   - Import PNG, SVG, or JPG images as venue background/blueprint
   - Accessible via Underlay mode button in left sidebar

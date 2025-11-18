@@ -322,7 +322,14 @@ Each seat object contains:
 - `colIndex`: 0-based column index
 - `number`: Display number as string
 - `baseX`, `baseY`: Base position relative to section
+- `specialNeeds`: Boolean indicating wheelchair-accessible seat (default: false)
 - `metadata`: Extensible custom data
+
+**Special Needs Seats:**
+- When `specialNeeds: true`, the seat should be rendered with:
+  - Blue color (#2563eb)
+  - Accessibility icon instead of seat number
+  - Clear visual distinction from regular seats
 
 ### Style Fields
 

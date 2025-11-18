@@ -78,6 +78,7 @@ export const SeatManager = {
         seatContainer.cursor = 'pointer';
         seatContainer.seatId = `${section.sectionId}-R${row + 1}S${col + 1}`;
         seatContainer.seatNumber = seatNumber;
+        seatContainer.specialNeeds = false; // Track special needs status
         
         this.setupSeatInteractions(seatContainer);
         State.seatLayer.addChild(seatContainer);
@@ -96,7 +97,7 @@ export const SeatManager = {
       
       // In edit seats mode, select/deselect the seat
       if (State.isEditSeatsMode) {
-        const { ModeManager } = await import('../modeManager.js');
+        const { ModeManager } = await import('./modeManager.js');
         
         if (State.selectedSeats.includes(seat)) {
           ModeManager.deselectSeat(seat);
@@ -120,6 +121,53 @@ export const SeatManager = {
     });
 
     seat.on('pointerout', Utils.hideTooltip);
+  },
+
+  /**
+   * Update seat visual based on special needs status
+   * @param {PIXI.Container} seat - The seat container
+   */
+  updateSeatVisual(seat) {
+    // Get the graphics and label (children of the container)
+    const seatGraphics = seat.children[0]; // The circle
+    const seatLabel = seat.children[1]; // The text label
+    
+    if (seat.specialNeeds) {
+      // Special needs seat: blue color with accessibility icon
+      seatGraphics.clear();
+      seatGraphics.circle(0, 0, 10);
+      seatGraphics.fill({ color: 0x2563eb, alpha: 1 }); // Blue color
+      
+      // Replace number with accessibility icon (Material Symbols: accessible_forward)
+      seatLabel.text = 'accessible_forward';
+      seatLabel.style.fontFamily = 'Material Symbols Outlined';
+      seatLabel.style.fontSize = 14;
+      seatLabel.style.fontWeight = 'normal';
+    } else {
+      // Regular seat: gray color with seat number
+      seatGraphics.clear();
+      seatGraphics.circle(0, 0, 10);
+      seatGraphics.fill({ color: COLORS.SEAT, alpha: 1 });
+      
+      // Show seat number
+      seatLabel.text = seat.seatNumber.toString();
+      seatLabel.style.fontFamily = 'system-ui, sans-serif';
+      seatLabel.style.fontSize = 10;
+      seatLabel.style.fontWeight = 'bold';
+    }
+  },
+
+  /**
+   * Toggle special needs status for a seat
+   * @param {PIXI.Container} seat - The seat container
+   * @param {boolean} isSpecialNeeds - Whether to mark as special needs
+   */
+  setSpecialNeeds(seat, isSpecialNeeds) {
+    seat.specialNeeds = isSpecialNeeds;
+    this.updateSeatVisual(seat);
+    
+    // Dispatch event to update UI
+    document.dispatchEvent(new CustomEvent('seatPropertiesChanged'));
   },
 
   /**

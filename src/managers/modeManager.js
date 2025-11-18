@@ -83,6 +83,7 @@ export const ModeManager = {
     // Handle mode-specific logic
     if (mode === 'seats') {
       this.enterEditSeatsMode();
+      // Don't show seat sidebar initially - wait for seat selection
       this.hidePricingSidebar();
       this.hideUnderlaySidebar();
       this.disableUnderlayInteractions();
@@ -90,6 +91,7 @@ export const ModeManager = {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
       }
+      this.hideSeatSidebar();
       this.showPricingSidebar();
       this.hideUnderlaySidebar();
       this.disableUnderlayInteractions();
@@ -97,6 +99,7 @@ export const ModeManager = {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
       }
+      this.hideSeatSidebar();
       if (previousMode === 'pricing') {
         this.hidePricingSidebar();
       }
@@ -106,6 +109,7 @@ export const ModeManager = {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
       }
+      this.hideSeatSidebar();
       if (previousMode === 'pricing') {
         this.hidePricingSidebar();
       }
@@ -190,6 +194,13 @@ export const ModeManager = {
     if (!State.selectedSeats.includes(seat)) {
       State.selectedSeats.push(seat);
       this.highlightSeat(seat, true);
+      
+      // Show sidebar when first seat is selected
+      if (State.selectedSeats.length === 1) {
+        this.showSeatSidebar();
+      } else {
+        this.updateSeatSidebar();
+      }
     }
   },
   
@@ -198,6 +209,13 @@ export const ModeManager = {
     if (index > -1) {
       State.selectedSeats.splice(index, 1);
       this.highlightSeat(seat, false);
+      
+      // Hide sidebar when no seats are selected
+      if (State.selectedSeats.length === 0) {
+        this.hideSeatSidebar();
+      } else {
+        this.updateSeatSidebar();
+      }
     }
   },
   
@@ -206,6 +224,7 @@ export const ModeManager = {
       this.highlightSeat(seat, false);
     });
     State.selectedSeats = [];
+    this.hideSeatSidebar();
   },
   
   highlightSeat(seat, selected) {
@@ -396,6 +415,42 @@ export const ModeManager = {
     const underlaySidebar = document.getElementById('underlaySidebar');
     if (underlaySidebar) {
       underlaySidebar.classList.remove('show');
+    }
+  },
+
+  showSeatSidebar() {
+    const seatSidebar = document.getElementById('seatSidebar');
+    if (seatSidebar) {
+      seatSidebar.classList.add('show');
+    }
+    this.updateSeatSidebar();
+  },
+
+  hideSeatSidebar() {
+    const seatSidebar = document.getElementById('seatSidebar');
+    if (seatSidebar) {
+      seatSidebar.classList.remove('show');
+    }
+  },
+
+  updateSeatSidebar() {
+    const count = State.selectedSeats.length;
+    const countDisplay = document.getElementById('seatSelectionCount');
+    const specialNeedsToggle = document.getElementById('specialNeedsToggle');
+    
+    if (countDisplay) {
+      countDisplay.textContent = count === 0 
+        ? 'No seats selected' 
+        : `${count} seat${count > 1 ? 's' : ''} selected`;
+    }
+    
+    // Check if all selected seats have special needs enabled
+    if (specialNeedsToggle && count > 0) {
+      const allSpecialNeeds = State.selectedSeats.every(seat => seat.specialNeeds);
+      const someSpecialNeeds = State.selectedSeats.some(seat => seat.specialNeeds);
+      
+      specialNeedsToggle.checked = allSpecialNeeds;
+      specialNeedsToggle.indeterminate = someSpecialNeeds && !allSpecialNeeds;
     }
   },
 

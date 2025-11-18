@@ -213,13 +213,14 @@ export const FileManager = {
         perRow: true
       },
       
-      // Individual seats (for supporting deleted seats)
+      // Individual seats (for supporting deleted seats and special needs)
       seats: seats.map(seat => ({
         rowIndex: seat.rowIndex,
         colIndex: seat.colIndex,
         number: seat.children[1] ? seat.children[1].text : (seat.colIndex + 1).toString(),
         baseX: seat.baseRelativeX,
         baseY: seat.baseRelativeY,
+        specialNeeds: seat.specialNeeds || false,
         metadata: {}
       })),
       
@@ -333,7 +334,7 @@ export const FileManager = {
       const { SectionManager } = await import('./sectionManager.js');
       
       for (const sectionData of jsonData.sections) {
-        this.deserializeSection(sectionData, SectionManager);
+        await this.deserializeSection(sectionData, SectionManager);
       }
       
       console.log(`✓ Loaded ${jsonData.sections.length} sections with ${jsonData.venue.capacity} total seats`);
@@ -348,7 +349,7 @@ export const FileManager = {
   /**
    * Deserialize a single section from JSON
    */
-  deserializeSection(data, SectionManager) {
+  async deserializeSection(data, SectionManager) {
     // Check if this is a GA section
     if (data.type === 'ga') {
       // Create GA section
@@ -453,24 +454,33 @@ export const FileManager = {
     section.stretchH = data.transform.stretchH;
     section.stretchV = data.transform.stretchV;
     
-    // Handle deleted seats (v2.0.0)
+    // Handle deleted seats and restore special needs status (v2.0.0+)
     if (hasIndividualSeats) {
-      // Create a set of existing seat positions for fast lookup
-      const existingSeats = new Set(data.seats.map(s => `${s.rowIndex},${s.colIndex}`));
+      // Create a map of seat data for fast lookup
+      const seatDataMap = new Map(data.seats.map(s => [`${s.rowIndex},${s.colIndex}`, s]));
       
-      // Remove seats that were deleted
-      section.seats = section.seats.filter(seat => {
+      // Import SeatManager once for efficiency
+      const { SeatManager } = await import('./SeatManager.js');
+      
+      // Remove deleted seats and restore specialNeeds property
+      const keptSeats = [];
+      for (const seat of section.seats) {
         const key = `${seat.rowIndex},${seat.colIndex}`;
-        const exists = existingSeats.has(key);
+        const seatData = seatDataMap.get(key);
         
-        if (!exists) {
-          // Remove from display
+        if (!seatData) {
+          // Seat was deleted - remove from display
           State.seatLayer.removeChild(seat);
           seat.destroy();
+        } else {
+          // Restore special needs status
+          if (seatData.specialNeeds) {
+            SeatManager.setSpecialNeeds(seat, true);
+          }
+          keptSeats.push(seat);
         }
-        
-        return exists;
-      });
+      }
+      section.seats = keptSeats;
     }
     
     // Apply transformations in correct order
