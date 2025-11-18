@@ -49,6 +49,16 @@ export const SectionTransformations = {
     const stretchH = section.stretchH || 0;
     const stretchV = section.stretchV || 0;
     
+    // If no stretch, just reset to base positions
+    if (stretchH === 0 && stretchV === 0) {
+      section.seats.forEach(seat => {
+        seat.relativeX = seat.baseRelativeX;
+        seat.relativeY = seat.baseRelativeY;
+      });
+      return;
+    }
+    
+    // Group seats by row using baseRelativeY (actual row position)
     const rowMap = new Map();
     section.seats.forEach(seat => {
       const rowY = seat.baseRelativeY;
@@ -57,43 +67,68 @@ export const SectionTransformations = {
       }
       rowMap.get(rowY).push(seat);
     });
-    const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
+    const sortedRows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
     
-    const colMap = new Map();
-    section.seats.forEach(seat => {
-      const colX = seat.baseRelativeX;
-      if (!colMap.has(colX)) {
-        colMap.set(colX, []);
-      }
-      colMap.get(colX).push(seat);
-    });
-    const cols = Array.from(colMap.keys()).sort((a, b) => a - b);
-    
-    // Calculate base spacing
-    const baseSeatSpacingX = cols.length > 1 ? (cols[cols.length - 1] - cols[0]) / (cols.length - 1) : 20;
-    const baseSeatSpacingY = rows.length > 1 ? (rows[rows.length - 1][0] - rows[0][0]) / (rows.length - 1) : 20;
+    // Calculate the standard grid spacing (24px)
+    const GRID_SPACING = 24;
     
     // Minimum spacing to prevent overlap (seat diameter is 20px, add 2px gap)
     const MIN_SPACING = 22;
     
     // Clamp stretch values to prevent overlap
-    const maxNegativeStretchH = -(baseSeatSpacingX - MIN_SPACING);
-    const maxNegativeStretchV = -(baseSeatSpacingY - MIN_SPACING);
+    const maxNegativeStretchH = -(GRID_SPACING - MIN_SPACING);
+    const maxNegativeStretchV = -(GRID_SPACING - MIN_SPACING);
     const clampedStretchH = Math.max(stretchH, maxNegativeStretchH);
     const clampedStretchV = Math.max(stretchV, maxNegativeStretchV);
     
-    section.seats.forEach(seat => {
-      let rowIndex = 0;
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i][1].includes(seat)) {
-          rowIndex = i;
-          break;
-        }
-      }
-      const colIndex = cols.indexOf(seat.baseRelativeX);
+    // Calculate the effective spacing after stretch
+    const effectiveSpacingX = GRID_SPACING + clampedStretchH;
+    const effectiveSpacingY = GRID_SPACING + clampedStretchV;
+    
+    // Process each row independently to preserve horizontal alignment
+    sortedRows.forEach(([baseY, rowSeats], arrayIndex) => {
+      // Sort by column index
+      rowSeats.sort((a, b) => a.colIndex - b.colIndex);
       
-      seat.relativeX = seat.baseRelativeX + (colIndex * clampedStretchH);
-      seat.relativeY = seat.baseRelativeY + (rowIndex * clampedStretchV);
+      // Get the min and max column indices for this row
+      const minColIndex = Math.min(...rowSeats.map(s => s.colIndex));
+      const maxColIndex = Math.max(...rowSeats.map(s => s.colIndex));
+      
+      // Calculate the row's width with base spacing and with stretched spacing
+      const baseRowWidth = (maxColIndex - minColIndex) * GRID_SPACING;
+      const stretchedRowWidth = (maxColIndex - minColIndex) * effectiveSpacingX;
+      const widthDifference = stretchedRowWidth - baseRowWidth;
+      
+      // Use the first seat's base position as reference
+      const firstSeat = rowSeats[0];
+      const baseReferenceX = firstSeat.baseRelativeX;
+      
+      // Determine the alignment type by checking if the row is centered/left/right aligned
+      // We check the center of the base row against the section center
+      const baseCenterX = baseReferenceX + (baseRowWidth / 2);
+      
+      // Calculate where this row should start after stretch to maintain alignment
+      // For center alignment: shift left by half the width increase
+      // For left alignment: no shift
+      // For right alignment: shift left by full width increase
+      let alignmentOffset = 0;
+      if (section.rowAlignment === 'center') {
+        alignmentOffset = -(widthDifference / 2);
+      } else if (section.rowAlignment === 'right') {
+        alignmentOffset = -widthDifference;
+      }
+      // left alignment needs no offset
+      
+      // Apply stretch to this row while preserving alignment
+      rowSeats.forEach(seat => {
+        const colOffset = seat.colIndex - minColIndex;
+        
+        // Horizontal: start from base reference, add alignment offset, then spacing
+        seat.relativeX = baseReferenceX + alignmentOffset + (colOffset * effectiveSpacingX);
+        
+        // Vertical: use the base Y position plus vertical stretch based on array position
+        seat.relativeY = baseY + (arrayIndex * (effectiveSpacingY - GRID_SPACING));
+      });
     });
   },
 
@@ -138,7 +173,17 @@ export const SectionTransformations = {
     const curve = section.curve || 0;
     const stretchH = section.stretchH || 0;
     const stretchV = section.stretchV || 0;
-    
+
+    // 0) no curve? just keep flat (or stretched)
+    if (!curve) {
+      section.seats.forEach(seat => {
+        seat.relativeX = seat.baseRelativeX;
+        seat.relativeY = seat.baseRelativeY;
+      });
+      return;
+    }
+
+    // Group seats by row
     const rowMap = new Map();
     section.seats.forEach(seat => {
       const rowY = seat.baseRelativeY;
@@ -147,68 +192,74 @@ export const SectionTransformations = {
       }
       rowMap.get(rowY).push(seat);
     });
-    const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
-    
-    const colMap = new Map();
-    section.seats.forEach(seat => {
-      const colX = seat.baseRelativeX;
-      if (!colMap.has(colX)) {
-        colMap.set(colX, []);
-      }
-      colMap.get(colX).push(seat);
-    });
-    const cols = Array.from(colMap.keys()).sort((a, b) => a - b);
-    
-    // Calculate original spacing
-    const seatSpacingX = cols.length > 1 ? (cols[cols.length - 1] - cols[0]) / (cols.length - 1) : 20;
-    const seatSpacingY = rows.length > 1 ? (rows[rows.length - 1][0] - rows[0][0]) / (rows.length - 1) : 20;
-    
-    // Minimum spacing to prevent overlap (seat diameter is 20px, add 2px gap)
+    const sortedRows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
+
+    // Calculate standard grid spacing
+    const GRID_SPACING = 24;
     const MIN_SPACING = 22;
     
-    // Clamp stretch values to prevent overlap
-    const maxNegativeStretchH = -(seatSpacingX - MIN_SPACING);
-    const maxNegativeStretchV = -(seatSpacingY - MIN_SPACING);
+    // Clamp stretch values
+    const maxNegativeStretchH = -(GRID_SPACING - MIN_SPACING);
+    const maxNegativeStretchV = -(GRID_SPACING - MIN_SPACING);
     const clampedStretchH = Math.max(stretchH, maxNegativeStretchH);
     const clampedStretchV = Math.max(stretchV, maxNegativeStretchV);
     
-    // Apply stretch to spacing
-    const effectiveSeatSpacingX = seatSpacingX + clampedStretchH;
-    const effectiveSeatSpacingY = seatSpacingY + clampedStretchV;
-    
-    // Convert curve value (0-100) to curvature k
+    // Effective spacing after stretch
+    const effectiveSpacingX = GRID_SPACING + clampedStretchH;
+    const effectiveSpacingY = GRID_SPACING + clampedStretchV;
+
+    // Calculate curvature parameters
     const k = curve / 2000;
-    const R = 1 / k;
-    
-    const centerCol = (cols.length - 1) / 2;
-    
-    section.seats.forEach(seat => {
-      let rowIndex = 0;
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i][1].includes(seat)) {
-          rowIndex = i;
-          break;
-        }
+    const baseR = 1 / k;
+
+    // 1) Find the longest row (by width) AND its center X in the FLAT layout
+    let longestRowWidth = -Infinity;
+    let longestRowCenterX = 0;
+
+    sortedRows.forEach(([rowBaseY, rowSeats]) => {
+      rowSeats.sort((a, b) => a.baseRelativeX - b.baseRelativeX);
+      const rowMinX = rowSeats[0].baseRelativeX;
+      const rowMaxX = rowSeats[rowSeats.length - 1].baseRelativeX;
+      const rowWidth = rowMaxX - rowMinX;
+      const rowCenter = (rowMinX + rowMaxX) / 2;
+
+      if (rowWidth > longestRowWidth) {
+        longestRowWidth = rowWidth;
+        longestRowCenterX = rowCenter;
       }
-      const colIndex = cols.indexOf(seat.baseRelativeX);
-      
-      // Calculate radius for this row
-      const r = R + rowIndex * effectiveSeatSpacingY;
-      
-      // Arc length spacing
-      const seatsFromCenter = colIndex - centerCol;
-      const theta = (effectiveSeatSpacingX / r) * seatsFromCenter;
-      
-      // Convert polar to Cartesian
-      const x = r * Math.sin(theta);
-      const y = r * Math.cos(theta) - R;
-      
-      // Offset to match the original center position
-      const centerX = (cols[0] + cols[cols.length - 1]) / 2;
-      const centerY = rows[0][0];
-      
-      seat.relativeX = centerX + x;
-      seat.relativeY = centerY + y;
+    });
+
+    // Vertical axis of the curve
+    const worldCenterX = longestRowCenterX;
+
+    // 2) Global logical column (stable, uses BASE spacing)
+    section.seats.forEach(seat => {
+      const dx = seat.baseRelativeX - worldCenterX;
+      seat._logicalCol = Math.round(dx / GRID_SPACING);
+    });
+
+    // 3) Flat baseline Y for the first row
+    const topBaseY = sortedRows[0][0];
+
+    // 4) Apply curve
+    sortedRows.forEach(([_, rowSeats], rowIndex) => {
+      // Y position this row would have if it were flat & stretched
+      const rowFlatY = topBaseY + rowIndex * effectiveSpacingY;
+
+      // Radius for this row (also spaced by effectiveSpacingY)
+      const r = baseR + rowIndex * effectiveSpacingY;
+
+      rowSeats.forEach(seat => {
+        const colFromCenter = seat._logicalCol; // 0 at center line
+        const theta = (effectiveSpacingX / r) * colFromCenter;
+
+        const xOnArc = r * Math.sin(theta);
+        // Arc "depth" relative to flat row: 0 at center, >0 towards sides
+        const curveDY = r * (1 - Math.cos(theta));
+
+        seat.relativeX = worldCenterX + xOnArc;
+        seat.relativeY = rowFlatY - curveDY;  // Subtract to curve upward (theater style)
+      });
     });
   },
 
@@ -308,9 +359,16 @@ export const SectionTransformations = {
     
     // Align each row
     rows.forEach(([rowY, rowSeats]) => {
-      // Sort seats left to right to maintain order
-      rowSeats.sort((a, b) => a.baseRelativeX - b.baseRelativeX);
-      const rowWidth = (rowSeats.length - 1) * seatSpacingX;
+      // Sort seats by column index to maintain grid order
+      rowSeats.sort((a, b) => a.colIndex - b.colIndex);
+      
+      // Find the min and max column indices to determine the virtual row width
+      const minColIndex = Math.min(...rowSeats.map(s => s.colIndex));
+      const maxColIndex = Math.max(...rowSeats.map(s => s.colIndex));
+      const virtualSeatsInRow = maxColIndex - minColIndex + 1; // Total slots including missing seats
+      
+      // Calculate the virtual width this row would occupy (including gaps from deleted seats)
+      const rowWidth = (virtualSeatsInRow - 1) * seatSpacingX;
       
       // Calculate offset based on alignment type
       let offset = 0;
@@ -325,9 +383,10 @@ export const SectionTransformations = {
         offset = -(rowWidth / 2);
       }
       
-      // Position each seat in the row with consistent spacing
-      rowSeats.forEach((seat, index) => {
-        seat.baseRelativeX = centerX + offset + index * seatSpacingX;
+      // Position each seat in the row based on its column index (preserving gaps)
+      rowSeats.forEach((seat) => {
+        const offsetFromStart = seat.colIndex - minColIndex;
+        seat.baseRelativeX = centerX + offset + (offsetFromStart * seatSpacingX);
         seat.relativeX = seat.baseRelativeX;
       });
     });

@@ -109,15 +109,12 @@ export const SectionFactory = {
     // Remove row labels
     if (section.rowLabels && section.rowLabels.length > 0) {
       section.rowLabels.forEach(label => {
-        if (label.labelObj) {
-          State.seatLayer.removeChild(label.labelObj);
-          label.labelObj.destroy();
-        }
-        if (label.labelBg) {
-          State.seatLayer.removeChild(label.labelBg);
-          label.labelBg.destroy();
+        if (label && label.parent) {
+          label.parent.removeChild(label);
+          label.destroy();
         }
       });
+      section.rowLabels = [];
     }
     
     // Remove selection border
