@@ -39,6 +39,7 @@ export const FileManager = {
       underlay: State.underlayData ? {
         dataUrl: State.underlayData,
         fileName: State.underlayFileName,
+        sourceUrl: State.underlaySourceUrl || null,
         x: State.underlayX,
         y: State.underlayY,
         scale: State.underlayScale,

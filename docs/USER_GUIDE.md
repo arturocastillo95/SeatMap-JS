@@ -107,10 +107,17 @@ Use the Underlay feature to import venue blueprints or floor plans as background
 
 ### Importing an Image
 
+**From File:**
 1. Click **Underlay** in the left mode bar
 2. Click **Choose Image** button
 3. Select a PNG, SVG, or JPG file
 4. Image appears at origin (0,0) with default settings
+
+**From URL:**
+1. Click **Underlay** in the left mode bar
+2. Paste an image URL in the "Image URL" field
+3. Click the download button or press Enter
+4. Image is fetched and loaded at origin (0,0)
 
 ### Positioning the Underlay
 
@@ -155,6 +162,8 @@ Use the Underlay feature to import venue blueprints or floor plans as background
 - Underlay renders behind sections (layer order: Grid → Underlay → Sections)
 - Images are saved as Base64 in the venue file
 - Large images may increase file size significantly
+- URL-loaded images are converted to Base64 for portability
+- Use CORS-enabled image URLs for external loading
 
 ## Edit Seats Mode
 

@@ -60,6 +60,7 @@ export const State = {
   underlaySprite: null,
   underlayData: null,
   underlayFileName: null,
+  underlaySourceUrl: null,
   underlayX: 0,
   underlayY: 0,
   underlayScale: 1,

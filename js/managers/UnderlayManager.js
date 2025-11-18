@@ -37,55 +37,109 @@ export const UnderlayManager = {
       // Read file as data URL
       const dataUrl = await this.readFileAsDataURL(file);
       
-      // Clear existing underlay
-      this.clear();
+      // Load the image using common method
+      await this.loadImageFromDataUrl(dataUrl, file.name, null);
       
-      // Create PIXI sprite from URL
-      const texture = await PIXI.Assets.load(dataUrl);
-      const sprite = new PIXI.Sprite(texture);
-      
-      // Store original dimensions
-      sprite.originalWidth = texture.width;
-      sprite.originalHeight = texture.height;
-      
-      // Position at origin
-      sprite.x = 0;
-      sprite.y = 0;
-      
-      // Set default opacity
-      sprite.alpha = State.underlayOpacity;
-      
-      // Make non-interactive by default (don't block clicks)
-      sprite.eventMode = 'none';
-      
-      // Add to underlay layer
-      State.underlayLayer.addChild(sprite);
-      State.underlaySprite = sprite;
-      State.underlayData = dataUrl;
-      State.underlayFileName = file.name;
-      
-      // Setup interactions if in underlay mode
-      if (State.currentMode === 'underlay') {
-        this.enableInteractions();
-        this.addResizeHandles();
-      }
-      
-      console.log(`✓ Loaded underlay: ${file.name} (${texture.width}x${texture.height})`);
-      
-      // Dispatch event for UI updates
-      document.dispatchEvent(new CustomEvent('underlayLoaded', {
-        detail: {
-          fileName: file.name,
-          width: texture.width,
-          height: texture.height
-        }
-      }));
-      
-      return sprite;
+      return State.underlaySprite;
     } catch (error) {
       console.error('Failed to load image:', error);
       throw new Error(`Failed to load image: ${error.message}`);
     }
+  },
+
+  /**
+   * Load an image from a URL
+   * @param {string} url - The image URL to load
+   */
+  async loadImageFromURL(url) {
+    if (!url) {
+      throw new Error('No URL provided');
+    }
+
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch {
+      throw new Error('Invalid URL format');
+    }
+
+    try {
+      // Try to load the image to verify it's accessible
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+
+      // Get the blob and convert to data URL for consistency
+      const blob = await response.blob();
+      const dataUrl = await this.blobToDataURL(blob);
+      
+      // Extract filename from URL
+      const urlObj = new URL(url);
+      const fileName = urlObj.pathname.split('/').pop() || 'external-image';
+      
+      // Load the image using common method
+      await this.loadImageFromDataUrl(dataUrl, fileName, url);
+      
+      return State.underlaySprite;
+    } catch (error) {
+      console.error('Failed to load image from URL:', error);
+      throw new Error(`Failed to load image from URL: ${error.message}`);
+    }
+  },
+
+  /**
+   * Common method to load image from data URL
+   * @param {string} dataUrl - Base64 data URL
+   * @param {string} fileName - Display name for the image
+   * @param {string|null} sourceUrl - Original URL if loaded from URL
+   */
+  async loadImageFromDataUrl(dataUrl, fileName, sourceUrl) {
+    // Clear existing underlay
+    this.clear();
+    
+    // Create PIXI sprite from data URL
+    const texture = await PIXI.Assets.load(dataUrl);
+    const sprite = new PIXI.Sprite(texture);
+    
+    // Store original dimensions
+    sprite.originalWidth = texture.width;
+    sprite.originalHeight = texture.height;
+    
+    // Position at origin
+    sprite.x = 0;
+    sprite.y = 0;
+    
+    // Set default opacity
+    sprite.alpha = State.underlayOpacity;
+    
+    // Make non-interactive by default (don't block clicks)
+    sprite.eventMode = 'none';
+    
+    // Add to underlay layer
+    State.underlayLayer.addChild(sprite);
+    State.underlaySprite = sprite;
+    State.underlayData = dataUrl;
+    State.underlayFileName = fileName;
+    State.underlaySourceUrl = sourceUrl; // Store original URL if applicable
+    
+    // Setup interactions if in underlay mode
+    if (State.currentMode === 'underlay') {
+      this.enableInteractions();
+      this.addResizeHandles();
+    }
+    
+    console.log(`✓ Loaded underlay: ${fileName} (${texture.width}x${texture.height})`);
+    
+    // Dispatch event for UI updates
+    document.dispatchEvent(new CustomEvent('underlayLoaded', {
+      detail: {
+        fileName: fileName,
+        width: texture.width,
+        height: texture.height,
+        sourceUrl: sourceUrl
+      }
+    }));
   },
 
   /**
@@ -99,6 +153,19 @@ export const UnderlayManager = {
       reader.onload = (e) => resolve(e.target.result);
       reader.onerror = (e) => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file);
+    });
+  },
+
+  /**
+   * Convert blob to data URL
+   * @param {Blob} blob - The blob to convert
+   */
+  blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(new Error('Failed to read blob'));
+      reader.readAsDataURL(blob);
     });
   },
 
@@ -231,6 +298,7 @@ export const UnderlayManager = {
       State.underlaySprite = sprite;
       State.underlayData = data.dataUrl;
       State.underlayFileName = data.fileName || 'underlay';
+      State.underlaySourceUrl = data.sourceUrl || null;
       State.underlayX = sprite.x;
       State.underlayY = sprite.y;
       State.underlayScale = sprite.scale.x;

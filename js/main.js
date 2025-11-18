@@ -251,6 +251,8 @@ function setupPricingHandlers() {
 function setupUnderlayHandlers() {
   const underlayFileInput = document.getElementById('underlayFileInput');
   const underlayUploadBtn = document.getElementById('underlayUploadBtn');
+  const underlayUrlInput = document.getElementById('underlayUrlInput');
+  const underlayLoadUrlBtn = document.getElementById('underlayLoadUrlBtn');
   const underlayOpacitySlider = document.getElementById('underlayOpacitySlider');
   const underlayOpacityValue = document.getElementById('underlayOpacityValue');
   const underlayScaleSlider = document.getElementById('underlayScaleSlider');
@@ -284,6 +286,40 @@ function setupUnderlayHandlers() {
       }
       // Reset input so same file can be loaded again
       underlayFileInput.value = '';
+    });
+  }
+
+  // Load from URL button
+  if (underlayLoadUrlBtn && underlayUrlInput) {
+    underlayLoadUrlBtn.addEventListener('click', async () => {
+      const url = underlayUrlInput.value.trim();
+      if (!url) {
+        alert('Please enter an image URL');
+        return;
+      }
+
+      try {
+        underlayLoadUrlBtn.disabled = true;
+        underlayLoadUrlBtn.querySelector('.material-symbols').textContent = 'hourglass_empty';
+        
+        await UnderlayManager.loadImageFromURL(url);
+        // UI updates handled by 'underlayLoaded' event
+        
+        // Clear input after successful load
+        underlayUrlInput.value = '';
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        underlayLoadUrlBtn.disabled = false;
+        underlayLoadUrlBtn.querySelector('.material-symbols').textContent = 'download';
+      }
+    });
+
+    // Also allow Enter key to load URL
+    underlayUrlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        underlayLoadUrlBtn.click();
+      }
     });
   }
 

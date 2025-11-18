@@ -1486,6 +1486,34 @@
           <span class="material-symbols">upload_file</span>
           <span>Choose Image</span>
         </button>
+        
+        <div style="margin-top: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+          <span style="color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">or</span>
+          <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+        </div>
+        
+        <div class="sidebar-input-group">
+          <label class="sidebar-label">Image URL</label>
+          <div style="display: flex; gap: 8px;">
+            <input
+              type="url"
+              class="sidebar-input"
+              id="underlayUrlInput"
+              placeholder="https://example.com/image.png"
+              style="flex: 1;"
+            />
+            <button
+              class="sidebar-increment-btn"
+              id="underlayLoadUrlBtn"
+              title="Load URL"
+              style="width: 36px; height: 36px;"
+            >
+              <span class="material-symbols">download</span>
+            </button>
+          </div>
+        </div>
+        
         <div class="sidebar-info" id="underlayFileInfo" style="display: none; margin-top: 8px;">
           No image loaded
         </div>

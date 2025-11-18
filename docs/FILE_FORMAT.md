@@ -30,6 +30,16 @@ SeatMap JS uses a JSON-based file format called SMF (Seat Map Format) for saving
     "panY": 0
   },
   
+  "underlay": {
+    "dataUrl": "data:image/png;base64,...",
+    "fileName": "blueprint.png",
+    "x": 0,
+    "y": 0,
+    "scale": 1.0,
+    "opacity": 0.5,
+    "visible": true
+  },
+  
   "groups": [],
   "sections": [...],
   "objects": [],
@@ -190,6 +200,40 @@ GA sections are used for standing areas or general admission zones without indiv
 }
 ```
 
+## Underlay (Background Image)
+
+The optional `underlay` object contains background image data:
+
+```json
+{
+  "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgA...",
+  "fileName": "venue-blueprint.png",
+  "sourceUrl": "https://example.com/blueprint.png",
+  "x": 0,
+  "y": 0,
+  "scale": 1.0,
+  "opacity": 0.5,
+  "visible": true
+}
+```
+
+### Underlay Fields
+
+- `dataUrl`: Base64-encoded image data URL (supports PNG, SVG, JPG)
+- `fileName`: Original filename for reference
+- `sourceUrl`: Optional original URL if loaded from external source (can be `null`)
+- `x`, `y`: Position coordinates in world space
+- `scale`: Scale factor (0.1 to 5.0, where 1.0 is 100%)
+- `opacity`: Transparency level (0.0 to 1.0)
+- `visible`: Whether underlay is currently visible
+
+**Notes:**
+- Underlay is optional; field can be `null` or omitted if no image
+- Images are Base64-encoded to keep venue maps self-contained
+- `sourceUrl` is preserved for reference but not used for loading (dataUrl is used)
+- Large images significantly increase file size
+- Render order: Grid → Underlay → Sections → Seats
+
 ## Version History
 
 ### v2.0.0 (Current)
@@ -200,6 +244,7 @@ GA sections are used for standing areas or general admission zones without indiv
 - Row label starting point and direction
 - Seat numbering starting point and direction
 - **General Admission (GA) sections** with capacity-based tracking
+- **Underlay support** for background images/blueprints
 - Section color customization (`sectionColor` field in style)
 - Pricing information per section (base price and service fees)
 - Row label hidden mode for viewer use
@@ -211,6 +256,13 @@ GA sections are used for standing areas or general admission zones without indiv
 - Empty `seats` array (no individual seats)
 - Supports rotation (0-360 degrees)
 - Width and height can be customized
+
+**Underlay Features:**
+- Optional `underlay` object at root level
+- Base64-encoded image data for portability
+- Position, scale, opacity, and visibility settings
+- Supports PNG, SVG, and JPG formats
+- Can be null or omitted if no background image
 
 **Breaking Changes:**
 - `seats` field changed from simple count to full array
@@ -292,8 +344,14 @@ Each seat object contains:
 A separate viewer application can use this format to:
 
 1. Parse the JSON file
-2. Iterate through `sections` array
-3. For each section:
+2. **Render underlay (if present):**
+   - Check if `underlay` object exists and `visible` is true
+   - Load image from `dataUrl` (Base64-encoded)
+   - Position at `x`, `y` coordinates
+   - Apply `scale` and `opacity` settings
+   - Render below all other elements (grid → underlay → sections)
+3. Iterate through `sections` array
+4. For each section:
    - Check `type` field to determine section type
    - **For regular sections:**
      - Render seats from the `seats` array
@@ -304,13 +362,15 @@ A separate viewer application can use this format to:
      - Display section name centered in the area
      - Show capacity from `ga.capacity` field
      - Apply rotation if specified
-4. Apply styling from `style` object (including `sectionColor`)
-5. Display pricing information if needed
+5. Apply styling from `style` object (including `sectionColor`)
+6. Display pricing information if needed
 
 **Notes:** 
 - Seats not present in the `seats` array have been deleted and should not be rendered
 - GA sections have empty `seats` arrays and should display capacity instead
 - Row labels with `hidden: true` should be rendered with reduced visibility (grayed out)
+- Underlay can be `null` or omitted if no background image is present
+- Underlay should render behind all sections but above the grid
 
 ## Extensibility
 
