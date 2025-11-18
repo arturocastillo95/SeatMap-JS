@@ -241,6 +241,8 @@ export const FileManager = {
         seatColor: "#ffffff",
         borderColor: "#3b82f6",
         sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
+        fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
+        strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
         opacity: 1.0
       },
       
@@ -471,6 +473,16 @@ export const FileManager = {
       SectionManager.setSectionColor(section, colorHex);
     }
     
+    // Restore fill and stroke visibility (v2.0.0+)
+    if (data.style) {
+      if (data.style.fillVisible !== undefined) {
+        section.fillVisible = data.style.fillVisible;
+      }
+      if (data.style.strokeVisible !== undefined) {
+        section.strokeVisible = data.style.strokeVisible;
+      }
+    }
+    
     // Restore transformations
     section.rotationDegrees = data.transform.rotation;
     section.curve = data.transform.curve;
@@ -533,6 +545,11 @@ export const FileManager = {
         }
       }
       section.seats = keptSeats;
+      
+      // IMPORTANT: Rebuild base positions from row/column indices
+      // This fixes corrupted base positions that may exist in the file
+      const { SectionTransformations } = await import('./SectionTransformations.js');
+      SectionTransformations.rebuildBasePositions(section);
       
       // Mark section as loaded from file BEFORE applying transformations
       // This prevents transformation functions from recalculating seat positions

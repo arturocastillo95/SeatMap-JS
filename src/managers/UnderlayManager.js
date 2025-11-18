@@ -21,8 +21,9 @@ export const UnderlayManager = {
   /**
    * Load an image file (PNG or SVG) as underlay
    * @param {File} file - The image file to load
+   * @param {boolean} preserveSettings - Whether to preserve current position, scale, and opacity
    */
-  async loadImage(file) {
+  async loadImage(file, preserveSettings = false) {
     if (!file) {
       throw new Error('No file provided');
     }
@@ -38,7 +39,7 @@ export const UnderlayManager = {
       const dataUrl = await this.readFileAsDataURL(file);
       
       // Load the image using common method
-      await this.loadImageFromDataUrl(dataUrl, file.name, null);
+      await this.loadImageFromDataUrl(dataUrl, file.name, null, preserveSettings);
       
       return State.underlaySprite;
     } catch (error) {
@@ -50,8 +51,9 @@ export const UnderlayManager = {
   /**
    * Load an image from a URL
    * @param {string} url - The image URL to load
+   * @param {boolean} preserveSettings - Whether to preserve current position, scale, and opacity
    */
-  async loadImageFromURL(url) {
+  async loadImageFromURL(url, preserveSettings = false) {
     if (!url) {
       throw new Error('No URL provided');
     }
@@ -79,7 +81,7 @@ export const UnderlayManager = {
       const fileName = urlObj.pathname.split('/').pop() || 'external-image';
       
       // Load the image using common method
-      await this.loadImageFromDataUrl(dataUrl, fileName, url);
+      await this.loadImageFromDataUrl(dataUrl, fileName, url, preserveSettings);
       
       return State.underlaySprite;
     } catch (error) {
@@ -93,8 +95,22 @@ export const UnderlayManager = {
    * @param {string} dataUrl - Base64 data URL
    * @param {string} fileName - Display name for the image
    * @param {string|null} sourceUrl - Original URL if loaded from URL
+   * @param {boolean} preserveSettings - Whether to preserve current position, scale, and opacity
    */
-  async loadImageFromDataUrl(dataUrl, fileName, sourceUrl) {
+  async loadImageFromDataUrl(dataUrl, fileName, sourceUrl, preserveSettings = false) {
+    // Store current settings if preserving and underlay exists
+    let currentSettings = null;
+    if (preserveSettings && State.underlaySprite) {
+      currentSettings = {
+        x: State.underlayX,
+        y: State.underlayY,
+        scale: State.underlayScale,
+        opacity: State.underlayOpacity,
+        visible: State.underlayVisible
+      };
+      console.log('Preserving underlay settings:', currentSettings);
+    }
+    
     // Clear existing underlay
     this.clear();
     
@@ -106,12 +122,26 @@ export const UnderlayManager = {
     sprite.originalWidth = texture.width;
     sprite.originalHeight = texture.height;
     
-    // Position at origin
-    sprite.x = 0;
-    sprite.y = 0;
-    
-    // Set default opacity
-    sprite.alpha = State.underlayOpacity;
+    // Apply position and scale
+    if (currentSettings) {
+      // Use preserved settings
+      sprite.x = currentSettings.x;
+      sprite.y = currentSettings.y;
+      sprite.scale.set(currentSettings.scale, currentSettings.scale);
+      sprite.alpha = currentSettings.opacity;
+      State.underlayX = currentSettings.x;
+      State.underlayY = currentSettings.y;
+      State.underlayScale = currentSettings.scale;
+      State.underlayOpacity = currentSettings.opacity;
+      State.underlayVisible = currentSettings.visible;
+    } else {
+      // Use defaults
+      sprite.x = 0;
+      sprite.y = 0;
+      State.underlayScale = 1.0;
+      State.underlayOpacity = 0.5;
+      sprite.alpha = State.underlayOpacity;
+    }
     
     // Make non-interactive by default (don't block clicks)
     sprite.eventMode = 'none';

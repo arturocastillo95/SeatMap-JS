@@ -1176,9 +1176,16 @@
           >
         </div>
         <div class="sidebar-accordion-body" id="outlineContent">
+          <label class="sidebar-label" style="font-size: 11px; margin-bottom: 4px;">Visibility</label>
           <div class="sidebar-button-group">
-            <button class="sidebar-toggle-btn active">None</button>
-            <button class="sidebar-toggle-btn">Auto</button>
+            <button class="sidebar-toggle-btn active" id="sectionFillToggle">
+              <span class="material-symbols">format_color_fill</span>
+              <span>Fill</span>
+            </button>
+            <button class="sidebar-toggle-btn active" id="sectionStrokeToggle">
+              <span class="material-symbols">border_color</span>
+              <span>Stroke</span>
+            </button>
           </div>
           
           <!-- Size controls for GA sections -->
@@ -1431,7 +1438,7 @@
                 type="range"
                 class="sidebar-slider-input"
                 id="stretchHSlider"
-                min="0"
+                min="-80"
                 max="100"
                 value="0"
                 step="1"
@@ -1465,7 +1472,7 @@
                 type="range"
                 class="sidebar-slider-input"
                 id="stretchVSlider"
-                min="0"
+                min="-80"
                 max="100"
                 value="0"
                 step="1"
@@ -1559,6 +1566,13 @@
         
         <div class="sidebar-info" id="underlayFileInfo" style="display: none; margin-top: 8px;">
           No image loaded
+        </div>
+        
+        <div class="sidebar-input-group" id="underlayReplaceOption" style="display: none; margin-top: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="underlayReplaceInPlace" style="width: 16px; height: 16px; cursor: pointer;" checked>
+            <span style="font-size: 12px; color: #aab0c0; font-weight: 500;">Replace in place (keep size & position)</span>
+          </label>
         </div>
       </div>
 

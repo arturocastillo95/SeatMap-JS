@@ -119,6 +119,8 @@ function initializeElements() {
   Elements.stretchVSection = document.getElementById('stretchVSection');
   Elements.sectionColorPicker = document.getElementById('sectionColorPicker');
   Elements.sectionColorInput = document.getElementById('sectionColorInput');
+  Elements.sectionFillToggle = document.getElementById('sectionFillToggle');
+  Elements.sectionStrokeToggle = document.getElementById('sectionStrokeToggle');
   Elements.gaSizeControls = document.getElementById('gaSizeControls');
   Elements.gaWidthInput = document.getElementById('gaWidthInput');
   Elements.gaHeightInput = document.getElementById('gaHeightInput');
@@ -280,7 +282,11 @@ function setupUnderlayHandlers() {
       const file = e.target.files[0];
       if (file) {
         try {
-          await UnderlayManager.loadImage(file);
+          // Check if we should preserve settings (replace in place)
+          const replaceCheckbox = document.getElementById('underlayReplaceInPlace');
+          const preserveSettings = replaceCheckbox ? replaceCheckbox.checked : false;
+          
+          await UnderlayManager.loadImage(file, preserveSettings);
           // UI updates handled by 'underlayLoaded' event
         } catch (error) {
           alert(error.message);
@@ -304,7 +310,11 @@ function setupUnderlayHandlers() {
         underlayLoadUrlBtn.disabled = true;
         underlayLoadUrlBtn.querySelector('.material-symbols').textContent = 'hourglass_empty';
         
-        await UnderlayManager.loadImageFromURL(url);
+        // Check if we should preserve settings (replace in place)
+        const replaceCheckbox = document.getElementById('underlayReplaceInPlace');
+        const preserveSettings = replaceCheckbox ? replaceCheckbox.checked : false;
+        
+        await UnderlayManager.loadImageFromURL(url, preserveSettings);
         // UI updates handled by 'underlayLoaded' event
         
         // Clear input after successful load
@@ -403,6 +413,12 @@ function setupUnderlayHandlers() {
       underlayFileInfo.style.display = 'block';
       underlayFileInfo.textContent = `${e.detail.fileName} (${e.detail.width}×${e.detail.height})`;
     }
+    
+    // Show the replace option checkbox now that an underlay exists
+    const replaceOption = document.getElementById('underlayReplaceOption');
+    if (replaceOption) {
+      replaceOption.style.display = 'block';
+    }
   });
 
   // Listen for underlay cleared event
@@ -411,6 +427,12 @@ function setupUnderlayHandlers() {
       underlayControls.style.display = 'none';
       underlayFileInfo.style.display = 'none';
       underlayFileInfo.textContent = 'No image loaded';
+    }
+    
+    // Hide the replace option checkbox when no underlay exists
+    const replaceOption = document.getElementById('underlayReplaceOption');
+    if (replaceOption) {
+      replaceOption.style.display = 'none';
     }
     
     // Reset controls to defaults

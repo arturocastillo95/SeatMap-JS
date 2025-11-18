@@ -10,18 +10,25 @@ export const SectionTransformations = {
   /**
    * Apply stretch transformation to section
    * @param {Section} section - The section
+   * @param {Object} options - Options for transformation
+   * @param {boolean} options.skipLayout - If true, skip dimension recalculation (for multi-section alignment)
    */
-  async applyStretch(section) {
+  async applyStretch(section, { skipLayout = false } = {}) {
     const curve = section.curve || 0;
     
     // If there's a curve, use applyCurve instead (which includes stretch)
     if (curve !== 0) {
-      await this.applyCurve(section);
+      await this.applyCurve(section, { skipLayout });
       return;
     }
     
     // Apply stretch transformation
     this.applyStretchTransform(section);
+    
+    // Skip layout recalculation if requested (used during multi-section alignment)
+    if (skipLayout) {
+      return;
+    }
     
     // After stretching seats, update row labels if they exist
     // Import SeatManager dynamically to avoid circular dependency
@@ -62,6 +69,19 @@ export const SectionTransformations = {
     });
     const cols = Array.from(colMap.keys()).sort((a, b) => a - b);
     
+    // Calculate base spacing
+    const baseSeatSpacingX = cols.length > 1 ? (cols[cols.length - 1] - cols[0]) / (cols.length - 1) : 20;
+    const baseSeatSpacingY = rows.length > 1 ? (rows[rows.length - 1][0] - rows[0][0]) / (rows.length - 1) : 20;
+    
+    // Minimum spacing to prevent overlap (seat diameter is 20px, add 2px gap)
+    const MIN_SPACING = 22;
+    
+    // Clamp stretch values to prevent overlap
+    const maxNegativeStretchH = -(baseSeatSpacingX - MIN_SPACING);
+    const maxNegativeStretchV = -(baseSeatSpacingY - MIN_SPACING);
+    const clampedStretchH = Math.max(stretchH, maxNegativeStretchH);
+    const clampedStretchV = Math.max(stretchV, maxNegativeStretchV);
+    
     section.seats.forEach(seat => {
       let rowIndex = 0;
       for (let i = 0; i < rows.length; i++) {
@@ -72,25 +92,32 @@ export const SectionTransformations = {
       }
       const colIndex = cols.indexOf(seat.baseRelativeX);
       
-      seat.relativeX = seat.baseRelativeX + (colIndex * stretchH);
-      seat.relativeY = seat.baseRelativeY + (rowIndex * stretchV);
+      seat.relativeX = seat.baseRelativeX + (colIndex * clampedStretchH);
+      seat.relativeY = seat.baseRelativeY + (rowIndex * clampedStretchV);
     });
   },
 
   /**
    * Apply curve transformation to section
    * @param {Section} section - The section
+   * @param {Object} options - Options for transformation
+   * @param {boolean} options.skipLayout - If true, skip dimension recalculation (for multi-section alignment)
    */
-  async applyCurve(section) {
+  async applyCurve(section, { skipLayout = false } = {}) {
     const curve = section.curve || 0;
     
     if (curve === 0) {
-      await this.applyStretch(section);
+      await this.applyStretch(section, { skipLayout });
       return;
     }
     
     // Apply curve transformation (includes stretch)
     this.applyCurveTransform(section);
+    
+    // Skip layout recalculation if requested (used during multi-section alignment)
+    if (skipLayout) {
+      return;
+    }
     
     // After curving seats, update row labels if they exist
     // Import SeatManager dynamically to avoid circular dependency
@@ -136,9 +163,18 @@ export const SectionTransformations = {
     const seatSpacingX = cols.length > 1 ? (cols[cols.length - 1] - cols[0]) / (cols.length - 1) : 20;
     const seatSpacingY = rows.length > 1 ? (rows[rows.length - 1][0] - rows[0][0]) / (rows.length - 1) : 20;
     
+    // Minimum spacing to prevent overlap (seat diameter is 20px, add 2px gap)
+    const MIN_SPACING = 22;
+    
+    // Clamp stretch values to prevent overlap
+    const maxNegativeStretchH = -(seatSpacingX - MIN_SPACING);
+    const maxNegativeStretchV = -(seatSpacingY - MIN_SPACING);
+    const clampedStretchH = Math.max(stretchH, maxNegativeStretchH);
+    const clampedStretchV = Math.max(stretchV, maxNegativeStretchV);
+    
     // Apply stretch to spacing
-    const effectiveSeatSpacingX = seatSpacingX + stretchH;
-    const effectiveSeatSpacingY = seatSpacingY + stretchV;
+    const effectiveSeatSpacingX = seatSpacingX + clampedStretchH;
+    const effectiveSeatSpacingY = seatSpacingY + clampedStretchV;
     
     // Convert curve value (0-100) to curvature k
     const k = curve / 2000;
@@ -466,6 +502,55 @@ export const SectionTransformations = {
     // This would call into a RowLabelManager if needed
     // For now, just recalculate and position
     this.recalculateSectionDimensions(section);
-    this.positionSeatsAndLabels(section);
+  },
+
+  /**
+   * Rebuild base positions from row/column indices
+   * Used to fix corrupted base positions in loaded files
+   * This creates a clean grid from rowIndex/colIndex, discarding corrupted baseX/baseY
+   * @param {Section} section - The section
+   */
+  rebuildBasePositions(section) {
+    console.log(`Rebuilding base positions for ${section.id || 'undefined'}`);
+    
+    // Find actual grid structure from indices (not positions!)
+    const rowIndices = [...new Set(section.seats.map(s => s.rowIndex))].sort((a, b) => a - b);
+    const colIndices = [...new Set(section.seats.map(s => s.colIndex))].sort((a, b) => a - b);
+    
+    console.log(`  Found ${rowIndices.length} rows and ${colIndices.length} columns (from indices)`);
+    
+    // Find the first seat in the first row to get the original anchor point
+    const firstRow = rowIndices[0];
+    const firstRowSeats = section.seats.filter(s => s.rowIndex === firstRow);
+    const firstSeat = firstRowSeats.reduce((min, seat) => 
+      seat.colIndex < min.colIndex ? seat : min
+    );
+    
+    // Use this seat's CURRENT baseRelativeX/Y as the anchor
+    // This preserves the section's overall position and row alignment type
+    const anchorX = firstSeat.baseRelativeX;
+    const anchorY = firstSeat.baseRelativeY;
+    
+    console.log(`  Anchor: [${firstSeat.rowIndex},${firstSeat.colIndex}] at (${anchorX}, ${anchorY})`);
+    
+    // Standard spacing
+    const SEAT_SPACING = 24;
+    
+    // Rebuild ALL positions from a clean grid based on indices
+    section.seats.forEach(seat => {
+      // Find this seat's position in the sorted index arrays
+      const rowPos = rowIndices.indexOf(seat.rowIndex);
+      const colPos = colIndices.indexOf(seat.colIndex);
+      
+      // Calculate position as offset from anchor seat
+      const colOffset = colPos * SEAT_SPACING;
+      const rowOffset = rowPos * SEAT_SPACING;
+      
+      // Set clean base position
+      seat.baseRelativeX = anchorX + colOffset;
+      seat.baseRelativeY = anchorY + rowOffset;
+    });
+    
+    console.log(`  Rebuilt ${section.seats.length} seats with clean 24px grid from (${anchorX}, ${anchorY})`);
   }
 };

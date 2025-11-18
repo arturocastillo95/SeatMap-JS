@@ -14,6 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Defaults to 20px for backward compatibility
   - Persists in file save/load format
   - Independent per-section configuration
+- **Section Fill and Stroke Visibility Toggles** - Control background and border display
+  - Independent checkboxes for fill (background) and stroke (border)
+  - Both default to visible for backward compatibility
+  - Persists in file save/load format
+  - Per-section configuration
+- **Underlay Image Replacement with Settings Preservation** - Replace background image without losing adjustments
+  - "Replace underlay (keep settings)" checkbox when underlay exists
+  - Preserves position, scale, opacity, and visibility when checked
+  - Defaults to unchecked for standard replacement behavior
+- **Negative Stretch Values** - Compress sections horizontally or vertically
+  - Extended stretch range from -80 to 100 (previously 0 to 100)
+  - Automatic clamping enforces minimum 22px spacing to prevent seat overlap
+  - Real-time visual feedback with slider
+  - Backward compatible with existing files
 - **Multi-section dragging** - Drag multiple selected sections together as a group
 - **Special Needs Seats** for wheelchair-accessible seating
   - Toggle special needs status for individual seats or groups
@@ -111,6 +125,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added type-safe Section class with validation (prevents runtime errors)
   - Centralized visual constants to VISUAL_CONFIG (no more magic numbers)
   - Removed 80% code duplication between createSection and createGASection
+
+### In Progress
+- **Multi-section alignment preserving row alignment** - Work in progress to fix corruption of seat spacing when aligning multiple sections
+  - Added `rebuildBasePositions()` function to reconstruct clean 24px grid from row/column indices
+  - Added `skipLayout` option to prevent dimension recalculation during transformations
+  - Rewrote all 6 alignment methods (alignLeft, alignRight, alignTop, alignBottom, alignCenterHorizontal, alignCenterVertical) to treat sections as rigid blocks
+  - Removed three-phase flatten/restore pattern that was causing dimension recalculation
+  - New approach: Apply transforms with skipLayout → Align positions → Position seats
+  - **Status**: Implementation complete, requires testing to verify fix
 
 ### Fixed
 - **Seat positioning on file load** - Fixed critical issue where seats appeared outside the bounding box after loading files. Root cause: layout shift was being applied twice - once by modifying `relativeX/Y` in `updateRowLabels()` and again by `positionSeatsAndLabels()` during positioning. Solution: Only apply shift to labels, let `positionSeatsAndLabels()` handle seat positioning using `seat.x = section.x + (seat.relativeX + layoutShiftX) - pivot.x`

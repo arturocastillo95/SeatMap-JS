@@ -84,19 +84,61 @@ This directory contains focused, single-responsibility modules that were extract
 **Purpose**: Geometric transformations
 
 **Responsibilities**:
-- Applying stretch (horizontal/vertical)
+- Applying stretch (horizontal/vertical) with negative value support
 - Applying curve transformations
 - Calculating safe curve limits
 - Aligning rows (left/center/right)
 - Recalculating section dimensions
+- Rebuilding corrupted base positions from row/column indices
 
 **Key Functions**:
-- `applyStretch(section)`
-- `applyCurve(section)`
+- `applyStretch(section, { skipLayout })` - Apply stretch with optional dimension recalculation skip
+- `applyCurve(section, { skipLayout })` - Apply curve with optional dimension recalculation skip
 - `calculateMaxCurve(section)`
 - `alignRows(section, alignment)`
 - `recalculateSectionDimensions(section)`
 - `positionSeatsAndLabels(section)`
+- `rebuildBasePositions(section)` - NEW: Reconstructs clean 24px grid from rowIndex/colIndex
+
+**Recent Changes**:
+- Added `skipLayout` parameter to `applyStretch()` and `applyCurve()` for use during multi-section alignment
+- Added `rebuildBasePositions()` function to fix corrupted base positions in loaded files
+- Extended stretch range to support negative values (-80 to 100)
+- Added MIN_SPACING constant (22px) to prevent seat overlap during compression
+- When `skipLayout: true`, transformations apply without recalculating section dimensions/pivot
+
+---
+
+### **alignmentManager.js** (~1000 lines)
+**Purpose**: Multi-section alignment and distribution
+
+**Responsibilities**:
+- Aligning multiple sections (left, right, top, bottom, center horizontal/vertical)
+- Distributing sections evenly (horizontal/vertical)
+- Collision detection and resolution during alignment
+- Preserving section transformations during alignment operations
+
+**Key Functions**:
+- `alignLeft()` - Align selected sections to leftmost edge
+- `alignRight()` - Align selected sections to rightmost edge
+- `alignTop()` - Align selected sections to topmost edge
+- `alignBottom()` - Align selected sections to bottommost edge
+- `alignCenterHorizontal()` - Align selected sections to horizontal center
+- `alignCenterVertical()` - Align selected sections to vertical center
+- `distributeHorizontal()` - Space sections evenly along X axis
+- `distributeVertical()` - Space sections evenly along Y axis
+
+**Recent Changes**:
+- **MAJOR REWRITE**: All 6 alignment methods completely rewritten to treat sections as rigid blocks
+- **OLD PATTERN (REMOVED)**: Three-phase flatten/restore approach that was causing dimension recalculation
+  - Step 1: Save transforms, flatten all to base positions
+  - Step 2: Align flattened sections
+  - Step 3: Restore transforms (caused recalculateSectionDimensions)
+- **NEW PATTERN (IMPLEMENTED)**: Simple two-step rigid-block approach
+  - Step 1: Apply transforms with `skipLayout: true` to prevent dimension changes
+  - Step 2: Align section positions, then call `positionSeatsAndLabels()`
+- **Benefits**: Sections maintain their internal row alignment (left/center/right) during multi-section operations
+- **Status**: Implementation complete, awaiting testing
 
 ---
 

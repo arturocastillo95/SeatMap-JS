@@ -446,8 +446,17 @@ export const SeatManager = {
     const sectionColor = section.sectionColor || COLORS.SECTION_STROKE;
     section.clear();
     section.rect(0, 0, section.contentWidth, section.contentHeight);
-    section.fill({ color: sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
-    section.stroke({ width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, color: sectionColor, alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA });
+    
+    // Apply fill only if visible
+    if (section.fillVisible) {
+      section.fill({ color: sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
+    }
+    
+    // Apply stroke only if visible
+    if (section.strokeVisible) {
+      section.stroke({ width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, color: sectionColor, alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA });
+    }
+    
     section.hitArea = new PIXI.Rectangle(0, 0, section.contentWidth, section.contentHeight);
   }
 };

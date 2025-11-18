@@ -73,6 +73,8 @@ export class Section extends PIXI.Graphics {
     
     // Visual properties
     this._sectionColor = config.sectionColor || COLORS.SECTION_STROKE;
+    this._fillVisible = config.fillVisible !== undefined ? config.fillVisible : true;
+    this._strokeVisible = config.strokeVisible !== undefined ? config.strokeVisible : true;
     
     // Dimensions
     this._contentWidth = config.width;
@@ -129,12 +131,20 @@ export class Section extends PIXI.Graphics {
    */
   initializeGraphics() {
     this.rect(0, 0, this._contentWidth, this._contentHeight);
-    this.fill({ color: this._sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
-    this.stroke({ 
-      width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, 
-      color: this._sectionColor, 
-      alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA 
-    });
+    
+    // Apply fill only if visible
+    if (this._fillVisible) {
+      this.fill({ color: this._sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
+    }
+    
+    // Apply stroke only if visible
+    if (this._strokeVisible) {
+      this.stroke({ 
+        width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, 
+        color: this._sectionColor, 
+        alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA 
+      });
+    }
     
     this.hitArea = new PIXI.Rectangle(0, 0, this._contentWidth, this._contentHeight);
     
@@ -199,6 +209,30 @@ export class Section extends PIXI.Graphics {
       throw new Error('Section color must be a valid hex color number');
     }
     this._sectionColor = value;
+    this.redrawGraphics();
+  }
+
+  get fillVisible() {
+    return this._fillVisible;
+  }
+
+  set fillVisible(value) {
+    if (typeof value !== 'boolean') {
+      throw new Error('Fill visible must be a boolean');
+    }
+    this._fillVisible = value;
+    this.redrawGraphics();
+  }
+
+  get strokeVisible() {
+    return this._strokeVisible;
+  }
+
+  set strokeVisible(value) {
+    if (typeof value !== 'boolean') {
+      throw new Error('Stroke visible must be a boolean');
+    }
+    this._strokeVisible = value;
     this.redrawGraphics();
   }
 
@@ -456,12 +490,20 @@ export class Section extends PIXI.Graphics {
   redrawGraphics() {
     this.clear();
     this.rect(0, 0, this._contentWidth, this._contentHeight);
-    this.fill({ color: this._sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
-    this.stroke({ 
-      width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, 
-      color: this._sectionColor, 
-      alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA 
-    });
+    
+    // Apply fill only if visible
+    if (this._fillVisible) {
+      this.fill({ color: this._sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
+    }
+    
+    // Apply stroke only if visible
+    if (this._strokeVisible) {
+      this.stroke({ 
+        width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, 
+        color: this._sectionColor, 
+        alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA 
+      });
+    }
     
     this.hitArea = new PIXI.Rectangle(0, 0, this._contentWidth, this._contentHeight);
   }
