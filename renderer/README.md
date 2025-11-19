@@ -19,6 +19,9 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ Glow effects on seats
 - ✅ Pan and zoom viewport controls
 - ✅ Seat click events
+- ✅ Auto-fit to viewport (100% height, centered)
+- ✅ Intelligent zoom limits (can zoom in, prevents zoom out beyond initial view)
+- ✅ File picker UI for easy testing
 
 ### Future Features (Phase 2+)
 - 🔄 Seat selection (single and multi-select)
@@ -81,6 +84,21 @@ const renderer = new SeatMapRenderer(container, {
 });
 ```
 
+### Renderer Configuration
+
+The renderer uses a centralized configuration object that can be modified:
+
+```javascript
+// In SeatMapRenderer.js
+const RENDERER_CONFIG = {
+    PADDING: 50,              // Padding around map when fitting to view
+    MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
+    MAX_ZOOM: 5,              // Maximum zoom level
+    ZOOM_SPEED: 1.1,          // Zoom speed multiplier
+    BACKGROUND_COLOR: 0x0f0f13
+};
+```
+
 ## API Reference
 
 ### Constructor
@@ -111,11 +129,25 @@ renderer.loadData(mapData);
 
 **Returns:** `Promise<void>`
 
-#### `centerMap()`
-Center and zoom to fit the entire map in the viewport.
+#### `fitToView()`
+Fit content to viewport with intelligent scaling and centering.
 
 ```javascript
-renderer.centerMap();
+renderer.fitToView();
+```
+
+**Behavior:**
+- Fits to underlay image if present, otherwise fits to sections
+- Centers content horizontally and vertically
+- Scales to fit viewport height with padding
+- Never zooms in beyond 1:1 ratio
+- Sets minimum zoom limit to prevent zooming out further
+
+#### `centerMap()`
+Legacy method that calls `fitToView()`.
+
+```javascript
+renderer.centerMap(); // Same as fitToView()
 ```
 
 ### Events
@@ -228,6 +260,24 @@ container.addEventListener('seat-click', async (event) => {
 - Firefox 88+
 - Safari 14+
 - Mobile browsers (iOS Safari, Chrome Mobile)
+
+## Viewport Behavior
+
+### Initial View
+- **With underlay**: Fits to underlay image bounds, centered in viewport
+- **Without underlay**: Fits to all sections, centered in viewport
+- Always uses 100% viewport height (minus padding)
+- Maintains aspect ratio
+- Never zooms in beyond 1:1 scale
+
+### Zoom Controls
+- **Zoom In**: Mouse wheel up, unlimited up to `MAX_ZOOM` (5x)
+- **Zoom Out**: Mouse wheel down, limited to initial fit scale
+- **Pan**: Click and drag to move around
+- **Reset**: Click "Center Map" button to return to initial view
+
+### Zoom Limits
+The renderer prevents zooming out beyond the initial fitted view to maintain a consistent starting point. Users can zoom in to see details but cannot zoom out to see more than the intended content area.
 
 ## Performance
 
