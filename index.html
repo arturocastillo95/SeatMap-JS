@@ -1056,63 +1056,114 @@
         />
       </div>
 
-      <div class="sidebar-input-group">
-        <label class="sidebar-label">Section Color</label>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input
-            type="color"
-            id="sectionColorPicker"
-            value="#3b82f6"
-            style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
-          />
-          <input
-            type="text"
-            class="sidebar-input"
-            id="sectionColorInput"
-            value="#3b82f6"
-            placeholder="#3b82f6"
-            style="flex: 1; text-transform: uppercase;"
-          />
+      <!-- Style -->
+      <div class="sidebar-accordion">
+        <div class="sidebar-accordion-header" id="styleHeader">
+          <div class="sidebar-accordion-title">Style</div>
+          <span class="material-symbols sidebar-accordion-chevron"
+            >expand_more</span
+          >
         </div>
-      </div>
+        <div class="sidebar-accordion-body" id="styleContent">
+          <div class="sidebar-input-group">
+            <label class="sidebar-label">Section Color</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input
+                type="color"
+                id="sectionColorPicker"
+                value="#3b82f6"
+                style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+              />
+              <input
+                type="text"
+                class="sidebar-input"
+                id="sectionColorInput"
+                value="#3b82f6"
+                placeholder="#3b82f6"
+                style="flex: 1; text-transform: uppercase;"
+              />
+            </div>
+          </div>
 
-      <div class="sidebar-input-group" id="seatColorSection">
-        <label class="sidebar-label">Seat Color</label>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input
-            type="color"
-            id="seatColorPicker"
-            value="#ffffff"
-            style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
-          />
-          <input
-            type="text"
-            class="sidebar-input"
-            id="seatColorInput"
-            value="#ffffff"
-            placeholder="#ffffff"
-            style="flex: 1; text-transform: uppercase;"
-          />
-        </div>
-      </div>
+          <div class="sidebar-input-group" id="seatColorSection">
+            <label class="sidebar-label">Seat Color</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input
+                type="color"
+                id="seatColorPicker"
+                value="#ffffff"
+                style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+              />
+              <input
+                type="text"
+                class="sidebar-input"
+                id="seatColorInput"
+                value="#ffffff"
+                placeholder="#ffffff"
+                style="flex: 1; text-transform: uppercase;"
+              />
+            </div>
+          </div>
 
-      <div class="sidebar-input-group" id="seatTextColorSection">
-        <label class="sidebar-label">Seat Text Color</label>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input
-            type="color"
-            id="seatTextColorPicker"
-            value="#000000"
-            style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
-          />
-          <input
-            type="text"
-            class="sidebar-input"
-            id="seatTextColorInput"
-            value="#000000"
-            placeholder="#000000"
-            style="flex: 1; text-transform: uppercase;"
-          />
+          <div class="sidebar-input-group" id="seatTextColorSection">
+            <label class="sidebar-label">Seat Text Color</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input
+                type="color"
+                id="seatTextColorPicker"
+                value="#000000"
+                style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+              />
+              <input
+                type="text"
+                class="sidebar-input"
+                id="seatTextColorInput"
+                value="#000000"
+                placeholder="#000000"
+                style="flex: 1; text-transform: uppercase;"
+              />
+            </div>
+          </div>
+
+          <label class="sidebar-label" style="font-size: 11px; margin-top: 12px; margin-bottom: 4px;">Visibility</label>
+          <div class="sidebar-button-group">
+            <button class="sidebar-toggle-btn active" id="sectionFillToggle">
+              <span class="material-symbols">format_color_fill</span>
+              <span>Fill</span>
+            </button>
+            <button class="sidebar-toggle-btn active" id="sectionStrokeToggle">
+              <span class="material-symbols">border_color</span>
+              <span>Stroke</span>
+            </button>
+          </div>
+          
+          <!-- Size controls for GA sections -->
+          <div id="gaSizeControls" style="display: none; margin-top: 12px;">
+            <div class="sidebar-input-group">
+              <label class="sidebar-label">Width</label>
+              <input
+                type="number"
+                class="sidebar-input"
+                id="gaWidthInput"
+                placeholder="0"
+                min="0"
+                step="10"
+                style="text-align: center;"
+              />
+            </div>
+            <div class="sidebar-input-group">
+              <label class="sidebar-label">Height</label>
+              <input
+                type="number"
+                class="sidebar-input"
+                id="gaHeightInput"
+                placeholder="0"
+                min="0"
+                step="10"
+                style="text-align: center;"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1203,58 +1254,26 @@
                 step="1"
               />
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Outline -->
-      <div class="sidebar-accordion">
-        <div class="sidebar-accordion-header" id="outlineHeader">
-          <div class="sidebar-accordion-title">Outline</div>
-          <span class="material-symbols sidebar-accordion-chevron"
-            >expand_more</span
-          >
-        </div>
-        <div class="sidebar-accordion-body" id="outlineContent">
-          <label class="sidebar-label" style="font-size: 11px; margin-bottom: 4px;">Visibility</label>
-          <div class="sidebar-button-group">
-            <button class="sidebar-toggle-btn active" id="sectionFillToggle">
-              <span class="material-symbols">format_color_fill</span>
-              <span>Fill</span>
-            </button>
-            <button class="sidebar-toggle-btn active" id="sectionStrokeToggle">
-              <span class="material-symbols">border_color</span>
-              <span>Stroke</span>
-            </button>
-          </div>
-          
-          <!-- Size controls for GA sections -->
-          <div id="gaSizeControls" style="display: none; margin-top: 12px;">
-            <div class="sidebar-input-group">
-              <label class="sidebar-label">Width</label>
-              <input
-                type="number"
-                class="sidebar-input"
-                id="gaWidthInput"
-                placeholder="0"
-                min="0"
-                step="10"
-                style="text-align: center;"
-              />
+            <div class="sidebar-input-group" style="margin-top: 8px;">
+              <label class="sidebar-label" style="font-size: 11px;">Label Color</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input
+                  type="color"
+                  id="rowLabelColorPicker"
+                  value="#ffffff"
+                  style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+                />
+                <input
+                  type="text"
+                  class="sidebar-input"
+                  id="rowLabelColorInput"
+                  value="#ffffff"
+                  placeholder="#ffffff"
+                  style="flex: 1; text-transform: uppercase;"
+                />
+              </div>
             </div>
-            <div class="sidebar-input-group">
-              <label class="sidebar-label">Height</label>
-              <input
-                type="number"
-                class="sidebar-input"
-                id="gaHeightInput"
-                placeholder="0"
-                min="0"
-                step="10"
-                style="text-align: center;"
-              />
-            </div>
-            <div class="sidebar-info">Dimensions in pixels</div>
           </div>
         </div>
       </div>

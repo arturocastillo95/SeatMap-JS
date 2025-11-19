@@ -116,6 +116,24 @@ export const SeatManager = {
 
     seat.on('pointerover', () => {
       if (!State.isDeleteMode && !State.isEditSeatsMode) {
+        // Find section
+        const section = State.sections.find(s => s.seats.includes(seat));
+        
+        if (section && section.rowLabelType !== 'none') {
+          // Calculate dynamic label
+          const uniqueRows = [...new Set(section.seats.map(s => s.rowIndex))].sort((a, b) => a - b);
+          const visualRowIndex = uniqueRows.indexOf(seat.rowIndex);
+          
+          if (visualRowIndex !== -1) {
+            const totalRows = uniqueRows.length;
+            const labelIndex = section.rowLabelReversed ? (totalRows - 1 - visualRowIndex) : visualRowIndex;
+            const labelText = this.getRowLabelText(labelIndex, section.rowLabelType, section.rowLabelStart);
+            
+            Utils.showTooltip(`${section.sectionId} - Row ${labelText} Seat ${seat.seatNumber}`);
+            return;
+          }
+        }
+        
         Utils.showTooltip(seat.seatId);
       }
     });
@@ -286,16 +304,17 @@ export const SeatManager = {
    * Create a row label
    * @param {string} text - Label text
    * @param {boolean} isHidden - Whether label is hidden (grayed out)
+   * @param {number} color - Label color (hex number)
    * @returns {PIXI.Text} Label text object
    */
-  createRowLabel(text, isHidden = false) {
+  createRowLabel(text, isHidden = false, color = 0xffffff) {
     const label = new PIXI.Text({
       text,
       style: {
         fontFamily: 'system-ui, sans-serif',
         fontSize: 14,
         fontWeight: 'bold',
-        fill: 0xffffff,
+        fill: color,
         align: 'center'
       }
     });
@@ -393,7 +412,7 @@ export const SeatManager = {
       const rightmostSeat = sortedSeats[sortedSeats.length - 1];
 
       if (section.showLeftLabels) {
-        const leftLabel = this.createRowLabel(labelText, section.labelsHidden);
+        const leftLabel = this.createRowLabel(labelText, section.labelsHidden, section.rowLabelColor);
         leftLabel.relativeX = leftmostSeat.relativeX - 10 - labelSpacing;
         leftLabel.relativeY = leftmostSeat.relativeY;
         leftLabel.x = section.x + leftLabel.relativeX;
@@ -403,7 +422,7 @@ export const SeatManager = {
       }
 
       if (section.showRightLabels) {
-        const rightLabel = this.createRowLabel(labelText, section.labelsHidden);
+        const rightLabel = this.createRowLabel(labelText, section.labelsHidden, section.rowLabelColor);
         rightLabel.relativeX = rightmostSeat.relativeX + 10 + labelSpacing;
         rightLabel.relativeY = rightmostSeat.relativeY;
         rightLabel.x = section.x + rightLabel.relativeX;

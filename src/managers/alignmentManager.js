@@ -206,6 +206,41 @@ export const AlignmentManager = {
       }
     });
 
+    // Row label color picker
+    Elements.rowLabelColorPicker.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const colorHex = e.target.value;
+        // Update text input
+        Elements.rowLabelColorInput.value = colorHex.toUpperCase();
+        // Apply color to section's row labels
+        SectionManager.setRowLabelColor(State.selectedSections[0], colorHex);
+      }
+    });
+
+    Elements.rowLabelColorInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        let colorHex = e.target.value.trim();
+        // Add # if missing
+        if (!colorHex.startsWith('#')) {
+          colorHex = '#' + colorHex;
+        }
+        // Validate hex color
+        if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+          // Update color picker
+          Elements.rowLabelColorPicker.value = colorHex;
+          // Apply color to section's row labels
+          SectionManager.setRowLabelColor(State.selectedSections[0], colorHex);
+          // Update text input to show formatted value
+          Elements.rowLabelColorInput.value = colorHex.toUpperCase();
+        } else {
+          // Invalid color, reset to current row label color
+          const section = State.selectedSections[0];
+          const validColorHex = '#' + (section.rowLabelColor || 0xffffff).toString(16).padStart(6, '0');
+          Elements.rowLabelColorInput.value = validColorHex.toUpperCase();
+        }
+      }
+    });
+
     // GA Capacity input
     Elements.gaCapacityInput.addEventListener('input', (e) => {
       if (State.selectedSections.length === 1) {
@@ -598,7 +633,8 @@ export const AlignmentManager = {
       Elements.addRowsSection.style.display = 'none';
       Elements.stretchHSection.style.display = 'none';
       Elements.stretchVSection.style.display = 'none';
-      Elements.outlineHeader.parentElement.style.display = 'block';
+      Elements.styleHeader.parentElement.style.display = 'block';
+      // Hide only seat color inputs for GA sections
       document.getElementById('seatColorSection').style.display = 'none';
       document.getElementById('seatTextColorSection').style.display = 'none';
       return; // Skip the rest of the updates
@@ -614,9 +650,15 @@ export const AlignmentManager = {
       Elements.addRowsSection.style.display = 'block';
       Elements.stretchHSection.style.display = 'block';
       Elements.stretchVSection.style.display = 'block';
-      Elements.outlineHeader.parentElement.style.display = 'block';
+      Elements.styleHeader.parentElement.style.display = 'block';
+      // Show all color inputs for regular sections
       document.getElementById('seatColorSection').style.display = 'block';
       document.getElementById('seatTextColorSection').style.display = 'block';
+      
+      // Calculate and display actual row and seat counts
+      const seatCount = section.seats ? section.seats.length : 0;
+      const uniqueRows = section.seats ? new Set(section.seats.map(seat => seat.userData?.row).filter(row => row !== undefined)).size : 0;
+      Elements.seatsInfo.textContent = `${uniqueRows} rows / ${seatCount} seats`;
     }
     
     // Update row label type buttons
@@ -651,6 +693,11 @@ export const AlignmentManager = {
     if (Elements.rowLabelSpacingValue) {
       Elements.rowLabelSpacingValue.textContent = `${spacing}px`;
     }
+
+    // Update row label color inputs
+    const rowLabelColorHex = '#' + (section.rowLabelColor || 0xffffff).toString(16).padStart(6, '0');
+    Elements.rowLabelColorPicker.value = rowLabelColorHex;
+    Elements.rowLabelColorInput.value = rowLabelColorHex.toUpperCase();
 
     // Update seat numbering controls
     Elements.seatNumberStartInput.value = section.seatNumberStart || 1;

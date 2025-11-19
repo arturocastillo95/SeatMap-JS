@@ -91,7 +91,9 @@ Each regular section in the `sections` array contains:
     "reversed": false,
     "showLeft": true,
     "showRight": false,
-    "hidden": false
+    "hidden": false,
+    "spacing": 20,
+    "color": 16777215
   },
   
   "seatNumbering": {
@@ -323,6 +325,7 @@ Initial format with basic section, transformation, and styling support.
 - `showRight`: Display labels on right side
 - `hidden`: Gray out labels for viewer mode (still rendered but less visible)
 - `spacing`: Distance in pixels between row labels and seats (5-50, default: 20)
+- `color`: Label text color as hex number (default: 16777215 / #ffffff white)
 
 ### Seat Numbering (Regular Sections Only)
 

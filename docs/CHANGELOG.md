@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Row Label Color Customization** - Control the color of row labels per section
+  - Color picker and hex input in Row Labels accordion
+  - Real-time visual updates when changing colors
+  - Defaults to white (#ffffff) for backward compatibility
+  - Persists in file save/load format under `rowLabels.color`
+  - Independent per-section configuration
+  - Does not reset section alignment when color is changed
+- **Actual Seat Count Display** - Shows real number of seats in section
+  - Sidebar now displays actual count from `section.seats.length`
+  - Shows unique row count by counting distinct row indices
+  - Updates in real-time as seats are added or deleted
+  - Format: "X rows / Y seats" (e.g., "10 rows / 82 seats")
+  - Replaces previous hardcoded placeholder text
+- **Smart Seat Tooltips** - Dynamic tooltip format based on row label configuration
+  - If row labels enabled: Shows "Section Name - Row [Label] Seat [Number]" (e.g., "Section 1 - Row A Seat 5")
+  - If no row labels: Falls back to original format (e.g., "Section 1-R1S5")
+  - Uses actual row label (letters/numbers) and seat number
+  - Respects row label reversal setting
+- **UI Reorganization** - Improved sidebar organization
+  - Combined Colors and Outline into single "Style" accordion
+  - Contains: Section Color, Seat Color, Seat Text Color, Fill/Stroke toggles, GA size controls
+  - Cleaner, more intuitive grouping of related settings
 - **Seat Color Customization** - Control circle fill color and text color for individual seats
   - Separate color pickers for seat circle color and seat text color
   - Per-section customization (each section can have different seat colors)

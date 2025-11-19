@@ -192,6 +192,23 @@ export const SectionManager = {
     console.log(`✓ Updated seat text color to ${colorHex}`);
   },
 
+  setRowLabelColor(section, colorHex) {
+    if (!colorHex || typeof colorHex !== 'string') {
+      throw new Error('Invalid color hex');
+    }
+    
+    // Convert hex string to number
+    const colorValue = parseInt(colorHex.replace('#', ''), 16);
+    section.rowLabelColor = colorValue;
+    
+    // Update only the color of existing row labels (don't recalculate positions)
+    section.rowLabels.forEach(label => {
+      label.style.fill = colorValue;
+    });
+    
+    console.log(`✓ Updated row label color to ${colorHex}`);
+  },
+
   // ============================================
   // LEGACY/COMPATIBILITY METHODS
   // ============================================

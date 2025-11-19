@@ -80,6 +80,9 @@ export class Section extends PIXI.Graphics {
     this._seatColor = config.seatColor || COLORS.SEAT;  // Circle fill color
     this._seatTextColor = config.seatTextColor || 0x000000; // Text color (default black)
     
+    // Row label color
+    this._rowLabelColor = config.rowLabelColor || 0xffffff; // Default white
+    
     // Dimensions
     this._contentWidth = config.width;
     this._contentHeight = config.height;
@@ -260,6 +263,17 @@ export class Section extends PIXI.Graphics {
       throw new Error('Seat text color must be a valid hex color number');
     }
     this._seatTextColor = value;
+  }
+
+  get rowLabelColor() {
+    return this._rowLabelColor;
+  }
+
+  set rowLabelColor(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Row label color must be a valid hex color number');
+    }
+    this._rowLabelColor = value;
   }
 
   get contentWidth() {
@@ -613,7 +627,8 @@ export class Section extends PIXI.Graphics {
         start: this._rowLabelStart,
         reversed: this._rowLabelReversed,
         showLeft: this._showLeftLabels,
-        showRight: this._showRightLabels
+        showRight: this._showRightLabels,
+        color: this._rowLabelColor
       },
       seatNumbering: {
         start: this._seatNumberStart,

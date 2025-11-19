@@ -211,7 +211,8 @@ export const FileManager = {
         showLeft: section.showLeftLabels || false,
         showRight: section.showRightLabels || false,
         hidden: section.labelsHidden || false,
-        spacing: section.rowLabelSpacing || 20
+        spacing: section.rowLabelSpacing || 20,
+        color: section.rowLabelColor !== undefined ? section.rowLabelColor : 0xffffff
       },
       
       // Seat configuration and numbering
@@ -505,6 +506,19 @@ export const FileManager = {
           section.seatTextColor = data.style.seatTextColor;
           needsSeatColorUpdate = true;
         }
+      }
+    }
+
+    // Restore row label color from rowLabels.color field
+    if (data.rowLabels && data.rowLabels.color !== undefined && data.rowLabels.color !== null) {
+      // Handle both number and string formats
+      if (typeof data.rowLabels.color === 'string') {
+        const colorValue = parseInt(data.rowLabels.color.replace('#', ''), 16);
+        if (!isNaN(colorValue)) {
+          section.rowLabelColor = colorValue;
+        }
+      } else if (typeof data.rowLabels.color === 'number') {
+        section.rowLabelColor = data.rowLabels.color;
       }
     }
     

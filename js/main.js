@@ -74,10 +74,10 @@ function initializeElements() {
   Elements.contextMenu = document.getElementById('contextMenu');
   Elements.contextEditSeats = document.getElementById('contextEditSeats');
   Elements.contextDeleteSection = document.getElementById('contextDeleteSection');
+  Elements.styleHeader = document.getElementById('styleHeader');
+  Elements.styleContent = document.getElementById('styleContent');
   Elements.rowLabelsHeader = document.getElementById('rowLabelsHeader');
   Elements.rowLabelsContent = document.getElementById('rowLabelsContent');
-  Elements.outlineHeader = document.getElementById('outlineHeader');
-  Elements.outlineContent = document.getElementById('outlineContent');
   Elements.seatsHeader = document.getElementById('seatsHeader');
   Elements.seatsContent = document.getElementById('seatsContent');
   Elements.seatsSection = document.getElementById('seatsSection');
@@ -101,6 +101,8 @@ function initializeElements() {
   Elements.rowLabelFlipBtn = document.getElementById('rowLabelFlipBtn');
   Elements.rowLabelSpacingSlider = document.getElementById('rowLabelSpacingSlider');
   Elements.rowLabelSpacingValue = document.getElementById('rowLabelSpacingValue');
+  Elements.rowLabelColorPicker = document.getElementById('rowLabelColorPicker');
+  Elements.rowLabelColorInput = document.getElementById('rowLabelColorInput');
   Elements.seatNumberStartInput = document.getElementById('seatNumberStartInput');
   Elements.seatNumberFlipBtn = document.getElementById('seatNumberFlipBtn');
   Elements.rotateSlider = document.getElementById('rotateSlider');
@@ -177,8 +179,8 @@ function setupCollapsibleSections() {
   };
 
   // Apply to accordion sections
+  toggleAccordion(Elements.styleHeader, Elements.styleContent);
   toggleAccordion(Elements.rowLabelsHeader, Elements.rowLabelsContent);
-  toggleAccordion(Elements.outlineHeader, Elements.outlineContent);
   toggleAccordion(Elements.seatsHeader, Elements.seatsContent);
   toggleAccordion(Elements.seatNumberingHeader, Elements.seatNumberingContent);
 }
