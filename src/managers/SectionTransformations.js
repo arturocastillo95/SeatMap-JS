@@ -566,50 +566,48 @@ export const SectionTransformations = {
   /**
    * Rebuild base positions from row/column indices
    * Used to fix corrupted base positions in loaded files
-   * This creates a clean grid from rowIndex/colIndex, discarding corrupted baseX/baseY
+   * FIX: Now calculates using actual colIndex deltas to preserve gaps/alignment
    * @param {Section} section - The section
    */
   rebuildBasePositions(section) {
     console.log(`Rebuilding base positions for ${section.id || 'undefined'}`);
     
-    // Find actual grid structure from indices (not positions!)
+    // Get unique row indices to find the top row
     const rowIndices = [...new Set(section.seats.map(s => s.rowIndex))].sort((a, b) => a - b);
-    const colIndices = [...new Set(section.seats.map(s => s.colIndex))].sort((a, b) => a - b);
     
-    console.log(`  Found ${rowIndices.length} rows and ${colIndices.length} columns (from indices)`);
-    
+    if (rowIndices.length === 0) return;
+
     // Find the first seat in the first row to get the original anchor point
     const firstRow = rowIndices[0];
     const firstRowSeats = section.seats.filter(s => s.rowIndex === firstRow);
-    const firstSeat = firstRowSeats.reduce((min, seat) => 
+    
+    // Find the left-most seat in the first row
+    const anchorSeat = firstRowSeats.reduce((min, seat) => 
       seat.colIndex < min.colIndex ? seat : min
     );
     
     // Use this seat's CURRENT baseRelativeX/Y as the anchor
-    // This preserves the section's overall position and row alignment type
-    const anchorX = firstSeat.baseRelativeX;
-    const anchorY = firstSeat.baseRelativeY;
+    const anchorX = anchorSeat.baseRelativeX;
+    const anchorY = anchorSeat.baseRelativeY;
+    const anchorCol = anchorSeat.colIndex;
+    const anchorRow = anchorSeat.rowIndex;
     
-    console.log(`  Anchor: [${firstSeat.rowIndex},${firstSeat.colIndex}] at (${anchorX}, ${anchorY})`);
+    console.log(`  Anchor: [${anchorRow},${anchorCol}] at (${anchorX}, ${anchorY})`);
     
     // Standard spacing
     const SEAT_SPACING = 24;
     
-    // Rebuild ALL positions from a clean grid based on indices
+    // Rebuild ALL positions using exact grid math
     section.seats.forEach(seat => {
-      // Find this seat's position in the sorted index arrays
-      const rowPos = rowIndices.indexOf(seat.rowIndex);
-      const colPos = colIndices.indexOf(seat.colIndex);
+      // Calculate difference in logic grid steps
+      const colDiff = seat.colIndex - anchorCol;
+      const rowDiff = seat.rowIndex - anchorRow;
       
-      // Calculate position as offset from anchor seat
-      const colOffset = colPos * SEAT_SPACING;
-      const rowOffset = rowPos * SEAT_SPACING;
-      
-      // Set clean base position
-      seat.baseRelativeX = anchorX + colOffset;
-      seat.baseRelativeY = anchorY + rowOffset;
+      // Set clean base position based on 24px spacing times the difference
+      seat.baseRelativeX = anchorX + (colDiff * SEAT_SPACING);
+      seat.baseRelativeY = anchorY + (rowDiff * SEAT_SPACING);
     });
     
-    console.log(`  Rebuilt ${section.seats.length} seats with clean 24px grid from (${anchorX}, ${anchorY})`);
+    console.log(`  Rebuilt ${section.seats.length} seats with clean 24px grid`);
   }
 };
