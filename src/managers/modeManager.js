@@ -3,6 +3,7 @@
 // ============================================
 
 import { State } from '../core/state.js';
+import { COLORS, VISUAL_CONFIG } from '../core/config.js';
 
 export const ModeManager = {
   init() {
@@ -139,7 +140,7 @@ export const ModeManager = {
     // Dim all other sections
     State.sections.forEach(section => {
       if (section !== State.activeSectionForSeats) {
-        section.alpha = 0.3;
+        section.alpha = VISUAL_CONFIG.SECTION.DIMMED_ALPHA;
         section.eventMode = 'none'; // Disable interactions
         section.seats.forEach(seat => {
           seat.eventMode = 'none';
@@ -232,9 +233,9 @@ export const ModeManager = {
     const circle = seat.children[0]; // First child is the circle
     if (circle) {
       if (selected) {
-        circle.tint = 0x00ff00; // Green tint for selected seats
+        circle.tint = COLORS.SEAT_SELECTION_RECT_FILL; // Green tint for selected seats
       } else {
-        circle.tint = 0xffffff; // White (default)
+        circle.tint = COLORS.DEFAULT_SEAT; // White (default)
       }
     }
   },

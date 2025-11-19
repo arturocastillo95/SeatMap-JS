@@ -4,6 +4,7 @@
 
 import { State } from '../core/state.js';
 import { Utils } from '../core/utils.js';
+import { VISUAL_CONFIG } from '../core/config.js';
 
 /**
  * Manager for background underlay images (PNG/SVG)
@@ -467,7 +468,7 @@ export const UnderlayManager = {
     const sprite = State.underlaySprite;
     const handleSize = 8;
     const hitAreaSize = 40;
-    const handleColor = 0x4ade80; // Green
+    const handleColor = VISUAL_CONFIG.HANDLE.COLOR; // Green
 
     const width = sprite.width;
     const height = sprite.height;
@@ -489,7 +490,7 @@ export const UnderlayManager = {
       const handle = new PIXI.Graphics();
       handle.rect(-handleSize / 2, -handleSize / 2, handleSize, handleSize);
       handle.fill({ color: handleColor });
-      handle.stroke({ width: 1, color: 0xffffff });
+      handle.stroke({ width: 1, color: VISUAL_CONFIG.HANDLE.STROKE_COLOR });
       handle.eventMode = 'static';
       handle.cursor = pos.cursor;
       handle.corner = pos.corner;

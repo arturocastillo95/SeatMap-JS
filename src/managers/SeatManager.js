@@ -216,7 +216,7 @@ export const SeatManager = {
       // Special needs seat: blue color with accessibility icon
       seatGraphics.clear();
       seatGraphics.circle(0, 0, 10);
-      seatGraphics.fill({ color: 0x2563eb, alpha: 1 }); // Blue color
+      seatGraphics.fill({ color: COLORS.SPECIAL_NEEDS, alpha: 1 }); // Blue color
       
       // Replace number with accessibility icon (Material Symbols: accessible_forward)
       seatLabel.text = 'accessible_forward';
@@ -358,7 +358,7 @@ export const SeatManager = {
    * @param {number} color - Label color (hex number)
    * @returns {PIXI.Text} Label text object
    */
-  createRowLabel(text, isHidden = false, color = 0xffffff) {
+  createRowLabel(text, isHidden = false, color = COLORS.DEFAULT_SEAT) {
     const label = new PIXI.Text({
       text,
       style: {

@@ -3,7 +3,7 @@
 // ============================================
 
 import { State, Elements } from '../core/state.js';
-import { CONFIG, COLORS } from '../core/config.js';
+import { CONFIG, COLORS, VISUAL_CONFIG } from '../core/config.js';
 import { Utils } from '../core/utils.js';
 import { SectionManager } from './sectionManager.js';
 
@@ -58,18 +58,18 @@ export const ToolManager = {
       
       // Check seats and labels too for more accurate bounds
       section.seats.forEach(seat => {
-        minX = Math.min(minX, seat.x - 15);
-        minY = Math.min(minY, seat.y - 15);
-        maxX = Math.max(maxX, seat.x + 15);
-        maxY = Math.max(maxY, seat.y + 15);
+        minX = Math.min(minX, seat.x - VISUAL_CONFIG.UI.SEAT_BOUNDS_PADDING);
+        minY = Math.min(minY, seat.y - VISUAL_CONFIG.UI.SEAT_BOUNDS_PADDING);
+        maxX = Math.max(maxX, seat.x + VISUAL_CONFIG.UI.SEAT_BOUNDS_PADDING);
+        maxY = Math.max(maxY, seat.y + VISUAL_CONFIG.UI.SEAT_BOUNDS_PADDING);
       });
       
       // Check row labels if they exist
       section.rowLabels.forEach(label => {
-        minX = Math.min(minX, label.x - 20);
-        minY = Math.min(minY, label.y - 20);
-        maxX = Math.max(maxX, label.x + 20);
-        maxY = Math.max(maxY, label.y + 20);
+        minX = Math.min(minX, label.x - VISUAL_CONFIG.UI.LABEL_BOUNDS_PADDING);
+        minY = Math.min(minY, label.y - VISUAL_CONFIG.UI.LABEL_BOUNDS_PADDING);
+        maxX = Math.max(maxX, label.x + VISUAL_CONFIG.UI.LABEL_BOUNDS_PADDING);
+        maxY = Math.max(maxY, label.y + VISUAL_CONFIG.UI.LABEL_BOUNDS_PADDING);
       });
     });
 
@@ -79,9 +79,9 @@ export const ToolManager = {
     const contentCenterY = minY + contentHeight / 2;
 
     // Calculate scale to fit with padding
-    const padding = 50;
+    const padding = VISUAL_CONFIG.UI.ZOOM_PADDING;
     const availableWidth = State.app.screen.width - padding * 2;
-    const availableHeight = State.app.screen.height - padding * 2 - 56; // Account for top bar
+    const availableHeight = State.app.screen.height - padding * 2 - VISUAL_CONFIG.UI.TOOLBAR_HEIGHT; // Account for top bar
     
     const scaleX = availableWidth / contentWidth;
     const scaleY = availableHeight / contentHeight;
@@ -92,7 +92,7 @@ export const ToolManager = {
 
     // Center the content
     const screenCenterX = State.app.screen.width / 2;
-    const screenCenterY = (State.app.screen.height + 56) / 2; // Account for top bar
+    const screenCenterY = (State.app.screen.height + VISUAL_CONFIG.UI.TOOLBAR_HEIGHT) / 2; // Account for top bar
 
     State.world.x = screenCenterX - contentCenterX * targetScale;
     State.world.y = screenCenterY - contentCenterY * targetScale;
@@ -408,8 +408,15 @@ export const ToolManager = {
     
     State.previewRect.clear();
     State.previewRect.rect(x, y, snappedWidth, snappedHeight);
-    State.previewRect.stroke({ width: 2, color: COLORS.PREVIEW, alpha: 0.8 });
-    State.previewRect.fill({ color: COLORS.PREVIEW, alpha: 0.15 });
+    State.previewRect.stroke({ 
+      width: VISUAL_CONFIG.PREVIEW.STROKE_WIDTH, 
+      color: COLORS.PREVIEW, 
+      alpha: VISUAL_CONFIG.PREVIEW.STROKE_ALPHA 
+    });
+    State.previewRect.fill({ 
+      color: COLORS.PREVIEW, 
+      alpha: VISUAL_CONFIG.PREVIEW.FILL_ALPHA 
+    });
     
     Utils.showDragInfo(seats, rows, screenX, screenY);
   },
@@ -476,8 +483,15 @@ export const ToolManager = {
     
     State.previewRect.clear();
     State.previewRect.rect(x, y, snappedWidth, snappedHeight);
-    State.previewRect.stroke({ width: 2, color: COLORS.PREVIEW, alpha: 0.8 });
-    State.previewRect.fill({ color: COLORS.PREVIEW, alpha: 0.15 });
+    State.previewRect.stroke({ 
+      width: VISUAL_CONFIG.PREVIEW.STROKE_WIDTH, 
+      color: COLORS.PREVIEW, 
+      alpha: VISUAL_CONFIG.PREVIEW.STROKE_ALPHA 
+    });
+    State.previewRect.fill({ 
+      color: COLORS.PREVIEW, 
+      alpha: VISUAL_CONFIG.PREVIEW.FILL_ALPHA 
+    });
     
     // Show dimensions info (without seat/row count for GA)
     Elements.dragInfo.innerHTML = `${Math.round(snappedWidth)} × ${Math.round(snappedHeight)}<br><strong>General Admission</strong>`;

@@ -158,6 +158,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Unified SectionManager delegates to specialized managers
   - Maintains 100% backward compatibility
   - Follows SOLID principles for better maintainability
+- **Centralized Configuration**:
+  - Refactored hardcoded values (colors, dimensions, visual properties) into `src/core/config.js`
+  - Expanded `VISUAL_CONFIG` and `COLORS` constants for better maintainability
+  - Updated all managers to use centralized configuration instead of magic numbers
 - **Code quality improvements**:
   - Added type-safe Section class with validation (prevents runtime errors)
   - Centralized visual constants to VISUAL_CONFIG (no more magic numbers)

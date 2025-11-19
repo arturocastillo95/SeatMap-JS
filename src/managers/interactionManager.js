@@ -4,6 +4,7 @@
 
 import { State } from '../core/state.js';
 import { Utils } from '../core/utils.js';
+import { COLORS } from '../core/config.js';
 import { ToolManager } from './toolManager.js';
 import { SectionManager } from './sectionManager.js';
 import { AlignmentManager } from './alignmentManager.js';
@@ -207,8 +208,8 @@ export const InteractionManager = {
     // Draw selection rectangle
     State.selectionRect.clear();
     State.selectionRect.rect(x, y, width, height);
-    State.selectionRect.fill({ color: 0x1e90ff, alpha: 0.1 });
-    State.selectionRect.stroke({ width: 2, color: 0x1e90ff, alpha: 0.8 });
+    State.selectionRect.fill({ color: COLORS.SELECTION_RECT_FILL, alpha: 0.1 });
+    State.selectionRect.stroke({ width: 2, color: COLORS.SELECTION_RECT_STROKE, alpha: 0.8 });
   },
 
   updateSeatSelectionRect(currentX, currentY) {
@@ -229,8 +230,8 @@ export const InteractionManager = {
     // Draw seat selection rectangle (different color than section selection)
     State.seatSelectionRect.clear();
     State.seatSelectionRect.rect(screenX, screenY, screenWidth, screenHeight);
-    State.seatSelectionRect.fill({ color: 0x00ff00, alpha: 0.1 });
-    State.seatSelectionRect.stroke({ width: 2, color: 0x00ff00, alpha: 0.8 });
+    State.seatSelectionRect.fill({ color: COLORS.SEAT_SELECTION_RECT_FILL, alpha: 0.1 });
+    State.seatSelectionRect.stroke({ width: 2, color: COLORS.SEAT_SELECTION_RECT_STROKE, alpha: 0.8 });
     
     // Real-time seat selection preview - convert to world coordinates properly
     const worldStart = Utils.screenToWorld(Math.min(startX, currentX), Math.min(startY, currentY));

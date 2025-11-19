@@ -2,6 +2,8 @@
 // SECTION TRANSFORMATIONS - Stretch, curve, alignment
 // ============================================
 
+import { COLORS, VISUAL_CONFIG } from '../core/config.js';
+
 /**
  * Manager for section transformations
  * Responsible for: Stretch, curve, row alignment, dimension recalculation
@@ -472,8 +474,8 @@ export const SectionTransformations = {
     const sectionColor = section.sectionColor;
     section.clear();
     section.rect(0, 0, section.contentWidth, section.contentHeight);
-    section.fill({ color: sectionColor, alpha: 0.25 });
-    section.stroke({ width: 2, color: sectionColor, alpha: 0.8 });
+    section.fill({ color: sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
+    section.stroke({ width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, color: sectionColor, alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA });
     
     // Update hit area
     section.hitArea = new PIXI.Rectangle(0, 0, section.contentWidth, section.contentHeight);
@@ -482,7 +484,7 @@ export const SectionTransformations = {
     if (section.selectionBorder) {
       section.selectionBorder.clear();
       section.selectionBorder.rect(-3, -3, section.contentWidth + 6, section.contentHeight + 6);
-      section.selectionBorder.stroke({ width: 3, color: 0x00ff00 });
+      section.selectionBorder.stroke({ width: VISUAL_CONFIG.SELECTION.BORDER_WIDTH, color: VISUAL_CONFIG.SELECTION.COLOR });
     }
   },
 

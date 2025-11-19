@@ -26,13 +26,25 @@ export const VISUAL_CONFIG = {
   SECTION: {
     FILL_ALPHA: 0.25,     // Section fill opacity
     STROKE_ALPHA: 0.8,    // Section border opacity
-    STROKE_WIDTH: 2       // Section border width
+    STROKE_WIDTH: 2,      // Section border width
+    DIMMED_ALPHA: 0.3     // Opacity for dimmed sections (e.g. in edit seats mode)
   },
   GA_LABEL: {
     FONT_SIZE: 18,        // GA section label font size
     FONT_WEIGHT: 'bold',  // GA section label font weight
     FONT_FAMILY: 'system-ui, sans-serif',
     COLOR: 0xffffff       // GA section label color (white)
+  },
+  PREVIEW: {
+    STROKE_WIDTH: 2,
+    STROKE_ALPHA: 0.8,
+    FILL_ALPHA: 0.15
+  },
+  UI: {
+    TOOLBAR_HEIGHT: 56,
+    ZOOM_PADDING: 50,
+    SEAT_BOUNDS_PADDING: 15,
+    LABEL_BOUNDS_PADDING: 20
   }
 };
 
@@ -45,5 +57,18 @@ export const COLORS = {
   PREVIEW: 0xffc107,
   DELETE_HIGHLIGHT: 0xff4444,
   FLASH_SEAT: 0x00ff88,
-  FLASH_SECTION: 0xffc107
+  FLASH_SECTION: 0xffc107,
+  DEFAULT_SECTION: 0x3b82f6,
+  DEFAULT_SEAT: 0xffffff,
+  DEFAULT_TEXT: 0x000000,
+  DEFAULT_GLOW: 0xffffff,
+  SELECTION_RECT_FILL: 0x1e90ff,
+  SELECTION_RECT_STROKE: 0x1e90ff,
+  SEAT_SELECTION_RECT_FILL: 0x00ff00,
+  SEAT_SELECTION_RECT_STROKE: 0x00ff00,
+  SPECIAL_NEEDS: 0x2563eb,
+  HANDLE_FILL: 0x4ade80,
+  HANDLE_STROKE: 0xffffff,
+  DEFAULT_FILL_COLOR: "#4a5568",
+  DEFAULT_BORDER_COLOR: "#3b82f6"
 };

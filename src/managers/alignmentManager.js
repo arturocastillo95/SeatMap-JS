@@ -4,6 +4,7 @@
 
 import { State, Elements } from '../core/state.js';
 import { SectionManager } from './sectionManager.js';
+import { COLORS } from '../core/config.js';
 
 export const AlignmentManager = {
   // Configuration
@@ -130,7 +131,7 @@ export const AlignmentManager = {
         } else {
           // Invalid color, reset to current section color
           const section = State.selectedSections[0];
-          const validColorHex = '#' + (section.sectionColor || 0x3b82f6).toString(16).padStart(6, '0');
+          const validColorHex = '#' + (section.sectionColor || COLORS.DEFAULT_SECTION).toString(16).padStart(6, '0');
           Elements.sectionColorInput.value = validColorHex.toUpperCase();
         }
       }
@@ -165,7 +166,7 @@ export const AlignmentManager = {
         } else {
           // Invalid color, reset to current seat color
           const section = State.selectedSections[0];
-          const validColorHex = '#' + (section.seatColor || 0xffffff).toString(16).padStart(6, '0');
+          const validColorHex = '#' + (section.seatColor || COLORS.DEFAULT_SEAT).toString(16).padStart(6, '0');
           Elements.seatColorInput.value = validColorHex.toUpperCase();
         }
       }
@@ -200,7 +201,7 @@ export const AlignmentManager = {
         } else {
           // Invalid color, reset to current seat text color
           const section = State.selectedSections[0];
-          const validColorHex = '#' + (section.seatTextColor || 0x000000).toString(16).padStart(6, '0');
+          const validColorHex = '#' + (section.seatTextColor || COLORS.DEFAULT_TEXT).toString(16).padStart(6, '0');
           Elements.seatTextColorInput.value = validColorHex.toUpperCase();
         }
       }
@@ -235,7 +236,7 @@ export const AlignmentManager = {
         } else {
           // Invalid color, reset to current row label color
           const section = State.selectedSections[0];
-          const validColorHex = '#' + (section.rowLabelColor || 0xffffff).toString(16).padStart(6, '0');
+          const validColorHex = '#' + (section.rowLabelColor || COLORS.DEFAULT_SEAT).toString(16).padStart(6, '0');
           Elements.rowLabelColorInput.value = validColorHex.toUpperCase();
         }
       }
@@ -654,17 +655,17 @@ export const AlignmentManager = {
     Elements.sectionNameInput.value = section.sectionId || 'Unnamed Section';
     
     // Update section color inputs
-    const colorHex = '#' + (section.sectionColor || 0x3b82f6).toString(16).padStart(6, '0');
+    const colorHex = '#' + (section.sectionColor || COLORS.DEFAULT_SECTION).toString(16).padStart(6, '0');
     Elements.sectionColorPicker.value = colorHex;
     Elements.sectionColorInput.value = colorHex.toUpperCase();
     
     // Update seat color inputs
-    const seatColorHex = '#' + (section.seatColor || 0xffffff).toString(16).padStart(6, '0');
+    const seatColorHex = '#' + (section.seatColor || COLORS.DEFAULT_SEAT).toString(16).padStart(6, '0');
     Elements.seatColorPicker.value = seatColorHex;
     Elements.seatColorInput.value = seatColorHex.toUpperCase();
     
     // Update seat text color inputs
-    const seatTextColorHex = '#' + (section.seatTextColor || 0x000000).toString(16).padStart(6, '0');
+    const seatTextColorHex = '#' + (section.seatTextColor || COLORS.DEFAULT_TEXT).toString(16).padStart(6, '0');
     Elements.seatTextColorPicker.value = seatTextColorHex;
     Elements.seatTextColorInput.value = seatTextColorHex.toUpperCase();
     
@@ -676,7 +677,7 @@ export const AlignmentManager = {
     Elements.glowEnabledToggle.checked = section.glowEnabled;
     document.getElementById('glowControls').style.display = section.glowEnabled ? 'block' : 'none';
     
-    const glowColorHex = '#' + (section.glowColor || 0xffffff).toString(16).padStart(6, '0');
+    const glowColorHex = '#' + (section.glowColor || COLORS.DEFAULT_GLOW).toString(16).padStart(6, '0');
     Elements.glowColorPicker.value = glowColorHex;
     Elements.glowColorInput.value = glowColorHex.toUpperCase();
     
@@ -773,7 +774,7 @@ export const AlignmentManager = {
     }
 
     // Update row label color inputs
-    const rowLabelColorHex = '#' + (section.rowLabelColor || 0xffffff).toString(16).padStart(6, '0');
+    const rowLabelColorHex = '#' + (section.rowLabelColor || COLORS.DEFAULT_SEAT).toString(16).padStart(6, '0');
     Elements.rowLabelColorPicker.value = rowLabelColorHex;
     Elements.rowLabelColorInput.value = rowLabelColorHex.toUpperCase();
 

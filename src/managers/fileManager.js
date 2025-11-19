@@ -3,6 +3,7 @@
 // ============================================
 
 import { State } from '../core/state.js';
+import { COLORS } from '../core/config.js';
 
 export const FileManager = {
   /**
@@ -132,11 +133,11 @@ export const FileManager = {
         
         // Visual styling
         style: {
-          fillColor: "#4a5568",
-          seatColor: section.seatColor !== undefined ? section.seatColor : 0xffffff,
-          seatTextColor: section.seatTextColor !== undefined ? section.seatTextColor : 0x000000,
-          borderColor: "#3b82f6",
-          sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
+          fillColor: COLORS.DEFAULT_FILL_COLOR,
+          seatColor: section.seatColor !== undefined ? section.seatColor : COLORS.DEFAULT_SEAT,
+          seatTextColor: section.seatTextColor !== undefined ? section.seatTextColor : COLORS.DEFAULT_TEXT,
+          borderColor: COLORS.DEFAULT_BORDER_COLOR,
+          sectionColor: section.sectionColor !== undefined ? section.sectionColor : COLORS.DEFAULT_SECTION,
           fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
           strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
           opacity: 1.0,
@@ -218,7 +219,7 @@ export const FileManager = {
         showRight: section.showRightLabels || false,
         hidden: section.labelsHidden || false,
         spacing: section.rowLabelSpacing || 20,
-        color: section.rowLabelColor !== undefined ? section.rowLabelColor : 0xffffff
+        color: section.rowLabelColor !== undefined ? section.rowLabelColor : COLORS.DEFAULT_SEAT
       },
       
       // Seat configuration and numbering
@@ -247,11 +248,11 @@ export const FileManager = {
       
       // Visual styling
       style: {
-        fillColor: "#4a5568",
-        seatColor: section.seatColor !== undefined ? section.seatColor : 0xffffff,
-        seatTextColor: section.seatTextColor !== undefined ? section.seatTextColor : 0x000000,
-        borderColor: "#3b82f6",
-        sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
+        fillColor: COLORS.DEFAULT_FILL_COLOR,
+        seatColor: section.seatColor !== undefined ? section.seatColor : COLORS.DEFAULT_SEAT,
+        seatTextColor: section.seatTextColor !== undefined ? section.seatTextColor : COLORS.DEFAULT_TEXT,
+        borderColor: COLORS.DEFAULT_BORDER_COLOR,
+        sectionColor: section.sectionColor !== undefined ? section.sectionColor : COLORS.DEFAULT_SECTION,
         fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
         strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
         opacity: 1.0,
@@ -546,7 +547,7 @@ export const FileManager = {
       // Restore glow properties
       if (data.style.glow) {
         section.glowEnabled = data.style.glow.enabled || false;
-        section.glowColor = data.style.glow.color || 0xffffff;
+        section.glowColor = data.style.glow.color || COLORS.DEFAULT_GLOW;
         section.glowOpacity = data.style.glow.opacity !== undefined ? data.style.glow.opacity : 0.5;
         section.glowStrength = data.style.glow.strength !== undefined ? data.style.glow.strength : 10;
         section.glowBlur = data.style.glow.blur !== undefined ? data.style.glow.blur : 5;
