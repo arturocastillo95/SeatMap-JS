@@ -232,6 +232,10 @@ export const FileManager = {
       // Row alignment
       rowAlignment: section.rowAlignment || 'center',
       
+      // Layout shift (for row labels positioning)
+      layoutShiftX: section.layoutShiftX || 0,
+      layoutShiftY: section.layoutShiftY || 0,
+      
       // Individual seats (for supporting deleted seats and special needs)
       // Save BOTH base and current (transformed) positions
       seats: seats.map(seat => ({
@@ -472,6 +476,14 @@ export const FileManager = {
     // Restore row alignment (v2.0.0+)
     if (data.rowAlignment) {
       section.rowAlignment = data.rowAlignment;
+    }
+    
+    // Restore layout shift (v2.0.0+)
+    if (data.layoutShiftX !== undefined) {
+      section.layoutShiftX = data.layoutShiftX;
+    }
+    if (data.layoutShiftY !== undefined) {
+      section.layoutShiftY = data.layoutShiftY;
     }
     
     // Restore pricing (v2.0.0+)

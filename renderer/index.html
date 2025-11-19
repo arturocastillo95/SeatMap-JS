@@ -8,9 +8,28 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0f0f13; }
         #seatmap-container { width: 100%; height: 100%; }
+        #controls { position: fixed; top: 20px; left: 20px; z-index: 1000; }
+        #controls button, #controls label { 
+            padding: 10px 20px; 
+            background: #1e90ff; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-family: system-ui, sans-serif;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        #controls button:hover, #controls label:hover { background: #1c7ed6; }
+        #file-input { display: none; }
     </style>
 </head>
 <body>
+    <div id="controls">
+        <label for="file-input">Open Map File</label>
+        <input type="file" id="file-input" accept=".json">
+        <button id="center-btn">Center Map</button>
+    </div>
     <div id="seatmap-container"></div>
 
     <!-- PixiJS -->
@@ -30,7 +49,28 @@
         // Expose renderer to window for testing
         window.seatMapRenderer = renderer;
 
-        console.log("SeatMap Renderer initialized. Use window.seatMapRenderer.loadData(json) to render a map.");
+        // File input handler
+        document.getElementById('file-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                await renderer.loadData(data);
+                console.log('Map loaded successfully!');
+            } catch (error) {
+                console.error('Failed to load map:', error);
+                alert('Failed to load map file. Check console for details.');
+            }
+        });
+
+        // Center button handler
+        document.getElementById('center-btn').addEventListener('click', () => {
+            renderer.centerMap();
+        });
+
+        console.log("SeatMap Renderer initialized. Click 'Open Map File' to load a venue map.");
     </script>
 </body>
 </html>

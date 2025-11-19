@@ -3,11 +3,20 @@
  * A lightweight renderer for SeatMap JS files (SMF format).
  */
 
+// Configuration
+const RENDERER_CONFIG = {
+    PADDING: 50,              // Padding around the map when fitting to view
+    MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
+    MAX_ZOOM: 5,              // Maximum zoom level
+    ZOOM_SPEED: 1.1,          // Zoom speed multiplier
+    BACKGROUND_COLOR: 0x0f0f13
+};
+
 export class SeatMapRenderer {
     constructor(container, options = {}) {
         this.container = container;
         this.options = {
-            backgroundColor: 0x0f0f13,
+            backgroundColor: RENDERER_CONFIG.BACKGROUND_COLOR,
             backgroundAlpha: 1,
             resizeTo: container,
             antialias: true,
@@ -20,6 +29,8 @@ export class SeatMapRenderer {
         this.viewport = new PIXI.Container(); // Main container for the map content
         this.isDragging = false;
         this.lastPos = null;
+        this.initialScale = 1;    // Store initial scale to prevent zooming out beyond it
+        this.hasUnderlay = false;  // Track if we have an underlay image
 
         this.init();
     }
@@ -73,8 +84,7 @@ export class SeatMapRenderer {
         // Zoom with wheel
         this.container.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const scaleFactor = 1.1;
-            const direction = e.deltaY > 0 ? 1 / scaleFactor : scaleFactor;
+            const direction = e.deltaY > 0 ? 1 / RENDERER_CONFIG.ZOOM_SPEED : RENDERER_CONFIG.ZOOM_SPEED;
             
             // Calculate zoom center
             const rect = this.container.getBoundingClientRect();
@@ -88,8 +98,9 @@ export class SeatMapRenderer {
 
             const newScale = this.viewport.scale.x * direction;
             
-            // Limit zoom
-            if (newScale > 0.1 && newScale < 5) {
+            // Limit zoom: can zoom in (up to MAX_ZOOM) but not out beyond initial scale
+            const minScale = this.initialScale || RENDERER_CONFIG.MIN_ZOOM;
+            if (newScale >= minScale && newScale <= RENDERER_CONFIG.MAX_ZOOM) {
                 this.viewport.scale.set(newScale);
                 this.viewport.position.x = x - localPos.x * newScale;
                 this.viewport.position.y = y - localPos.y * newScale;
@@ -115,6 +126,9 @@ export class SeatMapRenderer {
         // 1. Load Underlay (if present)
         if (data.underlay && data.underlay.visible !== false) {
             await this.renderUnderlay(data.underlay);
+            this.hasUnderlay = true;
+        } else {
+            this.hasUnderlay = false;
         }
 
         // 2. Render Sections
@@ -124,14 +138,9 @@ export class SeatMapRenderer {
             }
         }
 
-        // 3. Restore Viewport (Canvas settings)
-        if (data.canvas) {
-            this.viewport.position.set(data.canvas.panX || 0, data.canvas.panY || 0);
-            this.viewport.scale.set(data.canvas.zoom || 1);
-        } else {
-            // Center map if no canvas data
-            this.centerMap();
-        }
+        // 3. Fit to view (ignoring saved canvas settings for consistent initial view)
+        // Fit to underlay if present, otherwise fit to all sections
+        this.fitToView();
     }
 
     async renderUnderlay(underlayData) {
@@ -157,24 +166,12 @@ export class SeatMapRenderer {
     renderSection(data) {
         const container = new PIXI.Container();
         
-        // Position
-        // Note: In the editor, x/y might be center or top-left depending on version.
-        // SMF v2.0.0 uses top-left for x/y in serialization, but also stores centerX/centerY.
-        // We'll use x/y as the position of the container.
-        container.x = data.x;
-        container.y = data.y;
-
-        // Rotation
-        if (data.transform && data.transform.rotation) {
-            container.angle = data.transform.rotation;
-        }
+        const width = data.width;
+        const height = data.height;
 
         // 1. Draw Section Background/Border
         const graphics = new PIXI.Graphics();
         container.addChild(graphics);
-
-        const width = data.width;
-        const height = data.height;
         
         // Style
         const style = data.style || {};
@@ -187,17 +184,22 @@ export class SeatMapRenderer {
         if (fillAlpha > 0) graphics.fill({ color: fillColor, alpha: fillAlpha });
         if (strokeAlpha > 0) graphics.stroke({ width: 2, color: fillColor, alpha: strokeAlpha });
 
-        // Pivot (Center of the section)
+        // Pivot (Center of the section) - MUST be set before positioning
         container.pivot.set(width / 2, height / 2);
         
-        // If we have centerX/centerY, we can use those to position the container more accurately
+        // Position: Use centerX/centerY if available (v2.0.0+), otherwise calculate from x/y
         if (data.centerX !== undefined && data.centerY !== undefined) {
             container.x = data.centerX;
             container.y = data.centerY;
         } else {
-            // Adjust for pivot if using top-left x/y
-            container.x += width / 2;
-            container.y += height / 2;
+            // Legacy: x/y are top-left, so add half dimensions to get center
+            container.x = data.x + width / 2;
+            container.y = data.y + height / 2;
+        }
+
+        // Rotation (applied after positioning)
+        if (data.transform && data.transform.rotation) {
+            container.angle = data.transform.rotation;
         }
 
         // 2. Render Content (Seats or GA Label)
@@ -246,6 +248,10 @@ export class SeatMapRenderer {
     }
 
     renderSeatsAndLabels(container, data) {
+        // Get layout shift from section data (if row labels were added)
+        const layoutShiftX = data.layoutShiftX || 0;
+        const layoutShiftY = data.layoutShiftY || 0;
+
         // Render Seats
         if (data.seats) {
             const style = data.style || {};
@@ -260,8 +266,12 @@ export class SeatMapRenderer {
                 
                 // Position
                 // Use relativeX/Y if available (v2.0+), otherwise baseX/Y
-                const x = seatData.relativeX !== undefined ? seatData.relativeX : seatData.baseX;
-                const y = seatData.relativeY !== undefined ? seatData.relativeY : seatData.baseY;
+                let x = seatData.relativeX !== undefined ? seatData.relativeX : seatData.baseX;
+                let y = seatData.relativeY !== undefined ? seatData.relativeY : seatData.baseY;
+                
+                // Apply layout shift (for row labels)
+                x += layoutShiftX;
+                y += layoutShiftY;
                 
                 seatContainer.x = x;
                 seatContainer.y = y;
@@ -361,6 +371,10 @@ export class SeatMapRenderer {
         const seats = sectionData.seats || [];
         if (seats.length === 0) return;
 
+        // Get layout shift
+        const layoutShiftX = sectionData.layoutShiftX || 0;
+        const layoutShiftY = sectionData.layoutShiftY || 0;
+
         // Group seats by row index
         const rows = {};
         seats.forEach(seat => {
@@ -389,11 +403,17 @@ export class SeatMapRenderer {
             const firstSeat = rowSeats[0];
             const lastSeat = rowSeats[rowSeats.length - 1];
             
-            const firstX = firstSeat.relativeX !== undefined ? firstSeat.relativeX : firstSeat.baseX;
-            const firstY = firstSeat.relativeY !== undefined ? firstSeat.relativeY : firstSeat.baseY;
+            let firstX = firstSeat.relativeX !== undefined ? firstSeat.relativeX : firstSeat.baseX;
+            let firstY = firstSeat.relativeY !== undefined ? firstSeat.relativeY : firstSeat.baseY;
             
-            const lastX = lastSeat.relativeX !== undefined ? lastSeat.relativeX : lastSeat.baseX;
-            const lastY = lastSeat.relativeY !== undefined ? lastSeat.relativeY : lastSeat.baseY;
+            let lastX = lastSeat.relativeX !== undefined ? lastSeat.relativeX : lastSeat.baseX;
+            let lastY = lastSeat.relativeY !== undefined ? lastSeat.relativeY : lastSeat.baseY;
+            
+            // Apply layout shift
+            firstX += layoutShiftX;
+            firstY += layoutShiftY;
+            lastX += layoutShiftX;
+            lastY += layoutShiftY;
 
             const style = {
                 fontFamily: 'system-ui, sans-serif',
@@ -444,25 +464,54 @@ export class SeatMapRenderer {
         return '';
     }
 
-    centerMap() {
+    /**
+     * Fit the view to show all content (underlay or sections) centered and scaled to fit viewport height
+     */
+    fitToView() {
         const bounds = this.viewport.getBounds();
         if (bounds.width === 0 || bounds.height === 0) return;
 
         const screenWidth = this.app.screen.width;
         const screenHeight = this.app.screen.height;
-        const padding = 50;
 
-        const scaleX = (screenWidth - padding * 2) / bounds.width;
-        const scaleY = (screenHeight - padding * 2) / bounds.height;
+        let targetBounds;
+        
+        if (this.hasUnderlay) {
+            // If we have an underlay, fit to the underlay image bounds
+            const underlayChild = this.viewport.children[0]; // Underlay is first child
+            if (underlayChild) {
+                targetBounds = underlayChild.getBounds();
+            } else {
+                targetBounds = bounds;
+            }
+        } else {
+            // Otherwise fit to all sections
+            targetBounds = bounds;
+        }
+
+        // Calculate scale to fit height with padding
+        const scaleX = (screenWidth - RENDERER_CONFIG.PADDING * 2) / targetBounds.width;
+        const scaleY = (screenHeight - RENDERER_CONFIG.PADDING * 2) / targetBounds.height;
+        
+        // Use the smaller scale to ensure everything fits, but don't zoom in beyond 1:1
         const scale = Math.min(scaleX, scaleY, 1);
 
         this.viewport.scale.set(scale);
+        this.initialScale = scale; // Store initial scale to prevent zooming out further
         
-        const centerX = bounds.x + bounds.width / 2;
-        const centerY = bounds.y + bounds.height / 2;
+        // Center the content
+        const centerX = targetBounds.x + targetBounds.width / 2;
+        const centerY = targetBounds.y + targetBounds.height / 2;
         
         this.viewport.position.x = (screenWidth / 2) - (centerX * scale);
         this.viewport.position.y = (screenHeight / 2) - (centerY * scale);
+    }
+
+    /**
+     * Legacy method - now calls fitToView
+     */
+    centerMap() {
+        this.fitToView();
     }
 
     onSeatClick(seatContainer) {
