@@ -133,9 +133,12 @@ export const FileManager = {
         // Visual styling
         style: {
           fillColor: "#4a5568",
-          seatColor: "#ffffff",
+          seatColor: section.seatColor !== undefined ? section.seatColor : 0xffffff,
+          seatTextColor: section.seatTextColor !== undefined ? section.seatTextColor : 0x000000,
           borderColor: "#3b82f6",
           sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
+          fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
+          strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
           opacity: 1.0
         },
         
@@ -238,7 +241,8 @@ export const FileManager = {
       // Visual styling
       style: {
         fillColor: "#4a5568",
-        seatColor: "#ffffff",
+        seatColor: section.seatColor !== undefined ? section.seatColor : 0xffffff,
+        seatTextColor: section.seatTextColor !== undefined ? section.seatTextColor : 0x000000,
         borderColor: "#3b82f6",
         sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
         fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
@@ -473,6 +477,37 @@ export const FileManager = {
       SectionManager.setSectionColor(section, colorHex);
     }
     
+    // Restore seat colors (v2.0.0+)
+    let needsSeatColorUpdate = false;
+    if (data.style) {
+      if (data.style.seatColor !== undefined && data.style.seatColor !== null) {
+        // Handle both number and string formats
+        if (typeof data.style.seatColor === 'string') {
+          const colorValue = parseInt(data.style.seatColor.replace('#', ''), 16);
+          if (!isNaN(colorValue)) {
+            section.seatColor = colorValue;
+            needsSeatColorUpdate = true;
+          }
+        } else if (typeof data.style.seatColor === 'number') {
+          section.seatColor = data.style.seatColor;
+          needsSeatColorUpdate = true;
+        }
+      }
+      if (data.style.seatTextColor !== undefined && data.style.seatTextColor !== null) {
+        // Handle both number and string formats
+        if (typeof data.style.seatTextColor === 'string') {
+          const colorValue = parseInt(data.style.seatTextColor.replace('#', ''), 16);
+          if (!isNaN(colorValue)) {
+            section.seatTextColor = colorValue;
+            needsSeatColorUpdate = true;
+          }
+        } else if (typeof data.style.seatTextColor === 'number') {
+          section.seatTextColor = data.style.seatTextColor;
+          needsSeatColorUpdate = true;
+        }
+      }
+    }
+    
     // Restore fill and stroke visibility (v2.0.0+)
     if (data.style) {
       if (data.style.fillVisible !== undefined) {
@@ -597,6 +632,12 @@ export const FileManager = {
       
       // Update all seat positions to match the new section position
       SectionManager.positionSeatsAndLabels(section);
+    }
+    
+    // Update seat visuals if custom colors were loaded
+    if (needsSeatColorUpdate && section.seats.length > 0) {
+      const { SeatManager } = await import('./SeatManager.js');
+      SeatManager.updateAllSeats(section);
     }
     
     return section;

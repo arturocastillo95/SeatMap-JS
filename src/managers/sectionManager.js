@@ -162,6 +162,36 @@ export const SectionManager = {
     console.log(`✓ Updated section color to ${colorHex}`);
   },
 
+  setSeatColor(section, colorHex) {
+    if (!colorHex || typeof colorHex !== 'string') {
+      throw new Error('Invalid color hex');
+    }
+    
+    // Convert hex string to number
+    const colorValue = parseInt(colorHex.replace('#', ''), 16);
+    section.seatColor = colorValue;
+    
+    // Update all existing seats (if any)
+    SeatManager.updateAllSeats(section);
+    
+    console.log(`✓ Updated seat color to ${colorHex}`);
+  },
+
+  setSeatTextColor(section, colorHex) {
+    if (!colorHex || typeof colorHex !== 'string') {
+      throw new Error('Invalid color hex');
+    }
+    
+    // Convert hex string to number
+    const colorValue = parseInt(colorHex.replace('#', ''), 16);
+    section.seatTextColor = colorValue;
+    
+    // Update all existing seats (if any)
+    SeatManager.updateAllSeats(section);
+    
+    console.log(`✓ Updated seat text color to ${colorHex}`);
+  },
+
   // ============================================
   // LEGACY/COMPATIBILITY METHODS
   // ============================================

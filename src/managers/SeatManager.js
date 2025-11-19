@@ -35,19 +35,19 @@ export const SeatManager = {
         // Create seat container
         const seatContainer = new PIXI.Container();
         
-        // Create circle
+        // Create circle (use section's seat color)
         const seat = new PIXI.Graphics();
         seat.circle(0, 0, 10);
-        seat.fill({ color: COLORS.SEAT, alpha: 1 });
+        seat.fill({ color: section.seatColor, alpha: 1 });
         
-        // Create number label
+        // Create number label (use section's seat text color)
         const seatLabel = new PIXI.Text({
           text: seatNumber.toString(),
           style: {
             fontFamily: 'system-ui, sans-serif',
             fontSize: 10,
             fontWeight: 'bold',
-            fill: 0x000000,
+            fill: section.seatTextColor,
             align: 'center'
           }
         });
@@ -126,11 +126,22 @@ export const SeatManager = {
   /**
    * Update seat visual based on special needs status
    * @param {PIXI.Container} seat - The seat container
+   * @param {Section} section - The section (optional, will find it if not provided)
    */
-  updateSeatVisual(seat) {
+  updateSeatVisual(seat, section = null) {
     // Get the graphics and label (children of the container)
     const seatGraphics = seat.children[0]; // The circle
     const seatLabel = seat.children[1]; // The text label
+    
+    // Find section if not provided
+    if (!section) {
+      section = State.sections.find(s => s.seats.includes(seat));
+    }
+    
+    if (!section) {
+      console.error('Could not find section for seat', seat);
+      return;
+    }
     
     if (seat.specialNeeds) {
       // Special needs seat: blue color with accessibility icon
@@ -144,16 +155,17 @@ export const SeatManager = {
       seatLabel.style.fontSize = 14;
       seatLabel.style.fontWeight = 'normal';
     } else {
-      // Regular seat: gray color with seat number
+      // Regular seat: use section's seat colors
       seatGraphics.clear();
       seatGraphics.circle(0, 0, 10);
-      seatGraphics.fill({ color: COLORS.SEAT, alpha: 1 });
+      seatGraphics.fill({ color: section.seatColor, alpha: 1 });
       
-      // Show seat number
+      // Show seat number with section's text color
       seatLabel.text = seat.seatNumber.toString();
       seatLabel.style.fontFamily = 'system-ui, sans-serif';
       seatLabel.style.fontSize = 10;
       seatLabel.style.fontWeight = 'bold';
+      seatLabel.style.fill = section.seatTextColor;
     }
   },
 
@@ -168,6 +180,24 @@ export const SeatManager = {
     
     // Dispatch event to update UI
     document.dispatchEvent(new CustomEvent('seatPropertiesChanged'));
+  },
+
+  /**
+   * Update all seats in a section to reflect current seat colors
+   * @param {Section} section - The section
+   */
+  updateAllSeats(section) {
+    // Skip if GA section or seats haven't been created yet
+    if (section.isGeneralAdmission || !section.seats || section.seats.length === 0) {
+      return;
+    }
+    
+    // Iterate through all seats and update their visuals
+    section.seats.forEach(seat => {
+      this.updateSeatVisual(seat, section);
+    });
+    
+    console.log(`✓ Updated ${section.seats.length} seat visuals`);
   },
 
   /**

@@ -107,15 +107,19 @@ Each regular section in the `sections` array contains:
       "number": "1",
       "baseX": 10,
       "baseY": 10,
+      "specialNeeds": false,
       "metadata": {}
     }
   ],
   
   "style": {
     "fillColor": "#4a5568",
-    "seatColor": "#ffffff",
+    "seatColor": 16777215,
+    "seatTextColor": 0,
     "borderColor": "#3b82f6",
     "sectionColor": 4285718,
+    "fillVisible": true,
+    "strokeVisible": true,
     "opacity": 1.0
   },
   
@@ -183,9 +187,12 @@ GA sections are used for standing areas or general admission zones without indiv
   
   "style": {
     "fillColor": "#4a5568",
-    "seatColor": "#ffffff",
+    "seatColor": 16777215,
+    "seatTextColor": 0,
     "borderColor": "#3b82f6",
     "sectionColor": 4285718,
+    "fillVisible": true,
+    "strokeVisible": true,
     "opacity": 1.0
   },
   
@@ -249,6 +256,10 @@ The optional `underlay` object contains background image data:
 - **General Admission (GA) sections** with capacity-based tracking
 - **Underlay support** for background images/blueprints
 - Section color customization (`sectionColor` field in style)
+- **Seat color customization** (`seatColor` and `seatTextColor` fields in style)
+- Fill and stroke visibility toggles (`fillVisible` and `strokeVisible` in style)
+- Row label spacing control (5-50px, default: 20)
+- Special needs seat support (`specialNeeds` field in seat objects)
 - Pricing information per section (base price and service fees)
 - Row label hidden mode for viewer use
 - Enhanced metadata fields for extensibility
@@ -342,10 +353,13 @@ Each seat object contains:
 
 ### Style Fields
 
-- `fillColor`: Section background color (hex string)
-- `seatColor`: Individual seat color (hex string)
-- `borderColor`: Section border color (hex string)
+- `fillColor`: Section background color (hex string) - legacy field
+- `seatColor`: Individual seat circle color as numeric value (e.g., 16777215 for #ffffff/white) - defaults to white for backward compatibility
+- `seatTextColor`: Individual seat text color as numeric value (e.g., 0 for #000000/black) - defaults to black for backward compatibility
+- `borderColor`: Section border color (hex string) - legacy field
 - `sectionColor`: Section color as numeric value (e.g., 4285718 for #3b82f6)
+- `fillVisible`: Whether section background is visible (boolean, default: true)
+- `strokeVisible`: Whether section border is visible (boolean, default: true)
 - `opacity`: Section opacity (0.0 to 1.0)
 
 ### Pricing Fields

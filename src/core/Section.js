@@ -76,6 +76,10 @@ export class Section extends PIXI.Graphics {
     this._fillVisible = config.fillVisible !== undefined ? config.fillVisible : true;
     this._strokeVisible = config.strokeVisible !== undefined ? config.strokeVisible : true;
     
+    // Seat colors
+    this._seatColor = config.seatColor || COLORS.SEAT;  // Circle fill color
+    this._seatTextColor = config.seatTextColor || 0x000000; // Text color (default black)
+    
     // Dimensions
     this._contentWidth = config.width;
     this._contentHeight = config.height;
@@ -234,6 +238,28 @@ export class Section extends PIXI.Graphics {
     }
     this._strokeVisible = value;
     this.redrawGraphics();
+  }
+
+  get seatColor() {
+    return this._seatColor;
+  }
+
+  set seatColor(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Seat color must be a valid hex color number');
+    }
+    this._seatColor = value;
+  }
+
+  get seatTextColor() {
+    return this._seatTextColor;
+  }
+
+  set seatTextColor(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Seat text color must be a valid hex color number');
+    }
+    this._seatTextColor = value;
   }
 
   get contentWidth() {
@@ -577,6 +603,8 @@ export class Section extends PIXI.Graphics {
       height: this._contentHeight,
       rotation: this._rotationDegrees,
       color: this._sectionColor,
+      seatColor: this._seatColor,
+      seatTextColor: this._seatTextColor,
       stretchH: this._stretchH,
       stretchV: this._stretchV,
       curve: this._curve,

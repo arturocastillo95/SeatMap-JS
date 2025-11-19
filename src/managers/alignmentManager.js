@@ -136,6 +136,76 @@ export const AlignmentManager = {
       }
     });
 
+    // Seat color inputs
+    Elements.seatColorPicker.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const colorHex = e.target.value;
+        // Update text input
+        Elements.seatColorInput.value = colorHex.toUpperCase();
+        // Apply color to section's seats
+        SectionManager.setSeatColor(State.selectedSections[0], colorHex);
+      }
+    });
+
+    Elements.seatColorInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        let colorHex = e.target.value.trim();
+        // Add # if missing
+        if (!colorHex.startsWith('#')) {
+          colorHex = '#' + colorHex;
+        }
+        // Validate hex color
+        if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+          // Update color picker
+          Elements.seatColorPicker.value = colorHex;
+          // Apply color to section's seats
+          SectionManager.setSeatColor(State.selectedSections[0], colorHex);
+          // Update text input to show formatted value
+          Elements.seatColorInput.value = colorHex.toUpperCase();
+        } else {
+          // Invalid color, reset to current seat color
+          const section = State.selectedSections[0];
+          const validColorHex = '#' + (section.seatColor || 0xffffff).toString(16).padStart(6, '0');
+          Elements.seatColorInput.value = validColorHex.toUpperCase();
+        }
+      }
+    });
+
+    // Seat text color inputs
+    Elements.seatTextColorPicker.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const colorHex = e.target.value;
+        // Update text input
+        Elements.seatTextColorInput.value = colorHex.toUpperCase();
+        // Apply color to section's seat text
+        SectionManager.setSeatTextColor(State.selectedSections[0], colorHex);
+      }
+    });
+
+    Elements.seatTextColorInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        let colorHex = e.target.value.trim();
+        // Add # if missing
+        if (!colorHex.startsWith('#')) {
+          colorHex = '#' + colorHex;
+        }
+        // Validate hex color
+        if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+          // Update color picker
+          Elements.seatTextColorPicker.value = colorHex;
+          // Apply color to section's seat text
+          SectionManager.setSeatTextColor(State.selectedSections[0], colorHex);
+          // Update text input to show formatted value
+          Elements.seatTextColorInput.value = colorHex.toUpperCase();
+        } else {
+          // Invalid color, reset to current seat text color
+          const section = State.selectedSections[0];
+          const validColorHex = '#' + (section.seatTextColor || 0x000000).toString(16).padStart(6, '0');
+          Elements.seatTextColorInput.value = validColorHex.toUpperCase();
+        }
+      }
+    });
+
     // GA Capacity input
     Elements.gaCapacityInput.addEventListener('input', (e) => {
       if (State.selectedSections.length === 1) {
@@ -495,6 +565,16 @@ export const AlignmentManager = {
     Elements.sectionColorPicker.value = colorHex;
     Elements.sectionColorInput.value = colorHex.toUpperCase();
     
+    // Update seat color inputs
+    const seatColorHex = '#' + (section.seatColor || 0xffffff).toString(16).padStart(6, '0');
+    Elements.seatColorPicker.value = seatColorHex;
+    Elements.seatColorInput.value = seatColorHex.toUpperCase();
+    
+    // Update seat text color inputs
+    const seatTextColorHex = '#' + (section.seatTextColor || 0x000000).toString(16).padStart(6, '0');
+    Elements.seatTextColorPicker.value = seatTextColorHex;
+    Elements.seatTextColorInput.value = seatTextColorHex.toUpperCase();
+    
     // Update fill and stroke visibility toggles
     Elements.sectionFillToggle.classList.toggle('active', section.fillVisible !== false);
     Elements.sectionStrokeToggle.classList.toggle('active', section.strokeVisible !== false);
@@ -504,7 +584,7 @@ export const AlignmentManager = {
     
     // Show/hide sections based on section type
     if (isGA) {
-      // GA section - show capacity, size controls, hide row labels, seat numbering, align rows, add rows, stretch controls
+      // GA section - show capacity, size controls, hide row labels, seat numbering, align rows, add rows, stretch controls, seat colors
       Elements.seatsTitle.textContent = 'Capacity';
       Elements.seatsInfo.style.display = 'none';
       Elements.capacityInput.style.display = 'block';
@@ -519,6 +599,8 @@ export const AlignmentManager = {
       Elements.stretchHSection.style.display = 'none';
       Elements.stretchVSection.style.display = 'none';
       Elements.outlineHeader.parentElement.style.display = 'block';
+      document.getElementById('seatColorSection').style.display = 'none';
+      document.getElementById('seatTextColorSection').style.display = 'none';
       return; // Skip the rest of the updates
     } else {
       // Regular section - show all seat-related controls, hide GA size controls, show stretch controls
@@ -533,6 +615,8 @@ export const AlignmentManager = {
       Elements.stretchHSection.style.display = 'block';
       Elements.stretchVSection.style.display = 'block';
       Elements.outlineHeader.parentElement.style.display = 'block';
+      document.getElementById('seatColorSection').style.display = 'block';
+      document.getElementById('seatTextColorSection').style.display = 'block';
     }
     
     // Update row label type buttons

@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Seat Color Customization** - Control circle fill color and text color for individual seats
+  - Separate color pickers for seat circle color and seat text color
+  - Per-section customization (each section can have different seat colors)
+  - Real-time visual updates when changing colors
+  - Applies to all seats in the section (except special needs seats which remain blue)
+  - Special needs seats override with blue (#2563eb) regardless of section colors
+  - Colors persist in file save/load format
+  - Defaults to white circles (#ffffff) with black text (#000000) for backward compatibility
+  - Hidden for GA sections (no individual seats)
+  - Located in section sidebar below "Section Color"
 - **Row Label Spacing Control** - Adjust distance between row labels and seats
   - Slider control (5-50px) in Row Labels section of sidebar
   - Real-time visual feedback as spacing changes

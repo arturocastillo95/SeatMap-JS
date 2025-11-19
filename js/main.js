@@ -119,6 +119,10 @@ function initializeElements() {
   Elements.stretchVSection = document.getElementById('stretchVSection');
   Elements.sectionColorPicker = document.getElementById('sectionColorPicker');
   Elements.sectionColorInput = document.getElementById('sectionColorInput');
+  Elements.seatColorPicker = document.getElementById('seatColorPicker');
+  Elements.seatColorInput = document.getElementById('seatColorInput');
+  Elements.seatTextColorPicker = document.getElementById('seatTextColorPicker');
+  Elements.seatTextColorInput = document.getElementById('seatTextColorInput');
   Elements.sectionFillToggle = document.getElementById('sectionFillToggle');
   Elements.sectionStrokeToggle = document.getElementById('sectionStrokeToggle');
   Elements.gaSizeControls = document.getElementById('gaSizeControls');
