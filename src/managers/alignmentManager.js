@@ -298,6 +298,64 @@ export const AlignmentManager = {
         Elements.sectionStrokeToggle.classList.toggle('active', section.strokeVisible);
       }
     });
+
+    // Glow Enabled Toggle
+    Elements.glowEnabledToggle.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        SectionManager.setGlowEnabled(section, e.target.checked);
+        // Show/hide controls
+        document.getElementById('glowControls').style.display = e.target.checked ? 'block' : 'none';
+      }
+    });
+
+    // Glow Color
+    Elements.glowColorPicker.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const colorHex = e.target.value;
+        Elements.glowColorInput.value = colorHex.toUpperCase();
+        SectionManager.setGlowColor(State.selectedSections[0], colorHex);
+      }
+    });
+
+    Elements.glowColorInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        let colorHex = e.target.value.trim();
+        if (!colorHex.startsWith('#')) colorHex = '#' + colorHex;
+        if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+          Elements.glowColorPicker.value = colorHex;
+          Elements.glowColorInput.value = colorHex.toUpperCase();
+          SectionManager.setGlowColor(State.selectedSections[0], colorHex);
+        }
+      }
+    });
+
+    // Glow Opacity
+    Elements.glowOpacitySlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const opacity = parseInt(e.target.value) / 100;
+        Elements.glowOpacityValue.textContent = `${e.target.value}%`;
+        SectionManager.setGlowOpacity(State.selectedSections[0], opacity);
+      }
+    });
+
+    // Glow Strength
+    Elements.glowStrengthSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const strength = parseInt(e.target.value);
+        Elements.glowStrengthValue.textContent = `${strength}px`;
+        SectionManager.setGlowStrength(State.selectedSections[0], strength);
+      }
+    });
+
+    // Glow Blur
+    Elements.glowBlurSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const blur = parseInt(e.target.value);
+        Elements.glowBlurValue.textContent = `${blur}px`;
+        SectionManager.setGlowBlur(State.selectedSections[0], blur);
+      }
+    });
   },
 
   setRowLabelType(type) {
@@ -614,6 +672,26 @@ export const AlignmentManager = {
     Elements.sectionFillToggle.classList.toggle('active', section.fillVisible !== false);
     Elements.sectionStrokeToggle.classList.toggle('active', section.strokeVisible !== false);
     
+    // Update Glow Controls
+    Elements.glowEnabledToggle.checked = section.glowEnabled;
+    document.getElementById('glowControls').style.display = section.glowEnabled ? 'block' : 'none';
+    
+    const glowColorHex = '#' + (section.glowColor || 0xffffff).toString(16).padStart(6, '0');
+    Elements.glowColorPicker.value = glowColorHex;
+    Elements.glowColorInput.value = glowColorHex.toUpperCase();
+    
+    const glowOpacity = Math.round((section.glowOpacity !== undefined ? section.glowOpacity : 0.5) * 100);
+    Elements.glowOpacitySlider.value = glowOpacity;
+    Elements.glowOpacityValue.textContent = `${glowOpacity}%`;
+    
+    const glowStrength = section.glowStrength !== undefined ? section.glowStrength : 10;
+    Elements.glowStrengthSlider.value = glowStrength;
+    Elements.glowStrengthValue.textContent = `${glowStrength}px`;
+
+    const glowBlur = section.glowBlur !== undefined ? section.glowBlur : 5;
+    Elements.glowBlurSlider.value = glowBlur;
+    Elements.glowBlurValue.textContent = `${glowBlur}px`;
+
     // Check if this is a GA section
     const isGA = section.isGeneralAdmission === true;
     

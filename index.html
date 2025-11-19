@@ -1125,6 +1125,94 @@
             </div>
           </div>
 
+          <!-- Glow Effect -->
+          <div class="sidebar-input-group" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <label class="sidebar-label" style="margin: 0;">Glow Effect</label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input
+                  type="checkbox"
+                  id="glowEnabledToggle"
+                  style="cursor: pointer; width: 16px; height: 16px;"
+                />
+                <span style="font-size: 12px; color: #aab0c0; font-weight: 500;">Enable</span>
+              </label>
+            </div>
+
+            <div id="glowControls" style="display: none;">
+              <div class="sidebar-input-group">
+                <label class="sidebar-label" style="font-size: 11px;">Color</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input
+                    type="color"
+                    id="glowColorPicker"
+                    value="#ffffff"
+                    style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+                  />
+                  <input
+                    type="text"
+                    class="sidebar-input"
+                    id="glowColorInput"
+                    value="#ffffff"
+                    placeholder="#ffffff"
+                    style="flex: 1; text-transform: uppercase;"
+                  />
+                </div>
+              </div>
+
+              <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Opacity <span id="glowOpacityValue" style="color: #3a9cff;">50%</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="glowOpacitySlider"
+                    min="0"
+                    max="100"
+                    value="50"
+                    step="1"
+                  />
+                </div>
+              </div>
+
+              <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Strength <span id="glowStrengthValue" style="color: #3a9cff;">10px</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="glowStrengthSlider"
+                    min="1"
+                    max="50"
+                    value="10"
+                    step="1"
+                  />
+                </div>
+              </div>
+
+              <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Blur <span id="glowBlurValue" style="color: #3a9cff;">5px</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="glowBlurSlider"
+                    min="0"
+                    max="30"
+                    value="5"
+                    step="1"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <label class="sidebar-label" style="font-size: 11px; margin-top: 12px; margin-bottom: 4px;">Visibility</label>
           <div class="sidebar-button-group">
             <button class="sidebar-toggle-btn active" id="sectionFillToggle">

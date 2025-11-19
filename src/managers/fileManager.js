@@ -139,7 +139,13 @@ export const FileManager = {
           sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
           fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
           strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
-          opacity: 1.0
+          opacity: 1.0,
+          glow: {
+            enabled: section.glowEnabled,
+            color: section.glowColor,
+            opacity: section.glowOpacity,
+            strength: section.glowStrength
+          }
         },
         
         // Pricing
@@ -248,7 +254,14 @@ export const FileManager = {
         sectionColor: section.sectionColor !== undefined ? section.sectionColor : 0x3b82f6,
         fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
         strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
-        opacity: 1.0
+        opacity: 1.0,
+        glow: {
+          enabled: section.glowEnabled,
+          color: section.glowColor,
+          opacity: section.glowOpacity,
+          strength: section.glowStrength,
+          blur: section.glowBlur
+        }
       },
       
       // Pricing (v2.0.0+)
@@ -529,6 +542,14 @@ export const FileManager = {
       }
       if (data.style.strokeVisible !== undefined) {
         section.strokeVisible = data.style.strokeVisible;
+      }
+      // Restore glow properties
+      if (data.style.glow) {
+        section.glowEnabled = data.style.glow.enabled || false;
+        section.glowColor = data.style.glow.color || 0xffffff;
+        section.glowOpacity = data.style.glow.opacity !== undefined ? data.style.glow.opacity : 0.5;
+        section.glowStrength = data.style.glow.strength !== undefined ? data.style.glow.strength : 10;
+        section.glowBlur = data.style.glow.blur !== undefined ? data.style.glow.blur : 5;
       }
     }
     

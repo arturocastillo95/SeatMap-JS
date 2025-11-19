@@ -130,6 +130,17 @@ function initializeElements() {
   Elements.gaSizeControls = document.getElementById('gaSizeControls');
   Elements.gaWidthInput = document.getElementById('gaWidthInput');
   Elements.gaHeightInput = document.getElementById('gaHeightInput');
+  
+  // Glow elements
+  Elements.glowEnabledToggle = document.getElementById('glowEnabledToggle');
+  Elements.glowColorPicker = document.getElementById('glowColorPicker');
+  Elements.glowColorInput = document.getElementById('glowColorInput');
+  Elements.glowOpacitySlider = document.getElementById('glowOpacitySlider');
+  Elements.glowOpacityValue = document.getElementById('glowOpacityValue');
+  Elements.glowStrengthSlider = document.getElementById('glowStrengthSlider');
+  Elements.glowStrengthValue = document.getElementById('glowStrengthValue');
+  Elements.glowBlurSlider = document.getElementById('glowBlurSlider');
+  Elements.glowBlurValue = document.getElementById('glowBlurValue');
 }
 
 function setupResizeHandler() {

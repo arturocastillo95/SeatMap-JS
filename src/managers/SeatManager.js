@@ -35,10 +35,16 @@ export const SeatManager = {
         // Create seat container
         const seatContainer = new PIXI.Container();
         
+        // Create glow graphics (initially hidden)
+        const glowGraphics = new PIXI.Graphics();
+        glowGraphics.visible = false;
+        seatContainer.glowGraphics = glowGraphics;
+
         // Create circle (use section's seat color)
         const seat = new PIXI.Graphics();
         seat.circle(0, 0, 10);
         seat.fill({ color: section.seatColor, alpha: 1 });
+        seatContainer.seatGraphics = seat;
         
         // Create number label (use section's seat text color)
         const seatLabel = new PIXI.Text({
@@ -54,7 +60,9 @@ export const SeatManager = {
         seatLabel.anchor.set(0.5, 0.5);
         seatLabel.x = 0;
         seatLabel.y = 0;
+        seatContainer.seatLabel = seatLabel;
         
+        seatContainer.addChild(glowGraphics);
         seatContainer.addChild(seat);
         seatContainer.addChild(seatLabel);
         
@@ -147,10 +155,6 @@ export const SeatManager = {
    * @param {Section} section - The section (optional, will find it if not provided)
    */
   updateSeatVisual(seat, section = null) {
-    // Get the graphics and label (children of the container)
-    const seatGraphics = seat.children[0]; // The circle
-    const seatLabel = seat.children[1]; // The text label
-    
     // Find section if not provided
     if (!section) {
       section = State.sections.find(s => s.seats.includes(seat));
@@ -159,6 +163,53 @@ export const SeatManager = {
     if (!section) {
       console.error('Could not find section for seat', seat);
       return;
+    }
+
+    // Ensure references exist (handle migration from old structure)
+    if (!seat.glowGraphics) {
+      // If glow doesn't exist, create it and add at bottom
+      seat.glowGraphics = new PIXI.Graphics();
+      seat.addChildAt(seat.glowGraphics, 0);
+      
+      // Update references to other children
+      seat.seatGraphics = seat.children[1];
+      seat.seatLabel = seat.children[2];
+    } else if (!seat.seatGraphics) {
+      // If references are missing but glow exists (unlikely but safe)
+      seat.seatGraphics = seat.children[1];
+      seat.seatLabel = seat.children[2];
+    }
+
+    const { glowGraphics, seatGraphics, seatLabel } = seat;
+    
+    // Update Glow
+    if (section.glowEnabled) {
+      glowGraphics.clear();
+      
+      const radius = 10 + (section.glowStrength / 2);
+      glowGraphics.circle(0, 0, radius);
+      glowGraphics.fill({ color: section.glowColor, alpha: section.glowOpacity });
+      glowGraphics.visible = true;
+
+      // Apply Gaussian Blur for realistic glow effect
+      if (section.glowBlur > 0) {
+        if (!glowGraphics.filters || glowGraphics.filters.length === 0) {
+          // Create filter with optimized quality for performance
+          const blurFilter = new PIXI.BlurFilter();
+          blurFilter.quality = 2;
+          blurFilter.kernelSize = 2;
+          glowGraphics.filters = [blurFilter];
+        }
+        
+        // Update blur strength based on glow strength
+        glowGraphics.filters[0].strength = section.glowBlur;
+      } else {
+        // Remove filters if blur is 0
+        glowGraphics.filters = null;
+      }
+    } else {
+      glowGraphics.visible = false;
+      glowGraphics.filters = null;
     }
     
     if (seat.specialNeeds) {

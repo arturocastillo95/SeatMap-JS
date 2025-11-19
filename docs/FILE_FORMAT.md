@@ -125,13 +125,6 @@ Each regular section in the `sections` array contains:
     "opacity": 1.0
   },
   
-  "pricing": {
-    "basePrice": 50.00,
-    "serviceFee": 5.00,
-    "serviceFeeEnabled": true,
-    "serviceFeeType": "fixed"
-  },
-  
   "metadata": {}
 }
 ```
@@ -196,13 +189,6 @@ GA sections are used for standing areas or general admission zones without indiv
     "fillVisible": true,
     "strokeVisible": true,
     "opacity": 1.0
-  },
-  
-  "pricing": {
-    "basePrice": 30.00,
-    "serviceFee": 3.00,
-    "serviceFeeEnabled": true,
-    "serviceFeeType": "fixed"
   },
   
   "metadata": {}
@@ -364,6 +350,14 @@ Each seat object contains:
 - `fillVisible`: Whether section background is visible (boolean, default: true)
 - `strokeVisible`: Whether section border is visible (boolean, default: true)
 - `opacity`: Section opacity (0.0 to 1.0)
+
+### Glow Fields
+
+- `enabled`: Whether glow effect is active (boolean)
+- `color`: Glow color as numeric value
+- `opacity`: Glow opacity (0.0 to 1.0)
+- `strength`: Size of the glow radius
+- `blur`: Gaussian blur amount (0-20)
 
 ### Pricing Fields
 

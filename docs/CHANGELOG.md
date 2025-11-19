@@ -51,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Both default to visible for backward compatibility
   - Persists in file save/load format
   - Per-section configuration
+- **Glow Blur Control** - Adjust the softness of the glow effect
+  - Slider control (0-20px) in Glow Controls section
+  - Real-time visual feedback
+  - Performance optimization: disables filter when blur is 0
+  - Persists in file save/load format
 - **Underlay Image Replacement with Settings Preservation** - Replace background image without losing adjustments
   - "Replace underlay (keep settings)" checkbox when underlay exists
   - Preserves position, scale, opacity, and visibility when checked

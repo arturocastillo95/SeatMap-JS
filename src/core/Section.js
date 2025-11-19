@@ -83,6 +83,13 @@ export class Section extends PIXI.Graphics {
     // Row label color
     this._rowLabelColor = config.rowLabelColor || 0xffffff; // Default white
     
+    // Glow properties
+    this._glowEnabled = config.glowEnabled || false;
+    this._glowColor = config.glowColor || 0xffffff;
+    this._glowOpacity = config.glowOpacity !== undefined ? config.glowOpacity : 0.5;
+    this._glowStrength = config.glowStrength !== undefined ? config.glowStrength : 10;
+    this._glowBlur = config.glowBlur !== undefined ? config.glowBlur : 5;
+
     // Dimensions
     this._contentWidth = config.width;
     this._contentHeight = config.height;
@@ -274,6 +281,61 @@ export class Section extends PIXI.Graphics {
       throw new Error('Row label color must be a valid hex color number');
     }
     this._rowLabelColor = value;
+  }
+
+  get glowEnabled() {
+    return this._glowEnabled;
+  }
+
+  set glowEnabled(value) {
+    if (typeof value !== 'boolean') {
+      throw new Error('Glow enabled must be a boolean');
+    }
+    this._glowEnabled = value;
+  }
+
+  get glowColor() {
+    return this._glowColor;
+  }
+
+  set glowColor(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Glow color must be a valid hex color number');
+    }
+    this._glowColor = value;
+  }
+
+  get glowOpacity() {
+    return this._glowOpacity;
+  }
+
+  set glowOpacity(value) {
+    if (typeof value !== 'number' || value < 0 || value > 1) {
+      throw new Error('Glow opacity must be between 0 and 1');
+    }
+    this._glowOpacity = value;
+  }
+
+  get glowStrength() {
+    return this._glowStrength;
+  }
+
+  set glowStrength(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Glow strength must be a positive number');
+    }
+    this._glowStrength = value;
+  }
+
+  get glowBlur() {
+    return this._glowBlur;
+  }
+
+  set glowBlur(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Glow blur must be a positive number');
+    }
+    this._glowBlur = value;
   }
 
   get contentWidth() {
@@ -622,6 +684,13 @@ export class Section extends PIXI.Graphics {
       stretchH: this._stretchH,
       stretchV: this._stretchV,
       curve: this._curve,
+      glow: {
+        enabled: this._glowEnabled,
+        color: this._glowColor,
+        opacity: this._glowOpacity,
+        strength: this._glowStrength,
+        blur: this._glowBlur
+      },
       rowLabels: {
         type: this._rowLabelType,
         start: this._rowLabelStart,

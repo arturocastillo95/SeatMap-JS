@@ -209,6 +209,40 @@ export const SectionManager = {
     console.log(`✓ Updated row label color to ${colorHex}`);
   },
 
+  setGlowEnabled(section, enabled) {
+    section.glowEnabled = enabled;
+    SeatManager.updateAllSeats(section);
+    console.log(`✓ Updated glow enabled to ${enabled}`);
+  },
+
+  setGlowColor(section, colorHex) {
+    if (!colorHex || typeof colorHex !== 'string') {
+      throw new Error('Invalid color hex');
+    }
+    const colorValue = parseInt(colorHex.replace('#', ''), 16);
+    section.glowColor = colorValue;
+    SeatManager.updateAllSeats(section);
+    console.log(`✓ Updated glow color to ${colorHex}`);
+  },
+
+  setGlowOpacity(section, opacity) {
+    section.glowOpacity = opacity;
+    SeatManager.updateAllSeats(section);
+    console.log(`✓ Updated glow opacity to ${opacity}`);
+  },
+
+  setGlowStrength(section, strength) {
+    section.glowStrength = strength;
+    SeatManager.updateAllSeats(section);
+    console.log(`✓ Updated glow strength to ${strength}`);
+  },
+
+  setGlowBlur(section, blur) {
+    section.glowBlur = blur;
+    SeatManager.updateAllSeats(section);
+    console.log(`✓ Updated glow blur to ${blur}`);
+  },
+
   // ============================================
   // LEGACY/COMPATIBILITY METHODS
   // ============================================

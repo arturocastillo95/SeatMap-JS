@@ -52,6 +52,13 @@ When a single section is selected, the right sidebar shows different options bas
   - Starting number: Custom start value
   - Flip: Reverse left-to-right direction
 
+**Glow Controls**
+- **Enable Glow:** Toggle the glow effect on/off
+- **Color:** Choose the glow color
+- **Opacity:** Adjust transparency (0-1)
+- **Strength:** Adjust the size of the glow
+- **Blur:** Adjust the softness of the glow (0-20px)
+
 **Align Rows**
 Align seats within each row (useful after deleting individual seats):
 - **Left:** Align to left side
