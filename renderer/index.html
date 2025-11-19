@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeatMap Renderer</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0" />
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0f0f13; }
+        #seatmap-container { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <div id="seatmap-container"></div>
+
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
+    
+    <!-- Renderer Script -->
+    <script type="module">
+        import { SeatMapRenderer } from './SeatMapRenderer.js';
+
+        // Initialize renderer
+        const container = document.getElementById('seatmap-container');
+        const renderer = new SeatMapRenderer(container);
+
+        // Example: Load a map (You would typically fetch this from a server)
+        // For demonstration, we'll try to load a local file if provided, or wait for a message
+        
+        // Expose renderer to window for testing
+        window.seatMapRenderer = renderer;
+
+        console.log("SeatMap Renderer initialized. Use window.seatMapRenderer.loadData(json) to render a map.");
+    </script>
+</body>
+</html>
