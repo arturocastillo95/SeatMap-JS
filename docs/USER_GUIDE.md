@@ -350,3 +350,17 @@ The SMF format is designed for use with separate viewer applications:
 - Extensible metadata fields
 
 Files exported from SeatMap JS can be imported into custom viewers or booking systems.
+
+### Editing Seats
+
+1. Select a single section
+2. Click the **Edit Seats** button in the left sidebar (grid icon)
+3. The view will zoom into the section
+4. Click individual seats to select them (Shift+Click for multiple)
+
+#### Seat Actions
+- **Delete:** Press Backspace/Delete key to remove selected seats
+- **Special Needs:** Toggle the wheelchair icon in the sidebar to mark as accessible
+- **Manual Numbering:** Select a single seat and enter a custom number in the "Seat Number" field
+  - This overrides the automatic numbering sequence
+  - The custom number is preserved even if you change the section's numbering settings

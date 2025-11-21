@@ -35,8 +35,8 @@ export const SectionInteractionHandler = {
         // If clicking on an already-selected section, keep the selection as-is
         // This allows dragging multiple selected sections together
         
-        // Always ensure resize handles for GA sections when there's only one selected
-        if (section.isGeneralAdmission && State.selectedSections.length === 1) {
+        // Always ensure resize handles for GA sections or Zones when there's only one selected
+        if ((section.isGeneralAdmission || section.isZone) && State.selectedSections.length === 1) {
           const { ResizeHandleManager } = await import('./ResizeHandleManager.js');
           if (!section.resizeHandles) {
             ResizeHandleManager.addResizeHandles(section);
@@ -127,8 +127,8 @@ export const SectionInteractionHandler = {
       section.selectionBorder.visible = false;
     }
     
-    // Remove resize handles for GA sections
-    if (section.isGeneralAdmission && section.resizeHandles) {
+    // Remove resize handles for GA sections or Zones
+    if ((section.isGeneralAdmission || section.isZone) && section.resizeHandles) {
       const { ResizeHandleManager } = await import('./ResizeHandleManager.js');
       ResizeHandleManager.removeResizeHandles(section);
     }
@@ -144,7 +144,7 @@ export const SectionInteractionHandler = {
       }
       
       // Remove resize handles
-      if (section.isGeneralAdmission && section.resizeHandles) {
+      if ((section.isGeneralAdmission || section.isZone) && section.resizeHandles) {
         import('./ResizeHandleManager.js').then(({ ResizeHandleManager }) => {
           ResizeHandleManager.removeResizeHandles(section);
         });

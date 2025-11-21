@@ -12,6 +12,7 @@ export const ToolManager = {
     this.setupPanTool();
     this.setupCreateTool();
     this.setupCreateGATool();
+    this.setupCreateZoneTool();
     this.setupDialogHandlers();
     this.handleDeleteConfirmation();
     this.setupZoomToFit();
@@ -96,6 +97,9 @@ export const ToolManager = {
 
     State.world.x = screenCenterX - contentCenterX * targetScale;
     State.world.y = screenCenterY - contentCenterY * targetScale;
+    
+    // Update zone visibility based on zoom level
+    SectionManager.updateZoneVisibility(targetScale);
   },
 
   setupPanTool() {
@@ -198,6 +202,114 @@ export const ToolManager = {
       this.updateButtonLabel(Elements.createGABtn, State.isCreateGAMode ? 'Cancel' : 'GA');
       State.app.stage.cursor = State.isCreateGAMode ? 'crosshair' : 'default';
     });
+  },
+
+  setupCreateZoneTool() {
+    // We'll access the button directly or via Elements if added later
+    const createZoneBtn = Elements.createZoneBtn || document.getElementById('createZoneBtn');
+    if (!createZoneBtn) return;
+
+    createZoneBtn.addEventListener('click', () => {
+      State.isCreateZoneMode = !State.isCreateZoneMode;
+      
+      if (State.isCreateZoneMode) {
+        // Turn off other modes
+        if (State.isCreateMode) {
+          State.isCreateMode = false;
+          Elements.createBtn.classList.remove('active');
+          this.updateButtonLabel(Elements.createBtn, 'Seat Rows');
+        }
+        if (State.isCreateGAMode) {
+          State.isCreateGAMode = false;
+          Elements.createGABtn.classList.remove('active');
+          this.updateButtonLabel(Elements.createGABtn, 'GA');
+        }
+        if (State.isPanningMode) {
+          State.isPanningMode = false;
+          Elements.panToolBtn.classList.remove('active');
+        }
+        if (State.isDeleteMode) {
+          State.isDeleteMode = false;
+        }
+      }
+      
+      createZoneBtn.classList.toggle('active', State.isCreateZoneMode);
+      this.updateButtonLabel(createZoneBtn, State.isCreateZoneMode ? 'Cancel' : 'Zone');
+      State.app.stage.cursor = State.isCreateZoneMode ? 'crosshair' : 'default';
+    });
+  },
+
+  handleCreateZoneStart(worldPos) {
+    State.isCreating = true;
+    State.createStart = { x: worldPos.x, y: worldPos.y };
+    State.previewRect = new PIXI.Graphics();
+    State.world.addChild(State.previewRect);
+  },
+
+  handleCreateZoneMove(worldPos, screenX, screenY) {
+    const rawWidth = Math.abs(worldPos.x - State.createStart.x);
+    const rawHeight = Math.abs(worldPos.y - State.createStart.y);
+    
+    // No snapping to seat grid for zones, but maybe snap to grid?
+    // For now, just use raw dimensions or snap to grid size if needed
+    // Let's snap to 10px grid for cleaner zones
+    const snappedWidth = Math.round(rawWidth / 10) * 10;
+    const snappedHeight = Math.round(rawHeight / 10) * 10;
+    
+    // Calculate position based on drag direction
+    const x = worldPos.x < State.createStart.x ? State.createStart.x - snappedWidth : State.createStart.x;
+    const y = worldPos.y < State.createStart.y ? State.createStart.y - snappedHeight : State.createStart.y;
+    
+    State.previewRect.clear();
+    State.previewRect.rect(x, y, snappedWidth, snappedHeight);
+    State.previewRect.stroke({ 
+      width: 2, 
+      color: 0x9C27B0, // Purple for zones
+      alpha: 0.8 
+    });
+    State.previewRect.fill({ 
+      color: 0x9C27B0, 
+      alpha: 0.2 
+    });
+    
+    // Show dimensions info
+    Elements.dragInfo.innerHTML = `${Math.round(snappedWidth)} × ${Math.round(snappedHeight)}<br><strong>Zone</strong>`;
+    Elements.dragInfo.style.left = (screenX + 15) + 'px';
+    Elements.dragInfo.style.top = (screenY + 15) + 'px';
+    Elements.dragInfo.classList.add('show');
+  },
+
+  handleCreateZoneEnd(worldPos) {
+    Utils.hideDragInfo();
+    
+    const rawWidth = Math.abs(worldPos.x - State.createStart.x);
+    const rawHeight = Math.abs(worldPos.y - State.createStart.y);
+    
+    const snappedWidth = Math.round(rawWidth / 10) * 10;
+    const snappedHeight = Math.round(rawHeight / 10) * 10;
+    
+    const x = worldPos.x < State.createStart.x ? State.createStart.x - snappedWidth : State.createStart.x;
+    const y = worldPos.y < State.createStart.y ? State.createStart.y - snappedHeight : State.createStart.y;
+    
+    // Clean up preview
+    State.world.removeChild(State.previewRect);
+    State.previewRect = null;
+    State.createStart = null;
+    State.isCreating = false;
+    
+    // Create Zone if large enough
+    if (snappedWidth > CONFIG.MIN_SECTION_SIZE && snappedHeight > CONFIG.MIN_SECTION_SIZE) {
+      SectionManager.createZone(x, y, snappedWidth, snappedHeight);
+      
+      // Exit Zone creation mode
+      State.isCreateZoneMode = false;
+      const createZoneBtn = Elements.createZoneBtn || document.getElementById('createZoneBtn');
+      if (createZoneBtn) {
+        createZoneBtn.classList.remove('active');
+        this.updateButtonLabel(createZoneBtn, 'Zone');
+      }
+      State.app.stage.cursor = 'default';
+    }
   },
 
   setupKeyboardShortcuts() {

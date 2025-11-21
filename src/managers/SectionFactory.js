@@ -66,6 +66,36 @@ export const SectionFactory = {
   },
 
   /**
+   * Create a Zone section
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {number} width - Width
+   * @param {number} height - Height
+   * @returns {Section} The created Zone section
+   */
+  createZone(x, y, width, height) {
+    try {
+      const section = new Section({
+        x,
+        y,
+        width,
+        height,
+        sectionId: `Zone ${State.sectionCounter++}`,
+        isGeneralAdmission: true, // Reuse GA logic for resizing/interaction
+        isZone: true,
+        zoneLabel: `Zone ${State.sectionCounter}`,
+        sectionColor: 0xcccccc, // Default grey for zones
+        fillOpacity: 0.5
+      });
+      
+      return section;
+    } catch (error) {
+      console.error('Failed to create Zone:', error.message);
+      throw error;
+    }
+  },
+
+  /**
    * Register section in the application state
    * @param {Section} section - The section to register
    */

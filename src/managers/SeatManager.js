@@ -96,6 +96,19 @@ export const SeatManager = {
   },
 
   /**
+   * Update the number of a specific seat
+   * @param {PIXI.Container} seat - The seat container
+   * @param {string|number} newNumber - The new seat number
+   */
+  updateSeatNumber(seat, newNumber) {
+    seat.seatNumber = newNumber;
+    seat.isManualNumber = true;
+    if (seat.seatLabel) {
+      seat.seatLabel.text = newNumber.toString();
+    }
+  },
+
+  /**
    * Setup interaction handlers for a seat
    * @param {PIXI.Container} seat - The seat container
    */
@@ -285,13 +298,21 @@ export const SeatManager = {
       const seatsToNumber = reversed ? [...rowSeats].reverse() : rowSeats;
       
       seatsToNumber.forEach((seat, index) => {
+        // Skip manually numbered seats
+        if (seat.isManualNumber) return;
+
         const number = start + index;
         seat.seatNumber = number;
         
         // Update the label text
-        const label = seat.children[1];
-        if (label && label instanceof PIXI.Text) {
-          label.text = number.toString();
+        if (seat.seatLabel) {
+          seat.seatLabel.text = number.toString();
+        } else {
+          // Fallback for legacy structure
+          const label = seat.children[1];
+          if (label && label instanceof PIXI.Text) {
+            label.text = number.toString();
+          }
         }
       });
     });

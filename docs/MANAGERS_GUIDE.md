@@ -36,6 +36,7 @@ This directory contains focused, single-responsibility modules that were extract
 - `updateSeatNumbers(section)`
 - `getRowLabelText(index, type, startValue)`
 - `createRowLabel(text, isHidden)`
+- `updateSeatNumber(seat, newNumber)` - Update specific seat number and label
 
 ---
 

@@ -8,7 +8,7 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 
 ## Features
 
-### Current Implementation (Phase 1)
+### Current Implementation (Phase 1 & 2)
 - ✅ Load and parse SMF v2.0.0 format files
 - ✅ Render sections (regular and General Admission)
 - ✅ Display seats with correct positions and transformations
@@ -18,19 +18,20 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ Section colors and styling
 - ✅ Glow effects on seats
 - ✅ Pan and zoom viewport controls
-- ✅ Seat click events
+- ✅ Seat click events & Selection state
 - ✅ Auto-fit to viewport (100% height, centered)
 - ✅ Intelligent zoom limits (can zoom in, prevents zoom out beyond initial view)
-- ✅ File picker UI for easy testing
+- ✅ **Smart Tooltips**: Shows pricing, location, and category with auto-positioning
+- ✅ **Cart Integration**: Emits `cartChange` events with selected items
+- ✅ **Inventory Loading**: Supports external pricing and availability data
+- ✅ **Section Zoom**: Click to zoom into specific sections
+- ✅ **Semantic Zoom**: Zones fade out and seats fade in based on zoom level
+- ✅ **Touch Support**: Native pinch-to-zoom and pan gestures
+- ✅ **Zone Rendering**: Optimized polygon rendering for Zones
 
-### Future Features (Phase 2+)
-- 🔄 Seat selection (single and multi-select)
-- 🔄 Seat status updates (sold, reserved, available)
-- 🔄 External data communication API
-- 🔄 Hover tooltips
-- 🔄 Pricing display
-- 🔄 Accessibility features
-- 🔄 Mobile touch optimization
+### Future Features (Phase 3+)
+- 🔄 Seat status updates (sold, reserved, available) visual styles
+- 🔄 Accessibility features (Keyboard navigation)
 
 ## Usage
 
@@ -70,6 +71,22 @@ container.addEventListener('seat-click', (event) => {
     
     // Send to your backend
     // fetch('/api/reserve-seat', { ... });
+});
+```
+
+### With Cart Integration
+
+```javascript
+// Listen for cart changes
+container.addEventListener('cartChange', (e) => {
+    console.log('Cart updated:', e.detail);
+});
+
+// Load inventory data (optional)
+renderer.loadInventory({
+    seats: [
+        { key: "Section 1;;A;;1", price: 150, status: "available" }
+    ]
 });
 ```
 

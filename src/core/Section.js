@@ -70,12 +70,21 @@ export class Section extends PIXI.Graphics {
     // Core identification
     this._sectionId = config.sectionId || `Section ${Date.now()}`;
     this._isGeneralAdmission = config.isGeneralAdmission || false;
+    this._isZone = config.isZone || false;
     
     // Visual properties
     this._sectionColor = config.sectionColor || COLORS.SECTION_STROKE;
     this._fillVisible = config.fillVisible !== undefined ? config.fillVisible : true;
     this._strokeVisible = config.strokeVisible !== undefined ? config.strokeVisible : true;
     
+    // Zone specific properties
+    if (this._isZone) {
+      this._zoneLabel = config.zoneLabel || this._sectionId;
+      this._showZoneLabel = config.showZoneLabel !== undefined ? config.showZoneLabel : true;
+      this._showZone = config.showZone !== undefined ? config.showZone : true;
+      this._fillOpacity = config.fillOpacity !== undefined ? config.fillOpacity : 0.5;
+    }
+
     // Seat colors
     this._seatColor = config.seatColor || COLORS.SEAT;  // Circle fill color
     this._seatTextColor = config.seatTextColor || 0x000000; // Text color (default black)
@@ -144,11 +153,23 @@ export class Section extends PIXI.Graphics {
    * Initialize graphics (rectangle, fill, stroke)
    */
   initializeGraphics() {
+    this.clear();
+    
+    if (this._isZone && !this._showZone) {
+      // If zone is hidden, draw a transparent hit area so it can still be selected if needed
+      // or maybe we don't want it selectable? The requirement says "Zone visibility (on/off)".
+      // Usually hidden things are not selectable on canvas, but editable via list.
+      // For now, let's draw nothing but keep hitArea.
+      this.hitArea = new PIXI.Rectangle(0, 0, this._contentWidth, this._contentHeight);
+      return;
+    }
+
     this.rect(0, 0, this._contentWidth, this._contentHeight);
     
     // Apply fill only if visible
     if (this._fillVisible) {
-      this.fill({ color: this._sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
+      const alpha = this._isZone ? this._fillOpacity : VISUAL_CONFIG.SECTION.FILL_ALPHA;
+      this.fill({ color: this._sectionColor, alpha: alpha });
     }
     
     // Apply stroke only if visible
@@ -163,9 +184,38 @@ export class Section extends PIXI.Graphics {
     this.hitArea = new PIXI.Rectangle(0, 0, this._contentWidth, this._contentHeight);
     
     // Create GA label if needed
-    if (this._isGeneralAdmission) {
+    if (this._isGeneralAdmission && !this._isZone) {
       this.createGALabel();
+    } else if (this._isZone && this._showZoneLabel) {
+      this.createZoneLabel();
     }
+  }
+
+  /**
+   * Create center label for Zone sections
+   */
+  createZoneLabel() {
+    if (this._gaLabel) {
+      this.removeChild(this._gaLabel);
+      this._gaLabel = null;
+    }
+
+    const label = new PIXI.Text({
+      text: this._zoneLabel,
+      style: {
+        fontFamily: VISUAL_CONFIG.GA_LABEL.FONT_FAMILY,
+        fontSize: VISUAL_CONFIG.GA_LABEL.FONT_SIZE,
+        fontWeight: VISUAL_CONFIG.GA_LABEL.FONT_WEIGHT,
+        fill: VISUAL_CONFIG.GA_LABEL.COLOR,
+        align: 'center'
+      }
+    });
+    label.anchor.set(0.5, 0.5);
+    label.x = this._contentWidth / 2;
+    label.y = this._contentHeight / 2;
+    label.eventMode = 'none';
+    this.addChild(label);
+    this._gaLabel = label; // Reuse _gaLabel property for convenience
   }
 
   /**
@@ -590,24 +640,51 @@ export class Section extends PIXI.Graphics {
    * Redraw section graphics with current properties
    */
   redrawGraphics() {
-    this.clear();
-    this.rect(0, 0, this._contentWidth, this._contentHeight);
-    
-    // Apply fill only if visible
-    if (this._fillVisible) {
-      this.fill({ color: this._sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
+    this.initializeGraphics();
+  }
+
+  // ============================================
+  // ZONE GETTERS AND SETTERS
+  // ============================================
+
+  get isZone() {
+    return this._isZone;
+  }
+
+  set isZone(value) {
+    this._isZone = value;
+  }
+  
+  get zoneLabel() {
+    return this._zoneLabel;
+  }
+
+  set zoneLabel(value) {
+    this._zoneLabel = value;
+    if (this._isZone && this._showZoneLabel) {
+      this.createZoneLabel();
     }
-    
-    // Apply stroke only if visible
-    if (this._strokeVisible) {
-      this.stroke({ 
-        width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, 
-        color: this._sectionColor, 
-        alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA 
-      });
+  }
+
+  get showZoneLabel() { return this._showZoneLabel; }
+  set showZoneLabel(value) {
+    this._showZoneLabel = !!value;
+    this.redrawGraphics();
+  }
+
+  get showZone() { return this._showZone; }
+  set showZone(value) {
+    this._showZone = !!value;
+    this.redrawGraphics();
+  }
+
+  get fillOpacity() { return this._fillOpacity; }
+  set fillOpacity(value) {
+    if (typeof value !== 'number' || value < 0 || value > 1) {
+      throw new Error('Fill opacity must be between 0 and 1');
     }
-    
-    this.hitArea = new PIXI.Rectangle(0, 0, this._contentWidth, this._contentHeight);
+    this._fillOpacity = value;
+    this.redrawGraphics();
   }
 
   /**
@@ -705,7 +782,15 @@ export class Section extends PIXI.Graphics {
       }
     };
 
-    if (this._isGeneralAdmission) {
+    if (this._isZone) {
+      base.isZone = true;
+      base.zoneLabel = this._zoneLabel;
+      base.showZoneLabel = this._showZoneLabel;
+      base.showZone = this._showZone;
+      base.fillOpacity = this._fillOpacity;
+      // Zones don't have seats or capacity
+      base.seats = [];
+    } else if (this._isGeneralAdmission) {
       base.ga = {
         capacity: this._gaCapacity
       };

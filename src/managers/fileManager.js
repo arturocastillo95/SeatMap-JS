@@ -4,6 +4,7 @@
 
 import { State } from '../core/state.js';
 import { COLORS } from '../core/config.js';
+import { Utils } from '../core/utils.js';
 
 export const FileManager = {
   /**
@@ -238,17 +239,28 @@ export const FileManager = {
       
       // Individual seats (for supporting deleted seats and special needs)
       // Save BOTH base and current (transformed) positions
-      seats: seats.map(seat => ({
-        rowIndex: seat.rowIndex,
-        colIndex: seat.colIndex,
-        number: seat.children[1] ? seat.children[1].text : (seat.colIndex + 1).toString(),
-        baseX: seat.baseRelativeX,
-        baseY: seat.baseRelativeY,
-        relativeX: seat.relativeX,  // Current position with transformations applied
-        relativeY: seat.relativeY,
-        specialNeeds: seat.specialNeeds || false,
-        metadata: {}
-      })),
+      seats: seats.map(seat => {
+        // Ensure seat has a unique ID
+        if (!seat.id) {
+          seat.id = Utils.generateShortId();
+        }
+
+        return {
+          id: seat.id,
+          rowIndex: seat.rowIndex,
+          colIndex: seat.colIndex,
+          number: seat.seatLabel ? seat.seatLabel.text : (seat.children[2] instanceof PIXI.Text ? seat.children[2].text : (seat.colIndex + 1).toString()),
+          specialNeeds: seat.specialNeeds || false,
+          isManualNumber: seat.isManualNumber || false,
+          // Save transformed position relative to section center
+          relativeX: seat.relativeX !== undefined ? seat.relativeX : seat.x,
+          relativeY: seat.relativeY !== undefined ? seat.relativeY : seat.y,
+          // Save base position (grid position)
+          baseX: seat.baseRelativeX,
+          baseY: seat.baseRelativeY,
+          metadata: {}
+        };
+      }),
       
       // Visual styling
       style: {
@@ -386,28 +398,50 @@ export const FileManager = {
    * Deserialize a single section from JSON
    */
   async deserializeSection(data, SectionManager) {
-    // Check if this is a GA section
+    // Check if this is a GA section or Zone
     if (data.type === 'ga') {
-      // Create GA section
-      const section = SectionManager.createGASection(
-        data.x,
-        data.y,
-        data.base.baseWidth,
-        data.base.baseHeight
-      );
+      let section;
+      
+      // Check for isZone flag OR legacy indicators (like zoneLabel or name starting with "Zone")
+      const isZone = data.isZone || (data.zoneLabel !== undefined) || (data.name && data.name.startsWith('Zone'));
+
+      if (isZone) {
+        // Create Zone
+        section = SectionManager.createZone(
+          data.x,
+          data.y,
+          data.base.baseWidth,
+          data.base.baseHeight
+        );
+        
+        // Restore Zone specific properties
+        if (data.zoneLabel) section.zoneLabel = data.zoneLabel;
+        if (data.showZoneLabel !== undefined) section.showZoneLabel = data.showZoneLabel;
+        if (data.showZone !== undefined) section.showZone = data.showZone;
+        if (data.fillOpacity !== undefined) section.fillOpacity = data.fillOpacity;
+        
+      } else {
+        // Create GA section
+        section = SectionManager.createGASection(
+          data.x,
+          data.y,
+          data.base.baseWidth,
+          data.base.baseHeight
+        );
+        
+        // Update GA label with section name
+        if (section.gaLabel) {
+          section.gaLabel.text = data.name;
+        }
+        
+        // Restore GA capacity
+        if (data.ga) {
+          section.gaCapacity = data.ga.capacity || 0;
+        }
+      }
       
       // Restore section name
       section.sectionId = data.name;
-      
-      // Update GA label with section name
-      if (section.gaLabel) {
-        section.gaLabel.text = data.name;
-      }
-      
-      // Restore GA capacity
-      if (data.ga) {
-        section.gaCapacity = data.ga.capacity || 0;
-      }
       
       // Restore section color
       if (data.style && data.style.sectionColor !== undefined) {
@@ -615,9 +649,23 @@ export const FileManager = {
           }
           
           // Restore seat number if available
-          if (seatData.number !== undefined && seat.children[1]) {
-            seat.children[1].text = seatData.number;
+          if (seatData.number !== undefined) {
+            if (seat.seatLabel) {
+              seat.seatLabel.text = seatData.number;
+            } else if (seat.children[2] instanceof PIXI.Text) {
+              seat.children[2].text = seatData.number;
+            }
             seat.seatNumber = seatData.number;
+          }
+
+          // Restore manual number flag
+          if (seatData.isManualNumber) {
+            seat.isManualNumber = true;
+          }
+
+          // Restore seat ID (v2.1.0)
+          if (seatData.id) {
+            seat.id = seatData.id;
           }
           
           // Restore special needs status

@@ -44,6 +44,13 @@ export const InteractionManager = {
       ToolManager.handleCreateGAStart(worldPos);
       return;
     }
+
+    // Create Zone mode
+    if (State.isCreateZoneMode) {
+      const worldPos = Utils.screenToWorld(e.global.x, e.global.y);
+      ToolManager.handleCreateZoneStart(worldPos);
+      return;
+    }
     
     // Store shift key state for later use
     State.isShiftPressed = e.shiftKey;
@@ -153,13 +160,16 @@ export const InteractionManager = {
       return;
     }
     
-    // Handle create mode preview
-    if (State.isCreating && State.createStart && State.previewRect) {
+    // Handle creation dragging
+    if (State.isCreating) {
       const worldPos = Utils.screenToWorld(e.global.x, e.global.y);
+      
       if (State.isCreateMode) {
         ToolManager.handleCreateMove(worldPos, e.global.x, e.global.y);
       } else if (State.isCreateGAMode) {
         ToolManager.handleCreateGAMove(worldPos, e.global.x, e.global.y);
+      } else if (State.isCreateZoneMode) {
+        ToolManager.handleCreateZoneMove(worldPos, e.global.x, e.global.y);
       }
       return;
     }
@@ -297,8 +307,11 @@ export const InteractionManager = {
     if (State.isDraggingSections) {
       State.isDraggingSections = false;
       
-      // Check for collisions and resolve them
-      AlignmentManager.resolveCollisions(State.selectedSections);
+      // Check for collisions and resolve them (filter out zones)
+      const sectionsToCheck = State.selectedSections.filter(s => !s.isZone);
+      if (sectionsToCheck.length > 0) {
+        AlignmentManager.resolveCollisions(sectionsToCheck);
+      }
       
       // Restore alpha for all selected sections
       State.selectedSections.forEach(s => {
@@ -318,6 +331,8 @@ export const InteractionManager = {
         ToolManager.handleCreateEnd(worldPos);
       } else if (State.isCreateGAMode) {
         ToolManager.handleCreateGAEnd(worldPos);
+      } else if (State.isCreateZoneMode) {
+        ToolManager.handleCreateZoneEnd(worldPos);
       }
       return;
     }
@@ -482,6 +497,9 @@ export const InteractionManager = {
       const ptAfter = Utils.screenToWorld(e.clientX, e.clientY);
       State.world.x += (ptAfter.x - ptBefore.x) * State.world.scale.x;
       State.world.y += (ptAfter.y - ptBefore.y) * State.world.scale.y;
+      
+      // Update zone visibility based on zoom level
+      SectionManager.updateZoneVisibility(State.world.scale.x);
     }
   }
 };

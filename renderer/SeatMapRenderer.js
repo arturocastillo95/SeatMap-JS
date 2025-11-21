@@ -5,11 +5,18 @@
 
 // Configuration
 const RENDERER_CONFIG = {
-    PADDING: 50,              // Padding around the map when fitting to view
+    PADDING: 0,               // Padding around the map when fitting to view
     MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
     MAX_ZOOM: 5,              // Maximum zoom level
     ZOOM_SPEED: 1.1,          // Zoom speed multiplier
-    BACKGROUND_COLOR: 0x0f0f13
+    BACKGROUND_COLOR: 0x0f0f13,
+    SECTION_ZOOM_PADDING: 50, // Padding when zooming to a section
+    ANIMATION_DURATION: 500,  // Duration of zoom animation in ms
+    SEAT_RADIUS: 6,           // Default seat radius
+    SEAT_RADIUS_HOVER: 12,    // Hovered seat radius
+    SEAT_HOVER_SPEED: 0.35,   // Speed of hover animation (lerp factor)
+    SEAT_LABEL_SIZE: 7,       // Font size for seat labels
+    TOOLTIP_SPEED: 0.15       // Tooltip fade animation speed in seconds
 };
 
 export class SeatMapRenderer {
@@ -22,6 +29,8 @@ export class SeatMapRenderer {
             antialias: true,
             resolution: window.devicePixelRatio || 1,
             autoDensity: true,
+            enableSectionZoom: false, // Default to false as requested
+            enableZoneZoom: true,     // Default to true for zones
             ...options
         };
 
@@ -31,6 +40,11 @@ export class SeatMapRenderer {
         this.lastPos = null;
         this.initialScale = 1;    // Store initial scale to prevent zooming out beyond it
         this.hasUnderlay = false;  // Track if we have an underlay image
+        this.boundaries = null;    // Store viewport boundaries to constrain panning
+        this.animatingSeats = new Set(); // Track seats currently animating
+        this.seatsByKey = {}; // Lookup for seats by key
+        this.selectedSeats = new Set(); // Track selected seats
+        this.activePointers = new Map(); // Track active pointers for multi-touch
 
         this.init();
     }
@@ -40,12 +54,99 @@ export class SeatMapRenderer {
         this.container.appendChild(this.app.canvas);
         this.app.stage.addChild(this.viewport);
 
+        // Create UI layer
+        this.createUI();
+        this.setupTooltip();
+
         // Setup interaction (pan/zoom)
         this.setupInteraction();
+        
+        // Setup animation loop for seats
+        this.app.ticker.add(this.updateSeatAnimations.bind(this));
         
         // Handle window resize
         window.addEventListener('resize', () => {
             this.app.resize();
+            this.repositionUI();
+        });
+    }
+
+    createUI() {
+        this.uiContainer = new PIXI.Container();
+        this.app.stage.addChild(this.uiContainer);
+
+        // Reset Zoom Button
+        this.resetButton = new PIXI.Container();
+        
+        const bg = new PIXI.Graphics();
+        bg.circle(0, 0, 20);
+        bg.fill({ color: 0x333333, alpha: 0.8 });
+        bg.stroke({ width: 2, color: 0xffffff, alpha: 0.8 });
+        this.resetButton.addChild(bg);
+
+        const minus = new PIXI.Graphics();
+        minus.rect(-8, -1, 16, 2); // Minus sign
+        minus.fill({ color: 0xffffff });
+        this.resetButton.addChild(minus);
+
+        this.resetButton.eventMode = 'static';
+        this.resetButton.cursor = 'pointer';
+        this.resetButton.visible = false; // Hidden by default
+
+        this.resetButton.on('pointertap', (e) => {
+            e.stopPropagation();
+            this.fitToView();
+        });
+
+        this.uiContainer.addChild(this.resetButton);
+        this.repositionUI();
+    }
+
+    repositionUI() {
+        if (this.resetButton) {
+            // Bottom left with padding
+            this.resetButton.x = 40;
+            this.resetButton.y = this.app.screen.height - 40;
+        }
+    }
+
+    updateUIVisibility() {
+        if (this.resetButton) {
+            // Show if zoomed in more than initial scale (with epsilon)
+            const isZoomedIn = this.viewport.scale.x > (this.initialScale * 1.001);
+            this.resetButton.visible = isZoomedIn;
+        }
+        this.updateZoneVisibility();
+    }
+
+    updateZoneVisibility() {
+        if (!this.zoneContainers || this.zoneContainers.length === 0) return;
+
+        const currentZoom = this.viewport.scale.x;
+        const startZoom = this.initialScale || RENDERER_CONFIG.MIN_ZOOM;
+        const maxZoom = RENDERER_CONFIG.MAX_ZOOM;
+        
+        // Fade out completely by halfway to max zoom
+        const endZoom = startZoom + (maxZoom - startZoom) / 6;
+
+        // Calculate opacity factor (1 at startZoom, 0 at endZoom)
+        let opacityFactor = 1 - (currentZoom - startZoom) / (endZoom - startZoom);
+        opacityFactor = Math.max(0, Math.min(1, opacityFactor));
+
+        this.zoneContainers.forEach(container => {
+            if (container.zoneBackground) {
+                if (container.zoneBackground.originalAlpha === undefined) {
+                     container.zoneBackground.originalAlpha = container.zoneBackground.alpha;
+                }
+                container.zoneBackground.alpha = container.zoneBackground.originalAlpha * opacityFactor;
+            }
+            
+            if (container.zoneLabel) {
+                 if (container.zoneLabel.originalAlpha === undefined) {
+                     container.zoneLabel.originalAlpha = container.zoneLabel.alpha;
+                }
+                container.zoneLabel.alpha = container.zoneLabel.originalAlpha * opacityFactor;
+            }
         });
     }
 
@@ -55,27 +156,99 @@ export class SeatMapRenderer {
         stage.eventMode = 'static';
         stage.hitArea = this.app.screen;
 
+        // Track active pointers for multi-touch
+        this.lastDist = null;
+        this.lastCenter = null;
+
         stage.on('pointerdown', (e) => {
-            this.isDragging = true;
-            this.lastPos = { x: e.global.x, y: e.global.y };
+            this.activePointers.set(e.pointerId, { x: e.global.x, y: e.global.y });
+            
+            if (this.activePointers.size === 1) {
+                this.isDragging = true;
+                this.lastPos = { x: e.global.x, y: e.global.y };
+            } else if (this.activePointers.size === 2) {
+                this.isDragging = false; // Stop panning when pinching starts
+                this.lastDist = this.getDist(this.activePointers);
+                this.lastCenter = this.getCenter(this.activePointers);
+            }
         });
 
-        stage.on('pointerup', () => {
-            this.isDragging = false;
-        });
+        const onPointerUp = (e) => {
+            this.activePointers.delete(e.pointerId);
+            
+            if (this.activePointers.size === 0) {
+                this.isDragging = false;
+                this.lastDist = null;
+                this.lastCenter = null;
+            } else if (this.activePointers.size === 1) {
+                // Resume panning with the remaining finger
+                this.isDragging = true;
+                const pointer = this.activePointers.values().next().value;
+                this.lastPos = { x: pointer.x, y: pointer.y };
+                this.lastDist = null;
+            }
+        };
 
-        stage.on('pointerupoutside', () => {
-            this.isDragging = false;
-        });
+        stage.on('pointerup', onPointerUp);
+        stage.on('pointerupoutside', onPointerUp);
 
         stage.on('pointermove', (e) => {
-            if (this.isDragging) {
+            // Update pointer position
+            if (this.activePointers.has(e.pointerId)) {
+                this.activePointers.set(e.pointerId, { x: e.global.x, y: e.global.y });
+            }
+
+            if (this.activePointers.size === 2) {
+                // Pinch to Zoom
+                const newDist = this.getDist(this.activePointers);
+                const newCenter = this.getCenter(this.activePointers);
+
+                if (this.lastDist && newDist > 0) {
+                    const scale = newDist / this.lastDist;
+                    
+                    // Calculate new scale
+                    let newScale = this.viewport.scale.x * scale;
+                    
+                    // Apply limits
+                    const minScale = this.initialScale || RENDERER_CONFIG.MIN_ZOOM;
+                    if (newScale < minScale) newScale = minScale;
+                    if (newScale > RENDERER_CONFIG.MAX_ZOOM) newScale = RENDERER_CONFIG.MAX_ZOOM;
+
+                    // Zoom towards center
+                    // Local point under center
+                    const localX = (this.lastCenter.x - this.viewport.x) / this.viewport.scale.x;
+                    const localY = (this.lastCenter.y - this.viewport.y) / this.viewport.scale.y;
+
+                    this.viewport.scale.set(newScale);
+                    
+                    // Move viewport to keep local point at new center
+                    this.viewport.position.x = newCenter.x - localX * newScale;
+                    this.viewport.position.y = newCenter.y - localY * newScale;
+                    
+                    this.updateUIVisibility();
+                }
+
+                this.lastDist = newDist;
+                this.lastCenter = newCenter;
+
+            } else if (this.isDragging && this.activePointers.size === 1) {
+                // Pan
+                // Disable panning if at min zoom (with small epsilon)
+                if (this.viewport.scale.x <= (this.initialScale * 1.001)) {
+                    return;
+                }
+
                 const newPos = { x: e.global.x, y: e.global.y };
                 const dx = newPos.x - this.lastPos.x;
                 const dy = newPos.y - this.lastPos.y;
 
-                this.viewport.position.x += dx;
-                this.viewport.position.y += dy;
+                const newX = this.viewport.position.x + dx;
+                const newY = this.viewport.position.y + dy;
+
+                // Apply constraints
+                const constrained = this.getConstrainedPosition(newX, newY, this.viewport.scale.x);
+                this.viewport.position.x = constrained.x;
+                this.viewport.position.y = constrained.y;
 
                 this.lastPos = newPos;
             }
@@ -96,16 +269,93 @@ export class SeatMapRenderer {
                 y: (y - this.viewport.y) / this.viewport.scale.y
             };
 
-            const newScale = this.viewport.scale.x * direction;
-            
-            // Limit zoom: can zoom in (up to MAX_ZOOM) but not out beyond initial scale
+            let newScale = this.viewport.scale.x * direction;
             const minScale = this.initialScale || RENDERER_CONFIG.MIN_ZOOM;
-            if (newScale >= minScale && newScale <= RENDERER_CONFIG.MAX_ZOOM) {
+
+            // Snap to min scale and recenter if zooming out too far
+            if (newScale <= minScale) {
+                newScale = minScale;
                 this.viewport.scale.set(newScale);
-                this.viewport.position.x = x - localPos.x * newScale;
-                this.viewport.position.y = y - localPos.y * newScale;
+                
+                // Recalculate center for current screen size to ensure perfect centering
+                if (this.initialBounds) {
+                    const screenWidth = this.app.screen.width;
+                    const screenHeight = this.app.screen.height;
+                    const centerX = this.initialBounds.x + this.initialBounds.width / 2;
+                    const centerY = this.initialBounds.y + this.initialBounds.height / 2;
+                    
+                    const targetX = (screenWidth / 2) - (centerX * newScale);
+                    const targetY = (screenHeight / 2) - (centerY * newScale);
+                    
+                    this.viewport.position.set(targetX, targetY);
+                } else if (this.initialPosition) {
+                    this.viewport.position.set(this.initialPosition.x, this.initialPosition.y);
+                }
+                
+                this.updateUIVisibility();
+                return;
+            }
+
+            if (newScale <= RENDERER_CONFIG.MAX_ZOOM) {
+                // Calculate new position
+                const newX = x - localPos.x * newScale;
+                const newY = y - localPos.y * newScale;
+                
+                // Apply scale
+                this.viewport.scale.set(newScale);
+                
+                // Apply constrained position
+                const constrained = this.getConstrainedPosition(newX, newY, newScale);
+                this.viewport.position.x = constrained.x;
+                this.viewport.position.y = constrained.y;
+                
+                this.updateUIVisibility();
             }
         }, { passive: false });
+    }
+
+    /**
+     * Get constrained position within bounds
+     */
+    getConstrainedPosition(x, y, scale) {
+        if (!this.initialBounds) return { x, y };
+
+        const screenWidth = this.app.screen.width;
+        const screenHeight = this.app.screen.height;
+
+        // Calculate the scaled content dimensions and position
+        const contentWidth = this.initialBounds.width * scale;
+        const contentHeight = this.initialBounds.height * scale;
+        const contentLeft = this.initialBounds.x * scale;
+        const contentTop = this.initialBounds.y * scale;
+
+        let constrainedX, constrainedY;
+
+        // Horizontal Constraint
+        if (contentWidth < screenWidth) {
+            // Center horizontally if content is smaller than screen
+            const centerX = (screenWidth - contentWidth) / 2;
+            constrainedX = centerX - contentLeft;
+        } else {
+            // Clamp if content is larger than screen
+            const minX = screenWidth - (contentLeft + contentWidth);
+            const maxX = -contentLeft;
+            constrainedX = Math.max(minX, Math.min(maxX, x));
+        }
+
+        // Vertical Constraint
+        if (contentHeight < screenHeight) {
+            // Center vertically if content is smaller than screen
+            const centerY = (screenHeight - contentHeight) / 2;
+            constrainedY = centerY - contentTop;
+        } else {
+            // Clamp if content is larger than screen
+            const minY = screenHeight - (contentTop + contentHeight);
+            const maxY = -contentTop;
+            constrainedY = Math.max(minY, Math.min(maxY, y));
+        }
+
+        return { x: constrainedX, y: constrainedY };
     }
 
     /**
@@ -115,6 +365,7 @@ export class SeatMapRenderer {
     async loadData(data) {
         // Clear existing
         this.viewport.removeChildren();
+        this.zoneContainers = []; // Reset zone containers list
 
         if (!data) {
             console.error("No data provided to loadData");
@@ -133,7 +384,20 @@ export class SeatMapRenderer {
 
         // 2. Render Sections
         if (data.sections) {
-            for (const sectionData of data.sections) {
+            // Sort sections: Zones first (bottom), then others (top)
+            // This ensures that zones (which are usually larger containers) don't block 
+            // interaction with the seats inside them.
+            const sortedSections = [...data.sections].sort((a, b) => {
+                // Treat explicit zones OR generic GA sections as "zones" for layering
+                const aIsZone = !!a.isZone || a.type === 'ga';
+                const bIsZone = !!b.isZone || b.type === 'ga';
+                
+                if (aIsZone && !bIsZone) return -1;
+                if (!aIsZone && bIsZone) return 1;
+                return 0;
+            });
+
+            for (const sectionData of sortedSections) {
                 this.renderSection(sectionData);
             }
         }
@@ -175,9 +439,19 @@ export class SeatMapRenderer {
         
         // Style
         const style = data.style || {};
-        const fillColor = style.sectionColor !== undefined ? style.sectionColor : 0x3b82f6;
-        const fillAlpha = style.fillVisible === false ? 0 : (style.opacity !== undefined ? style.opacity * 0.25 : 0.25);
-        const strokeAlpha = style.strokeVisible === false ? 0 : (style.opacity !== undefined ? style.opacity * 0.8 : 0.8);
+        let fillColor, fillAlpha, strokeAlpha;
+
+        if (data.isZone) {
+            fillColor = data.sectionColor !== undefined ? data.sectionColor : (style.sectionColor !== undefined ? style.sectionColor : 0xcccccc);
+            // Zones usually have higher opacity
+            const opacity = data.fillOpacity !== undefined ? data.fillOpacity : (style.opacity !== undefined ? style.opacity : 0.5);
+            fillAlpha = opacity;
+            strokeAlpha = opacity > 0.8 ? 1 : opacity + 0.2; 
+        } else {
+            fillColor = style.sectionColor !== undefined ? style.sectionColor : 0x3b82f6;
+            fillAlpha = style.fillVisible === false ? 0 : (style.opacity !== undefined ? style.opacity * 0.25 : 0.25);
+            strokeAlpha = style.strokeVisible === false ? 0 : (style.opacity !== undefined ? style.opacity * 0.8 : 0.8);
+        }
         
         // Draw Rect
         graphics.rect(0, 0, width, height);
@@ -202,8 +476,54 @@ export class SeatMapRenderer {
             container.angle = data.transform.rotation;
         }
 
-        // 2. Render Content (Seats or GA Label)
-        if (data.type === 'ga') {
+        // Store dimensions for zoom calculation
+        container.sectionWidth = width;
+        container.sectionHeight = height;
+
+        // Interaction for Zoom
+        // Treat explicit zones OR generic GA sections as "zones" for zoom configuration
+        const isZoneOrGA = !!data.isZone || data.type === 'ga';
+        const enableZoom = isZoneOrGA ? this.options.enableZoneZoom : this.options.enableSectionZoom;
+
+        // Store reference for fading if it's a zone/GA
+        if (isZoneOrGA) {
+            container.zoneBackground = graphics;
+            this.zoneContainers.push(container);
+        }
+
+        // Configure background graphics for interaction
+        // We use the graphics object for hit testing instead of the container
+        // to allow clicks to pass through empty spaces if enableZoom is false.
+        graphics.hitArea = new PIXI.Rectangle(0, 0, width, height);
+        
+        if (enableZoom) {
+            // If zoom is enabled, the background captures clicks
+            graphics.eventMode = 'static';
+            graphics.cursor = 'zoom-in';
+            
+            // Attach listener to the graphics object (or container, bubbling works)
+            // Attaching to container is fine as long as graphics triggers the hit
+            container.eventMode = 'static'; // Container needs to be interactive to receive bubbled events? 
+                                          // Actually, if child is interactive, container receives events via bubbling.
+                                          // But we can just attach to graphics to be safe and explicit.
+            
+            graphics.on('pointertap', (e) => {
+                // Only zoom if not dragging
+                if (!this.isDragging) {
+                    e.stopPropagation();
+                    this.zoomToSection(container);
+                }
+            });
+        } else {
+            // If zoom is disabled, the background should NOT capture clicks
+            // so they can pass through to the Zone underneath.
+            graphics.eventMode = 'none';
+        }
+
+        // 2. Render Content (Seats, GA Label, or Zone Label)
+        if (data.isZone) {
+            this.renderZoneContent(container, data, width, height);
+        } else if (data.type === 'ga') {
             this.renderGAContent(container, data, width, height);
         } else {
             this.renderSeatsAndLabels(container, data);
@@ -228,6 +548,7 @@ export class SeatMapRenderer {
         text.x = width / 2;
         text.y = height / 2;
         container.addChild(text);
+        container.zoneLabel = text;
 
         // Capacity
         if (data.ga && data.ga.capacity) {
@@ -247,16 +568,54 @@ export class SeatMapRenderer {
         }
     }
 
+    renderZoneContent(container, data, width, height) {
+        // Zone Label
+        const text = new PIXI.Text({
+            text: data.zoneLabel || data.name || "Zone",
+            style: {
+                fontFamily: 'system-ui, sans-serif',
+                fontSize: 16,
+                fontWeight: 'bold',
+                fill: 0x333333, // Darker text for zones as they are usually lighter background
+                align: 'center'
+            }
+        });
+        text.anchor.set(0.5);
+        text.x = width / 2;
+        text.y = height / 2;
+        container.addChild(text);
+        container.zoneLabel = text;
+    }
+
     renderSeatsAndLabels(container, data) {
         // Get layout shift from section data (if row labels were added)
         const layoutShiftX = data.layoutShiftX || 0;
         const layoutShiftY = data.layoutShiftY || 0;
+
+        // Pre-calculate row labels for key generation
+        const rowLabelMap = {};
+        if (data.seats) {
+            const rows = {};
+            data.seats.forEach(seat => {
+                if (!rows[seat.rowIndex]) rows[seat.rowIndex] = true;
+            });
+            const rowIndices = Object.keys(rows).map(Number).sort((a, b) => a - b);
+            const config = data.rowLabels || { type: 'numbers' }; // Default to numbers if missing
+            const totalRows = rowIndices.length;
+            
+            rowIndices.forEach((rowIndex, arrayIndex) => {
+                const labelIndex = config.reversed ? (totalRows - 1 - arrayIndex) : arrayIndex;
+                rowLabelMap[rowIndex] = this.getRowLabelText(labelIndex, config.type, config.start);
+            });
+        }
 
         // Render Seats
         if (data.seats) {
             const style = data.style || {};
             const defaultSeatColor = style.seatColor !== undefined ? style.seatColor : 0xffffff;
             const defaultTextColor = style.seatTextColor !== undefined ? style.seatTextColor : 0x000000;
+            const seatStrokeColor = style.seatStrokeColor !== undefined ? style.seatStrokeColor : 0xffffff;
+            const seatStrokeWidth = style.seatStrokeWidth !== undefined ? style.seatStrokeWidth : 0;
             
             // Glow settings
             const glow = style.glow || {};
@@ -279,7 +638,8 @@ export class SeatMapRenderer {
                 // Glow (if enabled)
                 if (glow.enabled) {
                     const glowGraphics = new PIXI.Graphics();
-                    const radius = 10 + ((glow.strength || 10) / 2);
+                    // Scale glow radius relative to seat radius
+                    const radius = RENDERER_CONFIG.SEAT_RADIUS + ((glow.strength || 10) / 2);
                     glowGraphics.circle(0, 0, radius);
                     glowGraphics.fill({ color: glow.color || 0xffffff, alpha: glow.opacity || 0.5 });
                     
@@ -293,20 +653,27 @@ export class SeatMapRenderer {
 
                 // Seat Circle
                 const circle = new PIXI.Graphics();
-                circle.circle(0, 0, 10);
+                circle.circle(0, 0, RENDERER_CONFIG.SEAT_RADIUS);
                 
                 if (seatData.specialNeeds) {
                     circle.fill({ color: 0x2563eb }); // Blue for special needs
                 } else {
                     circle.fill({ color: defaultSeatColor });
                 }
+
+                if (seatStrokeWidth > 0) {
+                    circle.stroke({ width: seatStrokeWidth, color: seatStrokeColor });
+                }
+
                 seatContainer.addChild(circle);
+                // seatContainer.circle = circle; // No longer needed for animation
 
                 // Seat Label/Icon
                 let labelText = seatData.number || "";
+                
                 let fontStyle = {
                     fontFamily: 'system-ui, sans-serif',
-                    fontSize: 10,
+                    fontSize: RENDERER_CONFIG.SEAT_LABEL_SIZE,
                     fontWeight: 'bold',
                     fill: defaultTextColor,
                     align: 'center'
@@ -322,7 +689,11 @@ export class SeatMapRenderer {
 
                 const text = new PIXI.Text({ text: labelText, style: fontStyle });
                 text.anchor.set(0.5);
+                // Initially hidden and small
+                text.alpha = 0;
+                text.scale.set(0.5);
                 seatContainer.addChild(text);
+                seatContainer.text = text; // Reference for animation
 
                 // Interaction (Click/Hover)
                 seatContainer.eventMode = 'static';
@@ -331,6 +702,68 @@ export class SeatMapRenderer {
                 // Add data to container for event handling
                 seatContainer.seatData = seatData;
                 seatContainer.sectionId = data.id;
+                seatContainer.selected = false;
+                seatContainer.originalLabel = labelText;
+                
+                // Store colors for tooltip
+                seatContainer.seatColor = seatData.specialNeeds ? 0x2563eb : defaultSeatColor;
+                seatContainer.seatTextColor = seatData.specialNeeds ? 0xffffff : defaultTextColor;
+                
+                // Store section pricing for fallback
+                seatContainer.sectionPricing = data.pricing;
+
+                // Generate Key for Inventory Lookup
+                const rowLabel = rowLabelMap[seatData.rowIndex] || "";
+                // Key format: SectionName;;RowLabel;;SeatNumber
+                const key = `${data.name};;${rowLabel};;${seatData.number}`;
+                seatContainer.key = key;
+                this.seatsByKey[key] = seatContainer;
+
+                // Animation state
+                seatContainer.targetScale = 1;
+                seatContainer.targetTextAlpha = 0;
+                seatContainer.targetTextScale = 0.5;
+
+                seatContainer.on('pointerover', () => {
+                    if (this.isDragging) return;
+                    
+                    // Show Tooltip
+                    this.showTooltip(
+                        seatContainer.seatData, 
+                        data.name, 
+                        rowLabel, 
+                        data.pricing,
+                        seatContainer.seatColor,
+                        seatContainer.seatTextColor
+                    );
+
+                    // Dynamically update resolution based on zoom level for crisp text
+                    // This improves performance by only rendering high-res text when needed
+                    const zoom = this.viewport.scale.x;
+                    text.resolution = Math.max(2, zoom * 2); // Ensure at least 2x for retina
+
+                    // If selected, we are already in the "large" state, but we might want to ensure it
+                    // For now, hover behavior is same as selected behavior regarding scale
+                    seatContainer.targetScale = RENDERER_CONFIG.SEAT_RADIUS_HOVER / RENDERER_CONFIG.SEAT_RADIUS;
+                    seatContainer.targetTextAlpha = 1;
+                    seatContainer.targetTextScale = 1;
+                    // Bring to front
+                    seatContainer.parent.addChild(seatContainer);
+                    this.animatingSeats.add(seatContainer);
+                });
+
+                seatContainer.on('pointerout', () => {
+                    // Hide Tooltip
+                    this.hideTooltip();
+
+                    // Only revert if not selected
+                    if (!seatContainer.selected) {
+                        seatContainer.targetScale = 1;
+                        seatContainer.targetTextAlpha = 0;
+                        seatContainer.targetTextScale = 0.5;
+                        this.animatingSeats.add(seatContainer);
+                    }
+                });
 
                 seatContainer.on('pointertap', (e) => {
                     e.stopPropagation();
@@ -467,8 +900,9 @@ export class SeatMapRenderer {
     /**
      * Fit the view to show all content (underlay or sections) centered and scaled to fit viewport height
      */
-    fitToView() {
-        const bounds = this.viewport.getBounds();
+    fitToView(animate = true) {
+        // Use getLocalBounds to get unscaled dimensions
+        const bounds = this.viewport.getLocalBounds();
         if (bounds.width === 0 || bounds.height === 0) return;
 
         const screenWidth = this.app.screen.width;
@@ -480,7 +914,15 @@ export class SeatMapRenderer {
             // If we have an underlay, fit to the underlay image bounds
             const underlayChild = this.viewport.children[0]; // Underlay is first child
             if (underlayChild) {
-                targetBounds = underlayChild.getBounds();
+                // Calculate bounds of underlay in viewport space
+                const localBounds = underlayChild.getLocalBounds(); // Texture space
+                
+                targetBounds = {
+                    x: underlayChild.x + (localBounds.x * underlayChild.scale.x),
+                    y: underlayChild.y + (localBounds.y * underlayChild.scale.y),
+                    width: localBounds.width * underlayChild.scale.x,
+                    height: localBounds.height * underlayChild.scale.y
+                };
             } else {
                 targetBounds = bounds;
             }
@@ -496,15 +938,31 @@ export class SeatMapRenderer {
         // Use the smaller scale to ensure everything fits, but don't zoom in beyond 1:1
         const scale = Math.min(scaleX, scaleY, 1);
 
-        this.viewport.scale.set(scale);
-        this.initialScale = scale; // Store initial scale to prevent zooming out further
-        
-        // Center the content
+        // Animate to the new view
         const centerX = targetBounds.x + targetBounds.width / 2;
         const centerY = targetBounds.y + targetBounds.height / 2;
         
-        this.viewport.position.x = (screenWidth / 2) - (centerX * scale);
-        this.viewport.position.y = (screenHeight / 2) - (centerY * scale);
+        const targetX = (screenWidth / 2) - (centerX * scale);
+        const targetY = (screenHeight / 2) - (centerY * scale);
+
+        // Update initial state
+        this.initialScale = scale;
+        this.initialBounds = {
+            x: targetBounds.x,
+            y: targetBounds.y,
+            width: targetBounds.width,
+            height: targetBounds.height
+        };
+        this.initialPosition = { x: targetX, y: targetY };
+
+        // If we are already initialized (viewport has children) and animate is true
+        if (this.viewport.children.length > 0 && animate) {
+             this.animateViewport(targetX, targetY, scale);
+        } else {
+             this.viewport.scale.set(scale);
+             this.viewport.position.set(targetX, targetY);
+             this.updateUIVisibility();
+        }
     }
 
     /**
@@ -514,15 +972,355 @@ export class SeatMapRenderer {
         this.fitToView();
     }
 
+    /**
+     * Zoom to fit a specific section
+     * @param {PIXI.Container} sectionContainer 
+     */
+    zoomToSection(sectionContainer) {
+        const screenWidth = this.app.screen.width;
+        const screenHeight = this.app.screen.height;
+        const padding = RENDERER_CONFIG.SECTION_ZOOM_PADDING;
+
+        // Calculate target scale
+        // We need to account for rotation if we want to be perfect, but for now let's use the unrotated dimensions
+        // or the bounding box. Using getBounds() gives global bounds which includes current viewport transform.
+        // We want local bounds relative to the viewport parent, but unscaled.
+        
+        // Simplest approach: use the stored width/height and ignore rotation for scale calculation
+        // or use the local bounds.
+        const width = sectionContainer.sectionWidth;
+        const height = sectionContainer.sectionHeight;
+
+        const scaleX = (screenWidth - padding * 2) / width;
+        const scaleY = (screenHeight - padding * 2) / height;
+        
+        // Limit max zoom
+        let targetScale = Math.min(scaleX, scaleY);
+        targetScale = Math.min(targetScale, RENDERER_CONFIG.MAX_ZOOM);
+
+        // Calculate target position to center the section
+        // The section's position (x,y) is its center because we set pivot to center
+        const targetX = (screenWidth / 2) - (sectionContainer.x * targetScale);
+        const targetY = (screenHeight / 2) - (sectionContainer.y * targetScale);
+
+        // Animate
+        this.animateViewport(targetX, targetY, targetScale);
+    }
+
+    animateViewport(targetX, targetY, targetScale) {
+        const startX = this.viewport.position.x;
+        const startY = this.viewport.position.y;
+        const startScale = this.viewport.scale.x;
+        
+        const startTime = performance.now();
+        const duration = RENDERER_CONFIG.ANIMATION_DURATION;
+
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Ease out cubic
+            const ease = 1 - Math.pow(1 - progress, 3);
+
+            const currentScale = startScale + (targetScale - startScale) * ease;
+            const currentX = startX + (targetX - startX) * ease;
+            const currentY = startY + (targetY - startY) * ease;
+
+            this.viewport.scale.set(currentScale);
+            this.viewport.position.set(currentX, currentY);
+            
+            // Update UI visibility during animation
+            this.updateUIVisibility();
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                // Ensure final values are set
+                this.viewport.scale.set(targetScale);
+                this.viewport.position.set(targetX, targetY);
+                this.updateUIVisibility();
+            }
+        };
+
+        requestAnimationFrame(animate);
+    }
+
+    setupTooltip() {
+        this.tooltip = document.getElementById('seat-tooltip');
+        this.tooltipElements = {
+            section: document.getElementById('tt-section'),
+            row: document.getElementById('tt-row'),
+            seat: document.getElementById('tt-seat'),
+            category: document.getElementById('tt-category'),
+            price: document.getElementById('tt-price'),
+            footer: document.getElementById('tt-footer')
+        };
+
+        if (this.tooltip) {
+            this.tooltip.style.transition = `opacity ${RENDERER_CONFIG.TOOLTIP_SPEED}s ease-out`;
+        }
+
+        // Track mouse movement for tooltip positioning
+        window.addEventListener('mousemove', (e) => {
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+            
+            if (this.tooltip && this.tooltip.style.opacity !== '0') {
+                this.updateTooltipPosition(e.clientX, e.clientY);
+            }
+        });
+    }
+
+    updateTooltipPosition(x, y) {
+        if (!this.tooltip) return;
+
+        const rect = this.tooltip.getBoundingClientRect();
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const margin = 20; // Space from cursor
+        const padding = 10; // Space from screen edge
+
+        // Horizontal positioning (Clamp)
+        let left = x;
+        const halfWidth = rect.width / 2;
+        
+        // Check left edge
+        if (left - halfWidth < padding) {
+            left = padding + halfWidth;
+        }
+        // Check right edge
+        else if (left + halfWidth > screenWidth - padding) {
+            left = screenWidth - padding - halfWidth;
+        }
+
+        this.tooltip.style.left = `${left}px`;
+
+        // Vertical positioning (Flip)
+        // Default is TOP (above cursor) via CSS: translate(-50%, -100%)
+        const height = this.tooltip.offsetHeight;
+        
+        // Check if there is space above
+        if (y - height - margin < padding) {
+            // Not enough space above, place below
+            this.tooltip.classList.add('bottom');
+            this.tooltip.style.top = `${y}px`;
+        } else {
+            // Place above
+            this.tooltip.classList.remove('bottom');
+            this.tooltip.style.top = `${y}px`;
+        }
+    }
+
+    showTooltip(seatData, sectionName, rowLabel, sectionPricing, seatColor, seatTextColor) {
+        if (!this.tooltip) return;
+
+        // Populate data
+        this.tooltipElements.section.textContent = sectionName || '--';
+        this.tooltipElements.row.textContent = rowLabel || '--';
+        this.tooltipElements.seat.textContent = seatData.number || '--';
+        
+        // Price/Category (use defaults or data from inventory, fallback to section pricing)
+        let priceValue = 0;
+        
+        if (seatData.price !== undefined) {
+            priceValue = seatData.price;
+        } else if (sectionPricing && sectionPricing.basePrice !== undefined) {
+            priceValue = sectionPricing.basePrice;
+        }
+        
+        const price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : 'Not Available';
+        const category = seatData.category || 'STANDARD';
+        
+        this.tooltipElements.price.textContent = price;
+        this.tooltipElements.category.textContent = category;
+
+        // Apply colors to footer
+        if (seatColor !== undefined) {
+            const hexColor = '#' + seatColor.toString(16).padStart(6, '0');
+            this.tooltipElements.footer.style.backgroundColor = hexColor;
+        }
+        
+        if (seatTextColor !== undefined) {
+            const hexColor = '#' + seatTextColor.toString(16).padStart(6, '0');
+            this.tooltipElements.footer.style.color = hexColor;
+        }
+
+        this.tooltip.style.opacity = '1';
+        
+        // Update position immediately
+        if (this.lastMouseX !== undefined) {
+            this.updateTooltipPosition(this.lastMouseX, this.lastMouseY);
+        }
+    }
+
+    hideTooltip() {
+        if (this.tooltip) {
+            this.tooltip.style.opacity = '0';
+        }
+    }
+
     onSeatClick(seatContainer) {
-        console.log("Seat clicked:", seatContainer.seatData);
-        // Dispatch event
+        // Toggle selection
+        seatContainer.selected = !seatContainer.selected;
+        
+        if (seatContainer.selected) {
+            this.selectedSeats.add(seatContainer);
+        } else {
+            this.selectedSeats.delete(seatContainer);
+        }
+        
+        console.log("Seat clicked:", seatContainer.seatData, "Selected:", seatContainer.selected);
+
+        // Update visual state
+        if (seatContainer.selected) {
+            // Selected state: Large, visible text, checkmark
+            seatContainer.targetScale = RENDERER_CONFIG.SEAT_RADIUS_HOVER / RENDERER_CONFIG.SEAT_RADIUS;
+            seatContainer.targetTextAlpha = 1;
+            seatContainer.targetTextScale = 1;
+            seatContainer.text.text = "✓"; // Checkmark
+            
+            // Ensure high resolution for the checkmark
+            const zoom = this.viewport.scale.x;
+            seatContainer.text.resolution = Math.max(2, zoom * 2);
+        } else {
+            // Deselected state: Revert to hover state if mouse is over, or default if not?
+            // Since this is a click, the mouse is likely still over it.
+            // However, if we want to "deselect", we usually expect it to go back to normal unless hovered.
+            // But since the mouse IS over it (we just clicked), it should technically stay in hover state (Large, original text).
+            
+            // Let's assume we want to revert to the "hover" state (Large, original text)
+            seatContainer.targetScale = RENDERER_CONFIG.SEAT_RADIUS_HOVER / RENDERER_CONFIG.SEAT_RADIUS;
+            seatContainer.targetTextAlpha = 1;
+            seatContainer.targetTextScale = 1;
+            seatContainer.text.text = seatContainer.originalLabel;
+        }
+        
+        // Bring to front
+        seatContainer.parent.addChild(seatContainer);
+        this.animatingSeats.add(seatContainer);
+
+        // Dispatch legacy event
         const event = new CustomEvent('seat-click', { 
             detail: { 
                 seat: seatContainer.seatData,
-                sectionId: seatContainer.sectionId
+                sectionId: seatContainer.sectionId,
+                selected: seatContainer.selected
             } 
         });
         this.container.dispatchEvent(event);
+
+        // Trigger cart change
+        this.handleCartChange();
+    }
+
+    handleCartChange() {
+        const seats = Array.from(this.selectedSeats).map(container => {
+            const data = container.seatData;
+            
+            // Determine price: Seat specific > Section base > 0
+            let price = 0;
+            if (data.price !== undefined) {
+                price = data.price;
+            } else if (container.sectionPricing && container.sectionPricing.basePrice !== undefined) {
+                price = container.sectionPricing.basePrice;
+            }
+
+            return {
+                id: data.id,
+                key: container.key,
+                price: price,
+                special: data.special || null
+            };
+        });
+
+        const cartData = {
+            seats: seats,
+            ga: [] // GA selection not yet implemented
+        };
+
+        // Dispatch custom event
+        const event = new CustomEvent('cartChange', { detail: cartData });
+        this.container.dispatchEvent(event);
+        console.log("Cart updated:", cartData);
+
+        // Call callback if provided
+        if (this.options.onCartChange) {
+            this.options.onCartChange(cartData);
+        }
+    }
+
+    /**
+     * Load inventory data (prices, availability, etc.)
+     * @param {Object} inventoryData - The inventory data
+     */
+    loadInventory(inventoryData) {
+        if (!inventoryData || !inventoryData.seats) return;
+
+        console.log("Loading inventory data...", inventoryData);
+
+        inventoryData.seats.forEach(item => {
+            // Key format from inventory: "SectionName;;RowLabel;;SeatNumber"
+            // Note: The inventory key format must match our generated key format.
+            // Our generated key: `${data.name};;${rowLabel};;${seatData.number}`
+            
+            const key = item.key;
+            const seatContainer = this.seatsByKey[key];
+
+            if (seatContainer) {
+                // Merge inventory data into seat data
+                seatContainer.seatData = { ...seatContainer.seatData, ...item };
+                
+                // Here you could also update visual state based on inventory
+                // e.g. if (item.status === 'sold') seatContainer.alpha = 0.5;
+            } else {
+                // console.warn(`Seat not found for key: ${key}`);
+            }
+        });
+    }
+
+    updateSeatAnimations() {
+        if (this.animatingSeats.size === 0) return;
+
+        const speed = RENDERER_CONFIG.SEAT_HOVER_SPEED;
+
+        for (const seat of this.animatingSeats) {
+            const text = seat.text;
+
+            // Lerp CONTAINER scale
+            seat.scale.x += (seat.targetScale - seat.scale.x) * speed;
+            seat.scale.y += (seat.targetScale - seat.scale.y) * speed;
+
+            // Lerp text alpha
+            text.alpha += (seat.targetTextAlpha - text.alpha) * speed;
+            
+            // Lerp text scale
+            text.scale.x += (seat.targetTextScale - text.scale.x) * speed;
+            text.scale.y += (seat.targetTextScale - text.scale.y) * speed;
+
+            // Check if animation is done (close enough)
+            if (Math.abs(seat.targetScale - seat.scale.x) < 0.01 &&
+                Math.abs(seat.targetTextAlpha - text.alpha) < 0.01) {
+                
+                seat.scale.set(seat.targetScale);
+                text.alpha = seat.targetTextAlpha;
+                text.scale.set(seat.targetTextScale);
+                this.animatingSeats.delete(seat);
+            }
+        }
+    }
+
+    getDist(pointers) {
+        const points = Array.from(pointers.values());
+        const dx = points[0].x - points[1].x;
+        const dy = points[0].y - points[1].y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    getCenter(pointers) {
+        const points = Array.from(pointers.values());
+        return {
+            x: (points[0].x + points[1].x) / 2,
+            y: (points[0].y + points[1].y) / 2
+        };
     }
 }

@@ -22,6 +22,66 @@
         }
         #controls button:hover, #controls label:hover { background: #1c7ed6; }
         #file-input { display: none; }
+
+        /* Tooltip Styles */
+        .seat-tooltip {
+            position: fixed;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            font-family: system-ui, sans-serif;
+            pointer-events: none;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.15s ease-out;
+            overflow: hidden;
+            min-width: 220px;
+            transform: translate(-50%, -100%); /* Center horizontally, place above cursor */
+            margin-top: -15px; /* Offset from cursor */
+        }
+        .seat-tooltip.bottom {
+            transform: translate(-50%, 0);
+            margin-top: 15px;
+        }
+        .tooltip-header {
+            display: flex;
+            padding: 12px 5px;
+            background: white;
+            justify-content: center;
+        }
+        .tooltip-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 15px;
+            min-width: 40px;
+        }
+        .tooltip-col.border-left {
+            border-left: 1px solid #eee;
+        }
+        .tooltip-label {
+            font-size: 9px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .tooltip-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111;
+        }
+        .tooltip-footer {
+            background: #e67e22;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -30,6 +90,29 @@
         <input type="file" id="file-input" accept=".json">
         <button id="center-btn">Center Map</button>
     </div>
+    
+    <!-- Tooltip -->
+    <div id="seat-tooltip" class="seat-tooltip">
+        <div class="tooltip-header">
+            <div class="tooltip-col">
+                <span class="tooltip-label">SECTION</span>
+                <span class="tooltip-value" id="tt-section">--</span>
+            </div>
+            <div class="tooltip-col border-left">
+                <span class="tooltip-label">ROW</span>
+                <span class="tooltip-value" id="tt-row">--</span>
+            </div>
+            <div class="tooltip-col border-left">
+                <span class="tooltip-label">SEAT</span>
+                <span class="tooltip-value" id="tt-seat">--</span>
+            </div>
+        </div>
+        <div class="tooltip-footer" id="tt-footer">
+            <span id="tt-category">STANDARD</span>
+            <span id="tt-price">$0</span>
+        </div>
+    </div>
+
     <div id="seatmap-container"></div>
 
     <!-- PixiJS -->
@@ -42,6 +125,18 @@
         // Initialize renderer
         const container = document.getElementById('seatmap-container');
         const renderer = new SeatMapRenderer(container);
+
+        // Auto-load default map for testing
+        try {
+            const response = await fetch('./venue-map-2025-11-20T20-47-10.json');
+            if (response.ok) {
+                const data = await response.json();
+                await renderer.loadData(data);
+                console.log('Default map loaded successfully!');
+            }
+        } catch (error) {
+            console.warn('Could not load default map:', error);
+        }
 
         // Example: Load a map (You would typically fetch this from a server)
         // For demonstration, we'll try to load a local file if provided, or wait for a message

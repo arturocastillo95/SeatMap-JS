@@ -34,6 +34,13 @@ export const SectionManager = {
     return section;
   },
 
+  createZone(x, y, width, height) {
+    const section = SectionFactory.createZone(x, y, width, height);
+    SectionInteractionHandler.setupSectionInteractions(section);
+    SectionFactory.registerSection(section);
+    return section;
+  },
+
   deleteSection(section) {
     return SectionFactory.deleteSection(section);
   },
@@ -263,7 +270,32 @@ export const SectionManager = {
   updateRowLabelPositions(section) {
     // Stub for compatibility
     console.warn('updateRowLabelPositions should use SectionTransformations');
-  }
+  },
+
+  updateZoneVisibility(scale) {
+    const ZOOM_THRESHOLD = 1.5; // Start fading out at 1.5x zoom
+    const FADE_RANGE = 0.5; // Fully transparent at 2.0x zoom
+    
+    State.sections.forEach(section => {
+      if (section.isZone) {
+        let opacity = section.fillOpacity || 0.2;
+        
+        if (scale > ZOOM_THRESHOLD) {
+          const fade = Math.max(0, 1 - (scale - ZOOM_THRESHOLD) / FADE_RANGE);
+          opacity *= fade;
+        }
+        
+        // Update the graphics alpha directly
+        if (section.bgGraphics) {
+          section.bgGraphics.alpha = opacity;
+        }
+        // Also fade label
+        if (section.labelContainer) {
+          section.labelContainer.alpha = opacity > 0.05 ? 1 : 0;
+        }
+      }
+    });
+  },
 };
 
 /**

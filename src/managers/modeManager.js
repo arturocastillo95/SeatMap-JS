@@ -438,11 +438,23 @@ export const ModeManager = {
     const count = State.selectedSeats.length;
     const countDisplay = document.getElementById('seatSelectionCount');
     const specialNeedsToggle = document.getElementById('specialNeedsToggle');
+    const seatNumberEditGroup = document.getElementById('seatNumberEditGroup');
+    const singleSeatNumberInput = document.getElementById('singleSeatNumberInput');
     
     if (countDisplay) {
       countDisplay.textContent = count === 0 
         ? 'No seats selected' 
         : `${count} seat${count > 1 ? 's' : ''} selected`;
+    }
+
+    // Handle single seat number editing
+    if (seatNumberEditGroup && singleSeatNumberInput) {
+      if (count === 1) {
+        seatNumberEditGroup.style.display = 'block';
+        singleSeatNumberInput.value = State.selectedSeats[0].seatNumber;
+      } else {
+        seatNumberEditGroup.style.display = 'none';
+      }
     }
     
     // Check if all selected seats have special needs enabled

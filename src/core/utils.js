@@ -57,5 +57,28 @@ export const Utils = {
     const snappedHeight = snappedInnerHeight + (CONFIG.SECTION_MARGIN * 2);
     
     return { seats, rows, snappedWidth, snappedHeight };
+  },
+
+  /**
+   * Generate a short unique identifier
+   * @param {number} length - Length of the ID (default 8)
+   * @returns {string} Short random ID
+   */
+  generateShortId(length = 8) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const values = new Uint8Array(length);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(values);
+      return Array.from(values)
+        .map(x => chars[x % chars.length])
+        .join('');
+    } else {
+      // Fallback for older environments
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
   }
 };

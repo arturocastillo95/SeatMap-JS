@@ -4,14 +4,14 @@
 
 SeatMap JS uses a JSON-based file format called SMF (Seat Map Format) for saving and loading venue maps.
 
-### Current Version: 2.0.0
+### Current Version: 2.1.0
 
 ## Format Structure
 
 ```json
 {
   "format": "SMF",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "created": "ISO 8601 timestamp",
   "modified": "ISO 8601 timestamp",
   
@@ -178,7 +178,20 @@ GA sections are used for standing areas or general admission zones without indiv
     "perRow": true
   },
   
-  "seats": [],
+  "seats": [
+    {
+      "id": "aZ9x2kP1",
+      "rowIndex": 0,
+      "colIndex": 0,
+      "number": "1",
+      "specialNeeds": false,
+      "isManualNumber": false,
+      "relativeX": 10,
+      "relativeY": 10,
+      "baseX": 10,
+      "baseY": 10
+    }
+  ],
   
   "style": {
     "fillColor": "#4a5568",
@@ -231,6 +244,14 @@ The optional `underlay` object contains background image data:
 - Render order: Grid → Underlay → Sections → Seats
 
 ## Version History
+
+### v2.1.0 (2025-11-20)
+
+**New Features:**
+- **Persistent Seat IDs**: Each seat now has a unique 8-character alphanumeric `id` field (e.g., "aZ9x2kP1").
+- **Pricing Structure**: Sections now include a `pricing` object with `basePrice` and service fee configuration.
+- **Seat Pricing**: Individual seats can override section pricing with their own `price` field (loaded via inventory).
+- **Tooltip Support**: Renderer supports displaying rich tooltip data based on these fields.
 
 ### v2.0.0 (Current)
 

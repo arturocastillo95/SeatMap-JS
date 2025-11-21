@@ -131,6 +131,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Context menu uses same confirmation dialog as toolbar delete
 - Collapsible accordion sections in sidebar for better organization
 - Improved sidebar design with bordered containers per section
+- **Manual Seat Numbering** - Override automatic numbering for specific seats
+  - Select a single seat in "Edit Seats" mode
+  - Enter custom number/label in the sidebar
+  - Persists through save/load operations
+  - Protected from automatic renumbering updates
+  - Supports alphanumeric values (e.g., "1A", "VIP-1")
+- **Renderer Improvements** - Enhanced visual quality and interaction
+  - **Semantic Zoom**: Zones fade out and individual seats fade in as you zoom deeper
+  - **Touch Support**: Native pinch-to-zoom and pan gestures for mobile/tablet
+  - **Zone Rendering**: Optimized rendering for Zone polygons
+  - **Performance**: Improved culling and level-of-detail management
+- **Editor Collision Fixes** - Improved object interaction
+  - Zones no longer collide with sections or other zones
+  - Smoother dragging and positioning experience
+  - Corrected "Zone" vs "Section" labeling in sidebar
 
 ### Changed
 - SMF format upgraded to v2.0.0
@@ -230,6 +245,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drag threshold prevents accidental drags (5px minimum movement)**
 - **Rotation slider displays correctly in -180 to 180 range**
 - **Section selection immediately updates sidebar values**
+
+### v2.1.0 (2025-11-20)
+- **Renderer Enhancements**
+  - **Smart Viewport**: Implemented `fitToView` for perfect initial centering and zoom limits.
+  - **Section Zoom**: Clicking a section now smoothly zooms to fit it in the viewport.
+  - **Seat Interactions**: Added hover effects (scale + glow) and selection state (checkmark).
+  - **Tooltip System**: Added a smart tooltip showing Section, Row, Seat, Category, and Price.
+    - Follows mouse cursor with smooth ease-in animation.
+    - Automatically positions itself to stay within screen bounds.
+    - Matches seat colors for visual consistency.
+  - **Cart Integration**: Implemented `cartChange` event emitting selected seats in a standardized format.
+  - **Inventory Loading**: Added `loadInventory` method to map external data (prices, status) to seats.
+  - **Pricing Logic**: Implemented hierarchical pricing (Seat Specific > Section Base > Default).
+
+- **Editor Updates**
+  - **Persistent Seat IDs**: Added generation of 8-character alphanumeric IDs for seats during export.
+  - **ID Preservation**: Existing IDs are preserved during import/export cycles to ensure data integrity.
 
 ## [0.1.0] - Initial Release
 

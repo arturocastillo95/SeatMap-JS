@@ -49,6 +49,7 @@ function initializeElements() {
   Elements.zoomToFitBtn = document.getElementById('zoomToFitBtn');
   Elements.createBtn = document.getElementById('createSectionBtn');
   Elements.createGABtn = document.getElementById('createGABtn');
+  Elements.createZoneBtn = document.getElementById('createZoneBtn');
   Elements.openBtn = document.getElementById('openBtn');
   Elements.saveBtn = document.getElementById('saveBtn');
   Elements.fileInput = document.getElementById('fileInput');
@@ -130,6 +131,9 @@ function initializeElements() {
   Elements.gaSizeControls = document.getElementById('gaSizeControls');
   Elements.gaWidthInput = document.getElementById('gaWidthInput');
   Elements.gaHeightInput = document.getElementById('gaHeightInput');
+  Elements.zoneOpacityControl = document.getElementById('zoneOpacityControl');
+  Elements.zoneOpacitySlider = document.getElementById('zoneOpacitySlider');
+  Elements.zoneOpacityValue = document.getElementById('zoneOpacityValue');
   
   // Glow elements
   Elements.glowEnabledToggle = document.getElementById('glowEnabledToggle');
@@ -487,6 +491,22 @@ function setupUnderlayHandlers() {
 
 function setupSeatHandlers() {
   const specialNeedsToggle = document.getElementById('specialNeedsToggle');
+  const singleSeatNumberInput = document.getElementById('singleSeatNumberInput');
+  
+  if (singleSeatNumberInput) {
+    singleSeatNumberInput.addEventListener('change', async (e) => {
+      if (State.selectedSeats.length === 1) {
+        const newNumber = e.target.value;
+        const seat = State.selectedSeats[0];
+        
+        // Import SeatManager dynamically
+        const { SeatManager } = await import('../src/managers/SeatManager.js');
+        
+        SeatManager.updateSeatNumber(seat, newNumber);
+        console.log(`Updated seat number to: ${newNumber}`);
+      }
+    });
+  }
   
   if (specialNeedsToggle) {
     specialNeedsToggle.addEventListener('change', async (e) => {

@@ -29,7 +29,9 @@ export const AlignmentManager = {
     
     document.addEventListener('gaResizeEnd', (e) => {
       const section = e.detail.section;
-      this.resolveCollisions([section]);
+      if (!section.isZone) {
+        this.resolveCollisions([section]);
+      }
     });
   },
 
@@ -58,6 +60,10 @@ export const AlignmentManager = {
         // Update GA label if it exists
         if (section.gaLabel) {
           section.gaLabel.text = e.target.value;
+        }
+        // Update Zone label if it exists
+        if (section.isZone) {
+          section.zoneLabel = e.target.value;
         }
       }
     });
@@ -256,12 +262,14 @@ export const AlignmentManager = {
     Elements.gaWidthInput.addEventListener('change', (e) => {
       if (State.selectedSections.length === 1) {
         const section = State.selectedSections[0];
-        if (section.isGeneralAdmission) {
+        if (section.isGeneralAdmission || section.isZone) {
           const newWidth = parseFloat(e.target.value) || 0;
           if (newWidth > 0) {
             SectionManager.resizeGASection(section, newWidth, section.contentHeight);
-            // Check for collisions after resize and resolve them
-            this.resolveCollisions([section]);
+            // Check for collisions after resize and resolve them (only for non-zones)
+            if (!section.isZone) {
+              this.resolveCollisions([section]);
+            }
           }
         }
       }
@@ -271,12 +279,14 @@ export const AlignmentManager = {
     Elements.gaHeightInput.addEventListener('change', (e) => {
       if (State.selectedSections.length === 1) {
         const section = State.selectedSections[0];
-        if (section.isGeneralAdmission) {
+        if (section.isGeneralAdmission || section.isZone) {
           const newHeight = parseFloat(e.target.value) || 0;
           if (newHeight > 0) {
             SectionManager.resizeGASection(section, section.contentWidth, newHeight);
-            // Check for collisions after resize and resolve them
-            this.resolveCollisions([section]);
+            // Check for collisions after resize and resolve them (only for non-zones)
+            if (!section.isZone) {
+              this.resolveCollisions([section]);
+            }
           }
         }
       }
@@ -355,6 +365,18 @@ export const AlignmentManager = {
         const blur = parseInt(e.target.value);
         Elements.glowBlurValue.textContent = `${blur}px`;
         SectionManager.setGlowBlur(State.selectedSections[0], blur);
+      }
+    });
+
+    // Zone Opacity Slider
+    Elements.zoneOpacitySlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isZone) {
+          const opacity = parseInt(e.target.value) / 100;
+          Elements.zoneOpacityValue.textContent = `${e.target.value}%`;
+          section.fillOpacity = opacity;
+        }
       }
     });
   },
@@ -637,6 +659,28 @@ export const AlignmentManager = {
         if (section.isGeneralAdmission && !section.resizeHandles) {
           SectionManager.addResizeHandles(section);
         }
+        
+        // Update sidebar title based on type
+        const sidebarChip = document.querySelector('.sidebar-title-chip');
+        const nameLabel = document.querySelector('#sectionNameInput').previousElementSibling;
+        
+        if (sidebarChip) {
+          if (section.isZone) {
+            sidebarChip.textContent = 'ZONE';
+          } else if (section.isGeneralAdmission) {
+            sidebarChip.textContent = 'GA';
+          } else {
+            sidebarChip.textContent = 'SECTION';
+          }
+        }
+        
+        if (nameLabel) {
+           if (section.isZone) {
+            nameLabel.textContent = 'Zone Title';
+          } else {
+            nameLabel.textContent = 'Section Title';
+          }
+        }
       } else {
         Elements.sectionSidebar.classList.remove('show');
         
@@ -693,9 +737,41 @@ export const AlignmentManager = {
     Elements.glowBlurSlider.value = glowBlur;
     Elements.glowBlurValue.textContent = `${glowBlur}px`;
 
-    // Check if this is a GA section
+    // Check if this is a GA section or Zone
     const isGA = section.isGeneralAdmission === true;
+    const isZone = section.isZone === true;
     
+    if (isZone) {
+      // Zone - show size controls, opacity slider
+      // Hide row labels, seat numbering, align rows, add rows, stretch controls, seat colors, capacity
+      Elements.seatsTitle.textContent = 'Zone Properties';
+      Elements.seatsInfo.style.display = 'none';
+      Elements.capacityInput.style.display = 'none';
+      
+      Elements.gaSizeControls.style.display = 'block';
+      Elements.gaWidthInput.value = Math.round(section.contentWidth);
+      Elements.gaHeightInput.value = Math.round(section.contentHeight);
+      
+      Elements.zoneOpacityControl.style.display = 'block';
+      const opacity = Math.round((section.fillOpacity !== undefined ? section.fillOpacity : 0.2) * 100);
+      Elements.zoneOpacitySlider.value = opacity;
+      Elements.zoneOpacityValue.textContent = `${opacity}%`;
+
+      Elements.rowLabelsHeader.parentElement.style.display = 'none';
+      Elements.seatNumberingSection.style.display = 'none';
+      Elements.alignRowsSection.style.display = 'none';
+      Elements.addRowsSection.style.display = 'none';
+      Elements.stretchHSection.style.display = 'none';
+      Elements.stretchVSection.style.display = 'none';
+      
+      Elements.styleHeader.parentElement.style.display = 'block';
+      
+      // Hide seat colors
+      document.getElementById('seatColorSection').style.display = 'none';
+      document.getElementById('seatTextColorSection').style.display = 'none';
+      return;
+    }
+
     // Show/hide sections based on section type
     if (isGA) {
       // GA section - show capacity, size controls, hide row labels, seat numbering, align rows, add rows, stretch controls, seat colors
@@ -706,6 +782,7 @@ export const AlignmentManager = {
       Elements.gaSizeControls.style.display = 'block';
       Elements.gaWidthInput.value = Math.round(section.contentWidth);
       Elements.gaHeightInput.value = Math.round(section.contentHeight);
+      Elements.zoneOpacityControl.style.display = 'none';
       Elements.rowLabelsHeader.parentElement.style.display = 'none';
       Elements.seatNumberingSection.style.display = 'none';
       Elements.alignRowsSection.style.display = 'none';
@@ -723,6 +800,7 @@ export const AlignmentManager = {
       Elements.seatsInfo.style.display = 'block';
       Elements.capacityInput.style.display = 'none';
       Elements.gaSizeControls.style.display = 'none';
+      Elements.zoneOpacityControl.style.display = 'none';
       Elements.rowLabelsHeader.parentElement.style.display = 'block';
       Elements.seatNumberingSection.style.display = 'block';
       Elements.alignRowsSection.style.display = 'block';
@@ -855,7 +933,13 @@ export const AlignmentManager = {
     
     // Check each moving section against each static section
     for (const { section, x, y } of dragPositions) {
+      // Skip collision detection for Zones (explicit check)
+      if (!!section.isZone) continue;
+
       for (const other of otherSections) {
+        // Skip collision detection with Zones (explicit check)
+        if (!!other.isZone) continue;
+
         // Calculate bounds at current position (accounting for pivot at center)
         const currentBounds = {
           minX: x - section.pivot.x,
@@ -1043,8 +1127,11 @@ export const AlignmentManager = {
       let hadCollision = false;
       
       for (const section of movedSections) {
+        // Skip collision detection for Zones (explicit check)
+        if (!!section.isZone) continue;
+
         // Check collision with ALL other sections
-        const otherSections = State.sections.filter(s => s !== section);
+        const otherSections = State.sections.filter(s => s !== section && !s.isZone);
         
         for (const other of otherSections) {
           const vector = this.getCollisionVector(section, other, this.COLLISION_PADDING);

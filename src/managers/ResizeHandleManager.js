@@ -16,7 +16,7 @@ export const ResizeHandleManager = {
    * @param {Section} section - The GA section
    */
   addResizeHandles(section) {
-    if (!section.isGeneralAdmission) return;
+    if (!section.isGeneralAdmission && !section.isZone) return;
     
     // Remove existing handles first to avoid duplicates
     if (section.resizeHandles) {

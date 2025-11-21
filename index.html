@@ -935,6 +935,12 @@
       <span class="tool-label">GA</span>
     </button>
 
+    <!-- Zone -->
+    <button class="tool-item" id="createZoneBtn" title="Zone">
+      <span class="material-symbols">check_box_outline_blank</span>
+      <span class="tool-label">Zone</span>
+    </button>
+
     <!-- Table -->
     <button class="tool-item" title="Table">
       <span class="material-symbols">table_large</span>
@@ -1250,6 +1256,26 @@
                 step="10"
                 style="text-align: center;"
               />
+            </div>
+          </div>
+          
+          <!-- Zone Opacity Control -->
+          <div id="zoneOpacityControl" style="display: none; margin-top: 12px;">
+            <div class="sidebar-input-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label class="sidebar-label" style="font-size: 11px; margin: 0;">Fill Opacity <span id="zoneOpacityValue" style="color: #3a9cff;">20%</span></label>
+              </div>
+              <div class="sidebar-slider">
+                <input
+                  type="range"
+                  class="sidebar-slider-input"
+                  id="zoneOpacitySlider"
+                  min="0"
+                  max="100"
+                  value="20"
+                  step="1"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1642,6 +1668,16 @@
       <div class="sidebar-header">Selected Seats</div>
       <div id="seatSelectionCount" style="color: rgba(255, 255, 255, 0.6); font-size: 13px; margin-bottom: 16px;">
         No seats selected
+      </div>
+
+      <div class="sidebar-input-group" id="seatNumberEditGroup" style="display: none;">
+        <label class="sidebar-label">Seat Number</label>
+        <input
+          type="text"
+          class="sidebar-input"
+          id="singleSeatNumberInput"
+          placeholder="Seat Number"
+        />
       </div>
 
       <div class="sidebar-input-group">
