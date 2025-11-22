@@ -124,7 +124,7 @@
 
         // Initialize renderer
         const container = document.getElementById('seatmap-container');
-        const renderer = new SeatMapRenderer(container);
+        const renderer = await SeatMapRenderer.create(container);
 
         // Auto-load default map for testing
         try {

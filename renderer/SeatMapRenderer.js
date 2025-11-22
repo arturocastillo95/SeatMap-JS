@@ -1,29 +1,39 @@
+import { TooltipManager } from './TooltipManager.js';
+
 /**
  * SeatMap Renderer
  * A lightweight renderer for SeatMap JS files (SMF format).
  */
 
-// Configuration
-const RENDERER_CONFIG = {
-    PADDING: 0,               // Padding around the map when fitting to view
-    MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
-    MAX_ZOOM: 5,              // Maximum zoom level
-    ZOOM_SPEED: 1.1,          // Zoom speed multiplier
-    BACKGROUND_COLOR: 0x0f0f13,
-    SECTION_ZOOM_PADDING: 50, // Padding when zooming to a section
-    ANIMATION_DURATION: 500,  // Duration of zoom animation in ms
-    SEAT_RADIUS: 6,           // Default seat radius
-    SEAT_RADIUS_HOVER: 12,    // Hovered seat radius
-    SEAT_HOVER_SPEED: 0.35,   // Speed of hover animation (lerp factor)
-    SEAT_LABEL_SIZE: 7,       // Font size for seat labels
-    TOOLTIP_SPEED: 0.15       // Tooltip fade animation speed in seconds
-};
-
 export class SeatMapRenderer {
+    static CONFIG = {
+        PADDING: 0,               // Padding around the map when fitting to view
+        MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
+        MAX_ZOOM: 5,              // Maximum zoom level
+        ZOOM_SPEED: 1.1,          // Zoom speed multiplier
+        BACKGROUND_COLOR: 0x0f0f13,
+        SECTION_ZOOM_PADDING: 50, // Padding when zooming to a section
+        ANIMATION_DURATION: 500,  // Duration of zoom animation in ms
+        SEAT_RADIUS: 6,           // Default seat radius
+        SEAT_RADIUS_HOVER: 12,    // Hovered seat radius
+        SEAT_HOVER_SPEED: 0.35,   // Speed of hover animation (lerp factor)
+        SEAT_LABEL_SIZE: 7,       // Font size for seat labels
+        TOOLTIP_SPEED: 0.15,      // Tooltip fade animation speed in seconds
+        UI_PADDING: 40,           // Padding for UI elements
+        ZONE_FADE_RATIO: 6,       // Ratio for zone fade out duration
+        ANIMATION_THRESHOLD: 0.01 // Threshold for stopping animations
+    };
+
+    static async create(container, options = {}) {
+        const renderer = new SeatMapRenderer(container, options);
+        await renderer.init();
+        return renderer;
+    }
+
     constructor(container, options = {}) {
         this.container = container;
         this.options = {
-            backgroundColor: RENDERER_CONFIG.BACKGROUND_COLOR,
+            backgroundColor: SeatMapRenderer.CONFIG.BACKGROUND_COLOR,
             backgroundAlpha: 1,
             resizeTo: container,
             antialias: true,
@@ -36,19 +46,35 @@ export class SeatMapRenderer {
 
         this.app = new PIXI.Application();
         this.viewport = new PIXI.Container(); // Main container for the map content
-        this.isDragging = false;
-        this.lastPos = null;
-        this.initialScale = 1;    // Store initial scale to prevent zooming out beyond it
-        this.hasUnderlay = false;  // Track if we have an underlay image
-        this.boundaries = null;    // Store viewport boundaries to constrain panning
+        
+        // State Management
+        this.state = {
+            isDragging: false,
+            lastPos: null,
+            initialScale: 1,
+            hasUnderlay: false,
+            boundaries: null,
+            lastDist: null,
+            lastCenter: null,
+            initialBounds: null,
+            initialPosition: null
+        };
+
         this.animatingSeats = new Set(); // Track seats currently animating
         this.seatsByKey = {}; // Lookup for seats by key
         this.selectedSeats = new Set(); // Track selected seats
         this.activePointers = new Map(); // Track active pointers for multi-touch
-
-        this.init();
+        
+        // Bind methods
+        this.updateSeatAnimations = this.updateSeatAnimations.bind(this);
+        this.resizeHandler = this.resizeHandler.bind(this);
+        this.wheelHandler = this.wheelHandler.bind(this);
     }
 
+    /**
+     * Initialize the PIXI application and setup the scene
+     * @private
+     */
     async init() {
         await this.app.init(this.options);
         this.container.appendChild(this.app.canvas);
@@ -56,21 +82,67 @@ export class SeatMapRenderer {
 
         // Create UI layer
         this.createUI();
-        this.setupTooltip();
+        
+        // Initialize Tooltip Manager
+        this.tooltipManager = new TooltipManager({
+            animationSpeed: SeatMapRenderer.CONFIG.TOOLTIP_SPEED
+        });
 
         // Setup interaction (pan/zoom)
         this.setupInteraction();
         
         // Setup animation loop for seats
-        this.app.ticker.add(this.updateSeatAnimations.bind(this));
+        this.app.ticker.add(this.updateSeatAnimations);
         
         // Handle window resize
-        window.addEventListener('resize', () => {
-            this.app.resize();
-            this.repositionUI();
-        });
+        window.addEventListener('resize', this.resizeHandler);
     }
 
+    /**
+     * Handle window resize events
+     * @private
+     */
+    resizeHandler() {
+        this.app.resize();
+        this.repositionUI();
+    }
+
+    /**
+     * Clean up resources and event listeners
+     */
+    destroy() {
+        // Remove event listeners
+        window.removeEventListener('resize', this.resizeHandler);
+        this.container.removeEventListener('wheel', this.wheelHandler);
+        
+        // Remove ticker
+        if (this.app.ticker) {
+            this.app.ticker.remove(this.updateSeatAnimations);
+        }
+        
+        // Destroy PIXI app
+        this.app.destroy(true, { children: true, texture: true });
+        
+        // Destroy Tooltip Manager
+        if (this.tooltipManager) {
+            this.tooltipManager.destroy();
+        }
+        
+        // Clear references
+        this.activePointers.clear();
+        this.selectedSeats.clear();
+        this.animatingSeats.clear();
+        this.seatsByKey = {};
+        this.viewport = null;
+        this.uiContainer = null;
+        this.resetButton = null;
+        this.tooltipManager = null;
+    }
+
+    /**
+     * Create UI elements (buttons, overlays)
+     * @private
+     */
     createUI() {
         this.uiContainer = new PIXI.Container();
         this.app.stage.addChild(this.uiContainer);
@@ -102,32 +174,44 @@ export class SeatMapRenderer {
         this.repositionUI();
     }
 
+    /**
+     * Reposition UI elements based on screen size
+     * @private
+     */
     repositionUI() {
         if (this.resetButton) {
             // Bottom left with padding
-            this.resetButton.x = 40;
-            this.resetButton.y = this.app.screen.height - 40;
+            this.resetButton.x = SeatMapRenderer.CONFIG.UI_PADDING;
+            this.resetButton.y = this.app.screen.height - SeatMapRenderer.CONFIG.UI_PADDING;
         }
     }
 
+    /**
+     * Update visibility of UI elements based on zoom level
+     * @private
+     */
     updateUIVisibility() {
         if (this.resetButton) {
             // Show if zoomed in more than initial scale (with epsilon)
-            const isZoomedIn = this.viewport.scale.x > (this.initialScale * 1.001);
+            const isZoomedIn = this.viewport.scale.x > (this.state.initialScale * 1.001);
             this.resetButton.visible = isZoomedIn;
         }
         this.updateZoneVisibility();
     }
 
+    /**
+     * Update visibility/opacity of zones based on zoom level
+     * @private
+     */
     updateZoneVisibility() {
         if (!this.zoneContainers || this.zoneContainers.length === 0) return;
 
         const currentZoom = this.viewport.scale.x;
-        const startZoom = this.initialScale || RENDERER_CONFIG.MIN_ZOOM;
-        const maxZoom = RENDERER_CONFIG.MAX_ZOOM;
+        const startZoom = this.state.initialScale || SeatMapRenderer.CONFIG.MIN_ZOOM;
+        const maxZoom = SeatMapRenderer.CONFIG.MAX_ZOOM;
         
         // Fade out completely by halfway to max zoom
-        const endZoom = startZoom + (maxZoom - startZoom) / 6;
+        const endZoom = startZoom + (maxZoom - startZoom) / SeatMapRenderer.CONFIG.ZONE_FADE_RATIO;
 
         // Calculate opacity factor (1 at startZoom, 0 at endZoom)
         let opacityFactor = 1 - (currentZoom - startZoom) / (endZoom - startZoom);
@@ -150,6 +234,10 @@ export class SeatMapRenderer {
         });
     }
 
+    /**
+     * Setup interaction handlers (pan, zoom, pinch)
+     * @private
+     */
     setupInteraction() {
         // Simple pan and zoom implementation
         const stage = this.app.stage;
@@ -157,19 +245,18 @@ export class SeatMapRenderer {
         stage.hitArea = this.app.screen;
 
         // Track active pointers for multi-touch
-        this.lastDist = null;
-        this.lastCenter = null;
+        // lastDist and lastCenter are now in this.state
 
         stage.on('pointerdown', (e) => {
             this.activePointers.set(e.pointerId, { x: e.global.x, y: e.global.y });
             
             if (this.activePointers.size === 1) {
-                this.isDragging = true;
-                this.lastPos = { x: e.global.x, y: e.global.y };
+                this.state.isDragging = true;
+                this.state.lastPos = { x: e.global.x, y: e.global.y };
             } else if (this.activePointers.size === 2) {
-                this.isDragging = false; // Stop panning when pinching starts
-                this.lastDist = this.getDist(this.activePointers);
-                this.lastCenter = this.getCenter(this.activePointers);
+                this.state.isDragging = false; // Stop panning when pinching starts
+                this.state.lastDist = this.getDist(this.activePointers);
+                this.state.lastCenter = this.getCenter(this.activePointers);
             }
         });
 
@@ -177,15 +264,15 @@ export class SeatMapRenderer {
             this.activePointers.delete(e.pointerId);
             
             if (this.activePointers.size === 0) {
-                this.isDragging = false;
-                this.lastDist = null;
-                this.lastCenter = null;
+                this.state.isDragging = false;
+                this.state.lastDist = null;
+                this.state.lastCenter = null;
             } else if (this.activePointers.size === 1) {
                 // Resume panning with the remaining finger
-                this.isDragging = true;
+                this.state.isDragging = true;
                 const pointer = this.activePointers.values().next().value;
-                this.lastPos = { x: pointer.x, y: pointer.y };
-                this.lastDist = null;
+                this.state.lastPos = { x: pointer.x, y: pointer.y };
+                this.state.lastDist = null;
             }
         };
 
@@ -203,21 +290,21 @@ export class SeatMapRenderer {
                 const newDist = this.getDist(this.activePointers);
                 const newCenter = this.getCenter(this.activePointers);
 
-                if (this.lastDist && newDist > 0) {
-                    const scale = newDist / this.lastDist;
+                if (this.state.lastDist && newDist > 0) {
+                    const scale = newDist / this.state.lastDist;
                     
                     // Calculate new scale
                     let newScale = this.viewport.scale.x * scale;
                     
                     // Apply limits
-                    const minScale = this.initialScale || RENDERER_CONFIG.MIN_ZOOM;
+                    const minScale = this.state.initialScale || SeatMapRenderer.CONFIG.MIN_ZOOM;
                     if (newScale < minScale) newScale = minScale;
-                    if (newScale > RENDERER_CONFIG.MAX_ZOOM) newScale = RENDERER_CONFIG.MAX_ZOOM;
+                    if (newScale > SeatMapRenderer.CONFIG.MAX_ZOOM) newScale = SeatMapRenderer.CONFIG.MAX_ZOOM;
 
                     // Zoom towards center
                     // Local point under center
-                    const localX = (this.lastCenter.x - this.viewport.x) / this.viewport.scale.x;
-                    const localY = (this.lastCenter.y - this.viewport.y) / this.viewport.scale.y;
+                    const localX = (this.state.lastCenter.x - this.viewport.x) / this.viewport.scale.x;
+                    const localY = (this.state.lastCenter.y - this.viewport.y) / this.viewport.scale.y;
 
                     this.viewport.scale.set(newScale);
                     
@@ -228,19 +315,19 @@ export class SeatMapRenderer {
                     this.updateUIVisibility();
                 }
 
-                this.lastDist = newDist;
-                this.lastCenter = newCenter;
+                this.state.lastDist = newDist;
+                this.state.lastCenter = newCenter;
 
-            } else if (this.isDragging && this.activePointers.size === 1) {
+            } else if (this.state.isDragging && this.activePointers.size === 1) {
                 // Pan
                 // Disable panning if at min zoom (with small epsilon)
-                if (this.viewport.scale.x <= (this.initialScale * 1.001)) {
+                if (this.viewport.scale.x <= (this.state.initialScale * 1.001)) {
                     return;
                 }
 
                 const newPos = { x: e.global.x, y: e.global.y };
-                const dx = newPos.x - this.lastPos.x;
-                const dy = newPos.y - this.lastPos.y;
+                const dx = newPos.x - this.state.lastPos.x;
+                const dy = newPos.y - this.state.lastPos.y;
 
                 const newX = this.viewport.position.x + dx;
                 const newY = this.viewport.position.y + dy;
@@ -250,84 +337,91 @@ export class SeatMapRenderer {
                 this.viewport.position.x = constrained.x;
                 this.viewport.position.y = constrained.y;
 
-                this.lastPos = newPos;
+                this.state.lastPos = newPos;
             }
         });
 
         // Zoom with wheel
-        this.container.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const direction = e.deltaY > 0 ? 1 / RENDERER_CONFIG.ZOOM_SPEED : RENDERER_CONFIG.ZOOM_SPEED;
+        this.container.addEventListener('wheel', this.wheelHandler, { passive: false });
+    }
+
+    /**
+     * Handle mouse wheel events for zooming
+     * @param {WheelEvent} e 
+     * @private
+     */
+    wheelHandler(e) {
+        e.preventDefault();
+        const direction = e.deltaY > 0 ? 1 / SeatMapRenderer.CONFIG.ZOOM_SPEED : SeatMapRenderer.CONFIG.ZOOM_SPEED;
+        
+        // Calculate zoom center
+        const rect = this.container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const localPos = {
+            x: (x - this.viewport.x) / this.viewport.scale.x,
+            y: (y - this.viewport.y) / this.viewport.scale.y
+        };
+
+        let newScale = this.viewport.scale.x * direction;
+        const minScale = this.state.initialScale || SeatMapRenderer.CONFIG.MIN_ZOOM;
+
+        // Snap to min scale and recenter if zooming out too far
+        if (newScale <= minScale) {
+            newScale = minScale;
+            this.viewport.scale.set(newScale);
             
-            // Calculate zoom center
-            const rect = this.container.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            const localPos = {
-                x: (x - this.viewport.x) / this.viewport.scale.x,
-                y: (y - this.viewport.y) / this.viewport.scale.y
-            };
-
-            let newScale = this.viewport.scale.x * direction;
-            const minScale = this.initialScale || RENDERER_CONFIG.MIN_ZOOM;
-
-            // Snap to min scale and recenter if zooming out too far
-            if (newScale <= minScale) {
-                newScale = minScale;
-                this.viewport.scale.set(newScale);
+            // Recalculate center for current screen size to ensure perfect centering
+            if (this.state.initialBounds) {
+                const screenWidth = this.app.screen.width;
+                const screenHeight = this.app.screen.height;
+                const centerX = this.state.initialBounds.x + this.state.initialBounds.width / 2;
+                const centerY = this.state.initialBounds.y + this.state.initialBounds.height / 2;
                 
-                // Recalculate center for current screen size to ensure perfect centering
-                if (this.initialBounds) {
-                    const screenWidth = this.app.screen.width;
-                    const screenHeight = this.app.screen.height;
-                    const centerX = this.initialBounds.x + this.initialBounds.width / 2;
-                    const centerY = this.initialBounds.y + this.initialBounds.height / 2;
-                    
-                    const targetX = (screenWidth / 2) - (centerX * newScale);
-                    const targetY = (screenHeight / 2) - (centerY * newScale);
-                    
-                    this.viewport.position.set(targetX, targetY);
-                } else if (this.initialPosition) {
-                    this.viewport.position.set(this.initialPosition.x, this.initialPosition.y);
-                }
+                const targetX = (screenWidth / 2) - (centerX * newScale);
+                const targetY = (screenHeight / 2) - (centerY * newScale);
                 
-                this.updateUIVisibility();
-                return;
+                this.viewport.position.set(targetX, targetY);
+            } else if (this.state.initialPosition) {
+                this.viewport.position.set(this.state.initialPosition.x, this.state.initialPosition.y);
             }
+            
+            this.updateUIVisibility();
+            return;
+        }
 
-            if (newScale <= RENDERER_CONFIG.MAX_ZOOM) {
-                // Calculate new position
-                const newX = x - localPos.x * newScale;
-                const newY = y - localPos.y * newScale;
-                
-                // Apply scale
-                this.viewport.scale.set(newScale);
-                
-                // Apply constrained position
-                const constrained = this.getConstrainedPosition(newX, newY, newScale);
-                this.viewport.position.x = constrained.x;
-                this.viewport.position.y = constrained.y;
-                
-                this.updateUIVisibility();
-            }
-        }, { passive: false });
+        if (newScale <= SeatMapRenderer.CONFIG.MAX_ZOOM) {
+            // Calculate new position
+            const newX = x - localPos.x * newScale;
+            const newY = y - localPos.y * newScale;
+            
+            // Apply scale
+            this.viewport.scale.set(newScale);
+            
+            // Apply constrained position
+            const constrained = this.getConstrainedPosition(newX, newY, newScale);
+            this.viewport.position.x = constrained.x;
+            this.viewport.position.y = constrained.y;
+            
+            this.updateUIVisibility();
+        }
     }
 
     /**
      * Get constrained position within bounds
      */
     getConstrainedPosition(x, y, scale) {
-        if (!this.initialBounds) return { x, y };
+        if (!this.state.initialBounds) return { x, y };
 
         const screenWidth = this.app.screen.width;
         const screenHeight = this.app.screen.height;
 
         // Calculate the scaled content dimensions and position
-        const contentWidth = this.initialBounds.width * scale;
-        const contentHeight = this.initialBounds.height * scale;
-        const contentLeft = this.initialBounds.x * scale;
-        const contentTop = this.initialBounds.y * scale;
+        const contentWidth = this.state.initialBounds.width * scale;
+        const contentHeight = this.state.initialBounds.height * scale;
+        const contentLeft = this.state.initialBounds.x * scale;
+        const contentTop = this.state.initialBounds.y * scale;
 
         let constrainedX, constrainedY;
 
@@ -377,9 +471,9 @@ export class SeatMapRenderer {
         // 1. Load Underlay (if present)
         if (data.underlay && data.underlay.visible !== false) {
             await this.renderUnderlay(data.underlay);
-            this.hasUnderlay = true;
+            this.state.hasUnderlay = true;
         } else {
-            this.hasUnderlay = false;
+            this.state.hasUnderlay = false;
         }
 
         // 2. Render Sections
@@ -407,6 +501,11 @@ export class SeatMapRenderer {
         this.fitToView();
     }
 
+    /**
+     * Render the underlay image
+     * @param {Object} underlayData 
+     * @private
+     */
     async renderUnderlay(underlayData) {
         if (!underlayData.dataUrl) return;
 
@@ -427,6 +526,11 @@ export class SeatMapRenderer {
         }
     }
 
+    /**
+     * Render a single section
+     * @param {Object} data - Section data
+     * @private
+     */
     renderSection(data) {
         const container = new PIXI.Container();
         
@@ -442,15 +546,15 @@ export class SeatMapRenderer {
         let fillColor, fillAlpha, strokeAlpha;
 
         if (data.isZone) {
-            fillColor = data.sectionColor !== undefined ? data.sectionColor : (style.sectionColor !== undefined ? style.sectionColor : 0xcccccc);
+            fillColor = data.sectionColor ?? style.sectionColor ?? 0xcccccc;
             // Zones usually have higher opacity
-            const opacity = data.fillOpacity !== undefined ? data.fillOpacity : (style.opacity !== undefined ? style.opacity : 0.5);
+            const opacity = data.fillOpacity ?? style.opacity ?? 0.5;
             fillAlpha = opacity;
             strokeAlpha = opacity > 0.8 ? 1 : opacity + 0.2; 
         } else {
-            fillColor = style.sectionColor !== undefined ? style.sectionColor : 0x3b82f6;
-            fillAlpha = style.fillVisible === false ? 0 : (style.opacity !== undefined ? style.opacity * 0.25 : 0.25);
-            strokeAlpha = style.strokeVisible === false ? 0 : (style.opacity !== undefined ? style.opacity * 0.8 : 0.8);
+            fillColor = style.sectionColor ?? 0x3b82f6;
+            fillAlpha = style.fillVisible === false ? 0 : ((style.opacity ?? 1) * 0.25);
+            strokeAlpha = style.strokeVisible === false ? 0 : ((style.opacity ?? 1) * 0.8);
         }
         
         // Draw Rect
@@ -509,7 +613,7 @@ export class SeatMapRenderer {
             
             graphics.on('pointertap', (e) => {
                 // Only zoom if not dragging
-                if (!this.isDragging) {
+                if (!this.state.isDragging) {
                     e.stopPropagation();
                     this.zoomToSection(container);
                 }
@@ -532,6 +636,14 @@ export class SeatMapRenderer {
         this.viewport.addChild(container);
     }
 
+    /**
+     * Render GA (General Admission) content
+     * @param {PIXI.Container} container 
+     * @param {Object} data 
+     * @param {number} width 
+     * @param {number} height 
+     * @private
+     */
     renderGAContent(container, data, width, height) {
         // GA Label
         const text = new PIXI.Text({
@@ -568,6 +680,14 @@ export class SeatMapRenderer {
         }
     }
 
+    /**
+     * Render Zone content
+     * @param {PIXI.Container} container 
+     * @param {Object} data 
+     * @param {number} width 
+     * @param {number} height 
+     * @private
+     */
     renderZoneContent(container, data, width, height) {
         // Zone Label
         const text = new PIXI.Text({
@@ -587,6 +707,12 @@ export class SeatMapRenderer {
         container.zoneLabel = text;
     }
 
+    /**
+     * Render seats and their labels for a section
+     * @param {PIXI.Container} container 
+     * @param {Object} data 
+     * @private
+     */
     renderSeatsAndLabels(container, data) {
         // Get layout shift from section data (if row labels were added)
         const layoutShiftX = data.layoutShiftX || 0;
@@ -612,10 +738,10 @@ export class SeatMapRenderer {
         // Render Seats
         if (data.seats) {
             const style = data.style || {};
-            const defaultSeatColor = style.seatColor !== undefined ? style.seatColor : 0xffffff;
-            const defaultTextColor = style.seatTextColor !== undefined ? style.seatTextColor : 0x000000;
-            const seatStrokeColor = style.seatStrokeColor !== undefined ? style.seatStrokeColor : 0xffffff;
-            const seatStrokeWidth = style.seatStrokeWidth !== undefined ? style.seatStrokeWidth : 0;
+            const defaultSeatColor = style.seatColor ?? 0xffffff;
+            const defaultTextColor = style.seatTextColor ?? 0x000000;
+            const seatStrokeColor = style.seatStrokeColor ?? 0xffffff;
+            const seatStrokeWidth = style.seatStrokeWidth ?? 0;
             
             // Glow settings
             const glow = style.glow || {};
@@ -625,8 +751,8 @@ export class SeatMapRenderer {
                 
                 // Position
                 // Use relativeX/Y if available (v2.0+), otherwise baseX/Y
-                let x = seatData.relativeX !== undefined ? seatData.relativeX : seatData.baseX;
-                let y = seatData.relativeY !== undefined ? seatData.relativeY : seatData.baseY;
+                let x = seatData.relativeX ?? seatData.baseX;
+                let y = seatData.relativeY ?? seatData.baseY;
                 
                 // Apply layout shift (for row labels)
                 x += layoutShiftX;
@@ -639,7 +765,7 @@ export class SeatMapRenderer {
                 if (glow.enabled) {
                     const glowGraphics = new PIXI.Graphics();
                     // Scale glow radius relative to seat radius
-                    const radius = RENDERER_CONFIG.SEAT_RADIUS + ((glow.strength || 10) / 2);
+                    const radius = SeatMapRenderer.CONFIG.SEAT_RADIUS + ((glow.strength || 10) / 2);
                     glowGraphics.circle(0, 0, radius);
                     glowGraphics.fill({ color: glow.color || 0xffffff, alpha: glow.opacity || 0.5 });
                     
@@ -653,7 +779,7 @@ export class SeatMapRenderer {
 
                 // Seat Circle
                 const circle = new PIXI.Graphics();
-                circle.circle(0, 0, RENDERER_CONFIG.SEAT_RADIUS);
+                circle.circle(0, 0, SeatMapRenderer.CONFIG.SEAT_RADIUS);
                 
                 if (seatData.specialNeeds) {
                     circle.fill({ color: 0x2563eb }); // Blue for special needs
@@ -673,7 +799,7 @@ export class SeatMapRenderer {
                 
                 let fontStyle = {
                     fontFamily: 'system-ui, sans-serif',
-                    fontSize: RENDERER_CONFIG.SEAT_LABEL_SIZE,
+                    fontSize: SeatMapRenderer.CONFIG.SEAT_LABEL_SIZE,
                     fontWeight: 'bold',
                     fill: defaultTextColor,
                     align: 'center'
@@ -725,7 +851,7 @@ export class SeatMapRenderer {
                 seatContainer.targetTextScale = 0.5;
 
                 seatContainer.on('pointerover', () => {
-                    if (this.isDragging) return;
+                    if (this.state.isDragging) return;
                     
                     // Show Tooltip
                     this.showTooltip(
@@ -744,7 +870,7 @@ export class SeatMapRenderer {
 
                     // If selected, we are already in the "large" state, but we might want to ensure it
                     // For now, hover behavior is same as selected behavior regarding scale
-                    seatContainer.targetScale = RENDERER_CONFIG.SEAT_RADIUS_HOVER / RENDERER_CONFIG.SEAT_RADIUS;
+                    seatContainer.targetScale = SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER / SeatMapRenderer.CONFIG.SEAT_RADIUS;
                     seatContainer.targetTextAlpha = 1;
                     seatContainer.targetTextScale = 1;
                     // Bring to front
@@ -797,6 +923,12 @@ export class SeatMapRenderer {
         }
     }
 
+    /**
+     * Render row labels for a section
+     * @param {PIXI.Container} container 
+     * @param {Object} sectionData 
+     * @private
+     */
     renderRowLabels(container, sectionData) {
         const config = sectionData.rowLabels;
         if (!config || config.type === 'none') return;
@@ -817,14 +949,14 @@ export class SeatMapRenderer {
 
         const rowIndices = Object.keys(rows).map(Number).sort((a, b) => a - b);
         const spacing = config.spacing || 20;
-        const color = config.color !== undefined ? config.color : 0xffffff;
+        const color = config.color ?? 0xffffff;
 
         rowIndices.forEach((rowIndex, arrayIndex) => {
             const rowSeats = rows[rowIndex];
             // Sort by x position
             rowSeats.sort((a, b) => {
-                const ax = a.relativeX !== undefined ? a.relativeX : a.baseX;
-                const bx = b.relativeX !== undefined ? b.relativeX : b.baseX;
+                const ax = a.relativeX ?? a.baseX;
+                const bx = b.relativeX ?? b.baseX;
                 return ax - bx;
             });
 
@@ -836,11 +968,11 @@ export class SeatMapRenderer {
             const firstSeat = rowSeats[0];
             const lastSeat = rowSeats[rowSeats.length - 1];
             
-            let firstX = firstSeat.relativeX !== undefined ? firstSeat.relativeX : firstSeat.baseX;
-            let firstY = firstSeat.relativeY !== undefined ? firstSeat.relativeY : firstSeat.baseY;
+            let firstX = firstSeat.relativeX ?? firstSeat.baseX;
+            let firstY = firstSeat.relativeY ?? firstSeat.baseY;
             
-            let lastX = lastSeat.relativeX !== undefined ? lastSeat.relativeX : lastSeat.baseX;
-            let lastY = lastSeat.relativeY !== undefined ? lastSeat.relativeY : lastSeat.baseY;
+            let lastX = lastSeat.relativeX ?? lastSeat.baseX;
+            let lastY = lastSeat.relativeY ?? lastSeat.baseY;
             
             // Apply layout shift
             firstX += layoutShiftX;
@@ -876,6 +1008,14 @@ export class SeatMapRenderer {
         });
     }
 
+    /**
+     * Generate label text based on index and type
+     * @param {number} index 
+     * @param {string} type 
+     * @param {string|number} startValue 
+     * @returns {string}
+     * @private
+     */
     getRowLabelText(index, type, startValue) {
         if (type === 'numbers') {
             const start = parseInt(startValue) || 1;
@@ -910,7 +1050,7 @@ export class SeatMapRenderer {
 
         let targetBounds;
         
-        if (this.hasUnderlay) {
+        if (this.state.hasUnderlay) {
             // If we have an underlay, fit to the underlay image bounds
             const underlayChild = this.viewport.children[0]; // Underlay is first child
             if (underlayChild) {
@@ -932,8 +1072,8 @@ export class SeatMapRenderer {
         }
 
         // Calculate scale to fit height with padding
-        const scaleX = (screenWidth - RENDERER_CONFIG.PADDING * 2) / targetBounds.width;
-        const scaleY = (screenHeight - RENDERER_CONFIG.PADDING * 2) / targetBounds.height;
+        const scaleX = (screenWidth - SeatMapRenderer.CONFIG.PADDING * 2) / targetBounds.width;
+        const scaleY = (screenHeight - SeatMapRenderer.CONFIG.PADDING * 2) / targetBounds.height;
         
         // Use the smaller scale to ensure everything fits, but don't zoom in beyond 1:1
         const scale = Math.min(scaleX, scaleY, 1);
@@ -946,14 +1086,14 @@ export class SeatMapRenderer {
         const targetY = (screenHeight / 2) - (centerY * scale);
 
         // Update initial state
-        this.initialScale = scale;
-        this.initialBounds = {
+        this.state.initialScale = scale;
+        this.state.initialBounds = {
             x: targetBounds.x,
             y: targetBounds.y,
             width: targetBounds.width,
             height: targetBounds.height
         };
-        this.initialPosition = { x: targetX, y: targetY };
+        this.state.initialPosition = { x: targetX, y: targetY };
 
         // If we are already initialized (viewport has children) and animate is true
         if (this.viewport.children.length > 0 && animate) {
@@ -979,7 +1119,7 @@ export class SeatMapRenderer {
     zoomToSection(sectionContainer) {
         const screenWidth = this.app.screen.width;
         const screenHeight = this.app.screen.height;
-        const padding = RENDERER_CONFIG.SECTION_ZOOM_PADDING;
+        const padding = SeatMapRenderer.CONFIG.SECTION_ZOOM_PADDING;
 
         // Calculate target scale
         // We need to account for rotation if we want to be perfect, but for now let's use the unrotated dimensions
@@ -996,7 +1136,7 @@ export class SeatMapRenderer {
         
         // Limit max zoom
         let targetScale = Math.min(scaleX, scaleY);
-        targetScale = Math.min(targetScale, RENDERER_CONFIG.MAX_ZOOM);
+        targetScale = Math.min(targetScale, SeatMapRenderer.CONFIG.MAX_ZOOM);
 
         // Calculate target position to center the section
         // The section's position (x,y) is its center because we set pivot to center
@@ -1013,7 +1153,7 @@ export class SeatMapRenderer {
         const startScale = this.viewport.scale.x;
         
         const startTime = performance.now();
-        const duration = RENDERER_CONFIG.ANIMATION_DURATION;
+        const duration = SeatMapRenderer.CONFIG.ANIMATION_DURATION;
 
         const animate = (currentTime) => {
             const elapsed = currentTime - startTime;
@@ -1045,120 +1185,61 @@ export class SeatMapRenderer {
         requestAnimationFrame(animate);
     }
 
-    setupTooltip() {
-        this.tooltip = document.getElementById('seat-tooltip');
-        this.tooltipElements = {
-            section: document.getElementById('tt-section'),
-            row: document.getElementById('tt-row'),
-            seat: document.getElementById('tt-seat'),
-            category: document.getElementById('tt-category'),
-            price: document.getElementById('tt-price'),
-            footer: document.getElementById('tt-footer')
-        };
-
-        if (this.tooltip) {
-            this.tooltip.style.transition = `opacity ${RENDERER_CONFIG.TOOLTIP_SPEED}s ease-out`;
-        }
-
-        // Track mouse movement for tooltip positioning
-        window.addEventListener('mousemove', (e) => {
-            this.lastMouseX = e.clientX;
-            this.lastMouseY = e.clientY;
-            
-            if (this.tooltip && this.tooltip.style.opacity !== '0') {
-                this.updateTooltipPosition(e.clientX, e.clientY);
-            }
-        });
-    }
-
-    updateTooltipPosition(x, y) {
-        if (!this.tooltip) return;
-
-        const rect = this.tooltip.getBoundingClientRect();
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
-        const margin = 20; // Space from cursor
-        const padding = 10; // Space from screen edge
-
-        // Horizontal positioning (Clamp)
-        let left = x;
-        const halfWidth = rect.width / 2;
-        
-        // Check left edge
-        if (left - halfWidth < padding) {
-            left = padding + halfWidth;
-        }
-        // Check right edge
-        else if (left + halfWidth > screenWidth - padding) {
-            left = screenWidth - padding - halfWidth;
-        }
-
-        this.tooltip.style.left = `${left}px`;
-
-        // Vertical positioning (Flip)
-        // Default is TOP (above cursor) via CSS: translate(-50%, -100%)
-        const height = this.tooltip.offsetHeight;
-        
-        // Check if there is space above
-        if (y - height - margin < padding) {
-            // Not enough space above, place below
-            this.tooltip.classList.add('bottom');
-            this.tooltip.style.top = `${y}px`;
-        } else {
-            // Place above
-            this.tooltip.classList.remove('bottom');
-            this.tooltip.style.top = `${y}px`;
-        }
-    }
-
+    /**
+     * Show tooltip for a seat
+     * @param {Object} seatData 
+     * @param {string} sectionName 
+     * @param {string} rowLabel 
+     * @param {Object} sectionPricing 
+     * @param {number} seatColor 
+     * @param {number} seatTextColor 
+     * @private
+     */
     showTooltip(seatData, sectionName, rowLabel, sectionPricing, seatColor, seatTextColor) {
-        if (!this.tooltip) return;
+        if (!this.tooltipManager) return;
 
-        // Populate data
-        this.tooltipElements.section.textContent = sectionName || '--';
-        this.tooltipElements.row.textContent = rowLabel || '--';
-        this.tooltipElements.seat.textContent = seatData.number || '--';
-        
         // Price/Category (use defaults or data from inventory, fallback to section pricing)
-        let priceValue = 0;
-        
-        if (seatData.price !== undefined) {
-            priceValue = seatData.price;
-        } else if (sectionPricing && sectionPricing.basePrice !== undefined) {
-            priceValue = sectionPricing.basePrice;
-        }
+        const priceValue = this.getSeatPrice(seatData, sectionPricing);
         
         const price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : 'Not Available';
         const category = seatData.category || 'STANDARD';
         
-        this.tooltipElements.price.textContent = price;
-        this.tooltipElements.category.textContent = category;
+        // Prepare content object
+        const content = {
+            section: sectionName,
+            row: rowLabel,
+            seat: seatData.number,
+            price: price,
+            category: category
+        };
 
-        // Apply colors to footer
+        // Apply colors
         if (seatColor !== undefined) {
-            const hexColor = '#' + seatColor.toString(16).padStart(6, '0');
-            this.tooltipElements.footer.style.backgroundColor = hexColor;
+            content.color = this.hexColorFromNumber(seatColor);
         }
         
         if (seatTextColor !== undefined) {
-            const hexColor = '#' + seatTextColor.toString(16).padStart(6, '0');
-            this.tooltipElements.footer.style.color = hexColor;
+            content.textColor = this.hexColorFromNumber(seatTextColor);
         }
 
-        this.tooltip.style.opacity = '1';
-        
-        // Update position immediately
-        if (this.lastMouseX !== undefined) {
-            this.updateTooltipPosition(this.lastMouseX, this.lastMouseY);
-        }
+        this.tooltipManager.show(content);
     }
 
+    /**
+     * Hide the tooltip
+     * @private
+     */
     hideTooltip() {
-        if (this.tooltip) {
-            this.tooltip.style.opacity = '0';
+        if (this.tooltipManager) {
+            this.tooltipManager.hide();
         }
     }
 
+    /**
+     * Handle seat click events
+     * @param {PIXI.Container} seatContainer 
+     * @private
+     */
     onSeatClick(seatContainer) {
         // Toggle selection
         seatContainer.selected = !seatContainer.selected;
@@ -1174,7 +1255,7 @@ export class SeatMapRenderer {
         // Update visual state
         if (seatContainer.selected) {
             // Selected state: Large, visible text, checkmark
-            seatContainer.targetScale = RENDERER_CONFIG.SEAT_RADIUS_HOVER / RENDERER_CONFIG.SEAT_RADIUS;
+            seatContainer.targetScale = SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER / SeatMapRenderer.CONFIG.SEAT_RADIUS;
             seatContainer.targetTextAlpha = 1;
             seatContainer.targetTextScale = 1;
             seatContainer.text.text = "✓"; // Checkmark
@@ -1189,7 +1270,7 @@ export class SeatMapRenderer {
             // But since the mouse IS over it (we just clicked), it should technically stay in hover state (Large, original text).
             
             // Let's assume we want to revert to the "hover" state (Large, original text)
-            seatContainer.targetScale = RENDERER_CONFIG.SEAT_RADIUS_HOVER / RENDERER_CONFIG.SEAT_RADIUS;
+            seatContainer.targetScale = SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER / SeatMapRenderer.CONFIG.SEAT_RADIUS;
             seatContainer.targetTextAlpha = 1;
             seatContainer.targetTextScale = 1;
             seatContainer.text.text = seatContainer.originalLabel;
@@ -1213,17 +1294,16 @@ export class SeatMapRenderer {
         this.handleCartChange();
     }
 
+    /**
+     * Handle cart changes and dispatch events
+     * @private
+     */
     handleCartChange() {
         const seats = Array.from(this.selectedSeats).map(container => {
             const data = container.seatData;
             
             // Determine price: Seat specific > Section base > 0
-            let price = 0;
-            if (data.price !== undefined) {
-                price = data.price;
-            } else if (container.sectionPricing && container.sectionPricing.basePrice !== undefined) {
-                price = container.sectionPricing.basePrice;
-            }
+            const price = this.getSeatPrice(data, container.sectionPricing);
 
             return {
                 id: data.id,
@@ -1254,11 +1334,20 @@ export class SeatMapRenderer {
      * @param {Object} inventoryData - The inventory data
      */
     loadInventory(inventoryData) {
-        if (!inventoryData || !inventoryData.seats) return;
+        // Validate structure
+        if (!this.validateInventoryData(inventoryData)) {
+            console.error('Invalid inventory data structure:', inventoryData);
+            return;
+        }
 
         console.log("Loading inventory data...", inventoryData);
 
         inventoryData.seats.forEach(item => {
+            if (!item.key || typeof item.key !== 'string') {
+                console.warn('Invalid seat item, missing key:', item);
+                return;
+            }
+
             // Key format from inventory: "SectionName;;RowLabel;;SeatNumber"
             // Note: The inventory key format must match our generated key format.
             // Our generated key: `${data.name};;${rowLabel};;${seatData.number}`
@@ -1278,10 +1367,20 @@ export class SeatMapRenderer {
         });
     }
 
+    validateInventoryData(data) {
+        return data 
+            && typeof data === 'object' 
+            && Array.isArray(data.seats);
+    }
+
+    /**
+     * Update seat animations (hover/selection)
+     * @private
+     */
     updateSeatAnimations() {
         if (this.animatingSeats.size === 0) return;
 
-        const speed = RENDERER_CONFIG.SEAT_HOVER_SPEED;
+        const speed = SeatMapRenderer.CONFIG.SEAT_HOVER_SPEED;
 
         for (const seat of this.animatingSeats) {
             const text = seat.text;
@@ -1298,8 +1397,8 @@ export class SeatMapRenderer {
             text.scale.y += (seat.targetTextScale - text.scale.y) * speed;
 
             // Check if animation is done (close enough)
-            if (Math.abs(seat.targetScale - seat.scale.x) < 0.01 &&
-                Math.abs(seat.targetTextAlpha - text.alpha) < 0.01) {
+            if (Math.abs(seat.targetScale - seat.scale.x) < SeatMapRenderer.CONFIG.ANIMATION_THRESHOLD &&
+                Math.abs(seat.targetTextAlpha - text.alpha) < SeatMapRenderer.CONFIG.ANIMATION_THRESHOLD) {
                 
                 seat.scale.set(seat.targetScale);
                 text.alpha = seat.targetTextAlpha;
@@ -1309,6 +1408,12 @@ export class SeatMapRenderer {
         }
     }
 
+    /**
+     * Calculate distance between two pointers
+     * @param {Map} pointers 
+     * @returns {number}
+     * @private
+     */
     getDist(pointers) {
         const points = Array.from(pointers.values());
         const dx = points[0].x - points[1].x;
@@ -1316,11 +1421,36 @@ export class SeatMapRenderer {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    /**
+     * Calculate center point between two pointers
+     * @param {Map} pointers 
+     * @returns {Object} {x, y}
+     * @private
+     */
     getCenter(pointers) {
         const points = Array.from(pointers.values());
         return {
             x: (points[0].x + points[1].x) / 2,
             y: (points[0].y + points[1].y) / 2
         };
+    }
+
+    /**
+     * Get seat price with fallback to section pricing
+     * @param {Object} seatData 
+     * @param {Object} sectionPricing 
+     * @returns {number}
+     */
+    getSeatPrice(seatData, sectionPricing) {
+        return seatData.price ?? sectionPricing?.basePrice ?? 0;
+    }
+
+    /**
+     * Convert number color to hex string
+     * @param {number} colorNum 
+     * @returns {string} Hex color string (e.g. "#ffffff")
+     */
+    hexColorFromNumber(colorNum) {
+        return '#' + colorNum.toString(16).padStart(6, '0');
     }
 }

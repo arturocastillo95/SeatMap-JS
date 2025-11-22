@@ -50,7 +50,9 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
         import { SeatMapRenderer } from './SeatMapRenderer.js';
         
         const container = document.getElementById('map-container');
-        const renderer = new SeatMapRenderer(container);
+        
+        // Use factory method for safe async initialization
+        const renderer = await SeatMapRenderer.create(container);
         
         // Load map data
         fetch('venue-map.json')
@@ -103,25 +105,36 @@ const renderer = new SeatMapRenderer(container, {
 
 ### Renderer Configuration
 
-The renderer uses a centralized configuration object that can be modified:
+The renderer uses a centralized static configuration object:
 
 ```javascript
-// In SeatMapRenderer.js
-const RENDERER_CONFIG = {
-    PADDING: 50,              // Padding around map when fitting to view
-    MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
-    MAX_ZOOM: 5,              // Maximum zoom level
-    ZOOM_SPEED: 1.1,          // Zoom speed multiplier
-    BACKGROUND_COLOR: 0x0f0f13
+SeatMapRenderer.CONFIG = {
+    PADDING: 0,                  // Padding around map when fitting to view
+    MIN_ZOOM: 0.1,              // Minimum zoom level (not used for initial fit)
+    MAX_ZOOM: 5,                // Maximum zoom level
+    ZOOM_SPEED: 1.1,            // Zoom speed multiplier
+    BACKGROUND_COLOR: 0x0f0f13,
+    SECTION_ZOOM_PADDING: 50,   // Padding when zooming to a section
+    ANIMATION_DURATION: 500,    // Duration of zoom animation in ms
+    SEAT_RADIUS: 6,             // Default seat radius
+    SEAT_RADIUS_HOVER: 12,      // Hovered seat radius
+    SEAT_HOVER_SPEED: 0.35,     // Speed of hover animation (lerp factor)
+    SEAT_LABEL_SIZE: 7,         // Font size for seat labels
+    TOOLTIP_SPEED: 0.15,        // Tooltip fade animation speed in seconds
+    UI_PADDING: 40,             // Padding for UI elements
+    ZONE_FADE_RATIO: 6,         // Ratio for zone fade out duration
+    ANIMATION_THRESHOLD: 0.01   // Threshold for stopping animations
 };
 ```
 
+You can modify these values before creating a renderer instance.
+
 ## API Reference
 
-### Constructor
+### Factory Method
 
 ```javascript
-new SeatMapRenderer(container, options)
+await SeatMapRenderer.create(container, options)
 ```
 
 **Parameters:**
@@ -131,6 +144,20 @@ new SeatMapRenderer(container, options)
   - `backgroundAlpha` (number) - Background opacity (0-1)
   - `antialias` (boolean) - Enable antialiasing
   - `resolution` (number) - Display resolution
+  - `enableSectionZoom` (boolean) - Enable click-to-zoom on sections (default: false)
+  - `enableZoneZoom` (boolean) - Enable click-to-zoom on zones (default: true)
+
+**Returns:** `Promise<SeatMapRenderer>` - Fully initialized renderer instance
+
+**Note**: Always use the factory method instead of directly calling `new SeatMapRenderer()` to ensure proper async initialization.
+
+### Cleanup
+
+```javascript
+renderer.destroy()
+```
+
+**Important**: Always call `destroy()` when removing the renderer to prevent memory leaks.
 
 ### Methods
 
@@ -207,13 +234,27 @@ See [FILE_FORMAT.md](../docs/FILE_FORMAT.md) for complete format specification.
 ## Architecture
 
 ### Modular Design
-The renderer is built as a single ES6 module (`SeatMapRenderer.js`) that can be easily embedded in any web page.
+The renderer is built with separation of concerns:
+- `SeatMapRenderer.js` - Main rendering engine (Canvas/PixiJS logic)
+- `TooltipManager.js` - Tooltip management (DOM manipulation)
+
+### Modern Patterns
+- **Factory Pattern**: Safe async initialization via `create()` method
+- **State Management**: Centralized state object for better organization
+- **Resource Management**: Comprehensive cleanup via `destroy()` method
+- **Separation of Concerns**: DOM and Canvas logic separated
 
 ### Lightweight
 - No editing tools or UI controls
 - No collision detection
 - No transformation/repositioning logic
 - Minimal dependencies (only PixiJS)
+
+### Code Quality
+- Full JSDoc documentation
+- Memory leak prevention
+- Robust data validation
+- Modern JavaScript (ES6+, optional chaining, nullish coalescing)
 
 ### Future-Ready
 The architecture is designed to support:
@@ -249,10 +290,13 @@ fetch('../path/to/venue-map.json')
 The renderer can be integrated with any backend system:
 
 ```javascript
+// Initialize renderer
+const renderer = await SeatMapRenderer.create(container);
+
 // Fetch map from API
 const response = await fetch('/api/venues/123/map');
 const mapData = await response.json();
-renderer.loadData(mapData);
+await renderer.loadData(mapData);
 
 // Listen for seat interactions
 container.addEventListener('seat-click', async (event) => {
