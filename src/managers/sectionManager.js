@@ -9,6 +9,7 @@ import { SeatManager } from './SeatManager.js';
 import { SectionInteractionHandler } from './SectionInteractionHandler.js';
 import { ResizeHandleManager } from './ResizeHandleManager.js';
 import { SectionTransformations } from './SectionTransformations.js';
+import { State } from '../core/state.js';
 
 /**
  * Unified SectionManager that delegates to specialized managers
@@ -39,6 +40,10 @@ export const SectionManager = {
     SectionInteractionHandler.setupSectionInteractions(section);
     SectionFactory.registerSection(section);
     return section;
+  },
+
+  duplicateSection(section) {
+    return SectionFactory.duplicateSection(section);
   },
 
   deleteSection(section) {
@@ -248,6 +253,23 @@ export const SectionManager = {
     section.glowBlur = blur;
     SeatManager.updateAllSeats(section);
     console.log(`✓ Updated glow blur to ${blur}`);
+  },
+
+  setSectionPadding(section, padding) {
+    if (typeof padding !== 'number' || padding < 0) {
+      throw new Error('Invalid padding value');
+    }
+    section.sectionPadding = padding;
+    
+    // Recalculate dimensions to apply the new padding
+    if (section.rowLabels && section.rowLabels.length > 0) {
+       SeatManager.updateRowLabels(section);
+    } else {
+       SectionTransformations.recalculateSectionDimensions(section);
+       SectionTransformations.positionSeatsAndLabels(section);
+    }
+    
+    console.log(`✓ Updated section padding to ${padding}`);
   },
 
   // ============================================

@@ -170,10 +170,13 @@ export const SectionInteractionHandler = {
     contextMenu.dataset.sectionId = section.sectionId;
     
     // Show/hide "Edit Seats" option based on section type
-    const editSeatsOption = document.getElementById('editSeatsOption');
+    const editSeatsOption = document.getElementById('contextEditSeats');
     if (editSeatsOption) {
-      editSeatsOption.style.display = section.isGeneralAdmission ? 'none' : 'block';
+      editSeatsOption.style.display = section.isGeneralAdmission ? 'none' : 'flex';
     }
+    
+    // Store the section in State for the context menu actions to use
+    State.contextMenuSection = section;
     
     // Close menu on click outside
     const closeMenu = (e) => {

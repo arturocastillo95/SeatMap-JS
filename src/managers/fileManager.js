@@ -178,8 +178,87 @@ export const FileManager = {
     const rows = new Set(seats.map(s => s.rowIndex));
     const cols = new Set(seats.map(s => s.colIndex));
     
-    const numRows = rows.size;
-    const numCols = cols.size;
+    // FIX: Calculate grid dimensions based on max indices to preserve grid structure
+    // This ensures that if rows/cols are deleted from the middle or start,
+    // the grid is still reconstructed correctly during load.
+    const maxRowIndex = Math.max(...Array.from(rows));
+    const maxColIndex = Math.max(...Array.from(cols));
+    
+    const numRows = maxRowIndex + 1;
+    const numCols = maxColIndex + 1;
+
+    // Calculate spacing to preserve grid layout
+    let spacingX = 24; // Default
+    let spacingY = 24; // Default
+    
+    // Calculate X spacing
+    let totalSpacingX = 0;
+    let countX = 0;
+    
+    // Group by row
+    const rowMap = new Map();
+    seats.forEach(s => {
+        if (!rowMap.has(s.rowIndex)) rowMap.set(s.rowIndex, []);
+        rowMap.get(s.rowIndex).push(s);
+    });
+    
+    rowMap.forEach(rowSeats => {
+        rowSeats.sort((a, b) => a.colIndex - b.colIndex);
+        for (let i = 1; i < rowSeats.length; i++) {
+            const curr = rowSeats[i];
+            const prev = rowSeats[i-1];
+            const colDiff = curr.colIndex - prev.colIndex;
+            if (colDiff > 0) {
+                // Use baseRelativeX if available, else relativeX
+                const currX = curr.baseRelativeX !== undefined ? curr.baseRelativeX : curr.relativeX;
+                const prevX = prev.baseRelativeX !== undefined ? prev.baseRelativeX : prev.relativeX;
+                
+                if (currX !== undefined && prevX !== undefined) {
+                    totalSpacingX += (currX - prevX) / colDiff;
+                    countX++;
+                }
+            }
+        }
+    });
+    
+    if (countX > 0) spacingX = totalSpacingX / countX;
+
+    // Calculate Y spacing
+    let totalSpacingY = 0;
+    let countY = 0;
+    
+    // Group by col
+    const colMap = new Map();
+    seats.forEach(s => {
+        if (!colMap.has(s.colIndex)) colMap.set(s.colIndex, []);
+        colMap.get(s.colIndex).push(s);
+    });
+    
+    colMap.forEach(colSeats => {
+        colSeats.sort((a, b) => a.rowIndex - b.rowIndex);
+        for (let i = 1; i < colSeats.length; i++) {
+            const curr = colSeats[i];
+            const prev = colSeats[i-1];
+            const rowDiff = curr.rowIndex - prev.rowIndex;
+            if (rowDiff > 0) {
+                // Use baseRelativeY if available, else relativeY
+                const currY = curr.baseRelativeY !== undefined ? curr.baseRelativeY : curr.relativeY;
+                const prevY = prev.baseRelativeY !== undefined ? prev.baseRelativeY : prev.relativeY;
+                
+                if (currY !== undefined && prevY !== undefined) {
+                    totalSpacingY += (currY - prevY) / rowDiff;
+                    countY++;
+                }
+            }
+        }
+    });
+    
+    if (countY > 0) spacingY = totalSpacingY / countY;
+
+    // Recalculate base dimensions based on the full grid extent
+    const margin = 20; // CONFIG.SECTION_MARGIN
+    const baseWidth = (numCols > 1) ? ((numCols - 1) * spacingX + (margin * 2)) : section.baseWidth;
+    const baseHeight = (numRows > 1) ? ((numRows - 1) * spacingY + (margin * 2)) : section.baseHeight;
     
     return {
       // Identity
@@ -199,8 +278,9 @@ export const FileManager = {
       base: {
         rows: numRows,
         columns: numCols,
-        baseWidth: section.baseWidth,
-        baseHeight: section.baseHeight
+        baseWidth: baseWidth,
+        baseHeight: baseHeight,
+        padding: section.sectionPadding
       },
       
       // Transformations
@@ -492,6 +572,11 @@ export const FileManager = {
     // Restore section name
     section.sectionId = data.name;
     
+    // Restore padding (v2.1.0+)
+    if (data.base.padding !== undefined) {
+      section.sectionPadding = data.base.padding;
+    }
+    
     // Restore row labels (with v2.0.0 additions)
     section.rowLabelType = data.rowLabels.type;
     section.rowLabelStart = data.rowLabels.start !== undefined ? data.rowLabels.start : (data.rowLabels.type === 'letters' ? 'A' : 1);
@@ -681,6 +766,26 @@ export const FileManager = {
       // This fixes corrupted base positions that may exist in the file
       const { SectionTransformations } = await import('./SectionTransformations.js');
       SectionTransformations.rebuildBasePositions(section);
+      
+      // VALIDATION: Ensure each seat has independent base position properties
+      // This prevents reference sharing bugs between duplicated sections
+      section.seats.forEach(seat => {
+        if (!seat.hasOwnProperty('baseRelativeX')) {
+          seat.baseRelativeX = seat.relativeX || seat.x || 0;
+          console.warn(`Seat missing baseRelativeX, initialized to ${seat.baseRelativeX}`);
+        }
+        if (!seat.hasOwnProperty('baseRelativeY')) {
+          seat.baseRelativeY = seat.relativeY || seat.y || 0;
+          console.warn(`Seat missing baseRelativeY, initialized to ${seat.baseRelativeY}`);
+        }
+        // Ensure relativeX/Y are also independent properties
+        if (!seat.hasOwnProperty('relativeX')) {
+          seat.relativeX = seat.baseRelativeX;
+        }
+        if (!seat.hasOwnProperty('relativeY')) {
+          seat.relativeY = seat.baseRelativeY;
+        }
+      });
       
       // Mark section as loaded from file BEFORE applying transformations
       // This prevents transformation functions from recalculating seat positions

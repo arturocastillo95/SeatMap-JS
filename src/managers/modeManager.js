@@ -230,7 +230,10 @@ export const ModeManager = {
   
   highlightSeat(seat, selected) {
     // Find the circle graphics in the seat container
-    const circle = seat.children[0]; // First child is the circle
+    // Use the stored reference or fall back to the second child (index 1)
+    // Index 0 is the glow graphics, Index 1 is the seat circle, Index 2 is the label
+    const circle = seat.seatGraphics || seat.children[1];
+    
     if (circle) {
       if (selected) {
         circle.tint = COLORS.SEAT_SELECTION_RECT_FILL; // Green tint for selected seats

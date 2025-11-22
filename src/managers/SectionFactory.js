@@ -4,6 +4,8 @@
 
 import { State } from '../core/state.js';
 import { Section } from '../core/Section.js';
+import { SectionInteractionHandler } from './SectionInteractionHandler.js';
+import { Utils } from '../core/utils.js';
 
 /**
  * Factory for creating sections
@@ -13,7 +15,7 @@ export const SectionFactory = {
   /**
    * Create a regular section with seats
    * @param {number} x - X position
-   * @param {number} y - Y position  
+   * @param {number} y - Y Position
    * @param {number} width - Width
    * @param {number} height - Height
    * @param {number} rows - Number of rows
@@ -41,7 +43,7 @@ export const SectionFactory = {
   /**
    * Create a General Admission section
    * @param {number} x - X position
-   * @param {number} y - Y position
+   * @param {number} y - Y Position
    * @param {number} width - Width
    * @param {number} height - Height
    * @returns {Section} The created GA section
@@ -68,7 +70,7 @@ export const SectionFactory = {
   /**
    * Create a Zone section
    * @param {number} x - X position
-   * @param {number} y - Y position
+   * @param {number} y - Y Position
    * @param {number} width - Width
    * @param {number} height - Height
    * @returns {Section} The created Zone section
@@ -102,6 +104,91 @@ export const SectionFactory = {
   registerSection(section) {
     State.sectionLayer.addChild(section);
     State.sections.push(section);
+  },
+
+  /**
+   * Duplicate a section
+   * @param {Section} originalSection - The section to duplicate
+   * @returns {Section} The duplicated section
+   */
+  async duplicateSection(originalSection) {
+    console.log('Duplicate Section called for:', originalSection.sectionId);
+    try {
+      // Import FileManager to use serialization logic
+      const { FileManager } = await import('./fileManager.js');
+      const { SectionManager } = await import('./sectionManager.js');
+      
+      // Serialize the original section
+      const sectionData = FileManager.serializeSection(originalSection);
+      console.log('Serialized data:', sectionData);
+      
+      // Modify data for the new section
+      // Offset position slightly so it's visible
+      const OFFSET = 50;
+      sectionData.x += OFFSET;
+      sectionData.y += OFFSET;
+      if (sectionData.centerX !== undefined) sectionData.centerX += OFFSET;
+      if (sectionData.centerY !== undefined) sectionData.centerY += OFFSET;
+      
+      // Generate new unique name
+      let baseName = originalSection.sectionId;
+      // Remove existing " Copy X" suffix if present
+      baseName = baseName.replace(/ Copy( \d+)?$/, '');
+      
+      let newName = `${baseName} Copy`;
+      let counter = 1;
+      
+      // Check for name collisions
+      while (State.sections.some(s => s.sectionId === newName)) {
+        counter++;
+        newName = `${baseName} Copy ${counter}`;
+      }
+      
+      sectionData.name = newName;
+      sectionData.id = newName;
+
+      // Regenerate seat IDs to ensure uniqueness
+      if (sectionData.seats) {
+        sectionData.seats.forEach(seat => {
+          // Remove ID so it gets regenerated or generate a new one
+          seat.id = Utils.generateShortId();
+        });
+      }
+      
+      console.log('Deserializing new section with name:', newName);
+      
+      // CRITICAL FIX: Deep clone the section data to prevent reference sharing
+      // This ensures the duplicated section has completely independent seat objects
+      const clonedSectionData = JSON.parse(JSON.stringify(sectionData));
+      
+      // Deserialize to create the new section
+      const newSection = await FileManager.deserializeSection(clonedSectionData, SectionManager);
+      
+      if (!newSection) {
+        console.error('Failed to create new section from deserialization');
+        return;
+      }
+
+      console.log('New section created:', newSection);
+      
+      // NOTE: Section is already registered by deserializeSection -> createSection
+      // So we don't call registerSection() again to avoid duplicate registration
+      
+      // Select the new section
+      SectionInteractionHandler.deselectAll();
+      SectionInteractionHandler.selectSection(newSection);
+      
+      // Trigger selection changed event
+      document.dispatchEvent(new CustomEvent('selectionchanged', { 
+        detail: { selectedSections: [newSection] } 
+      }));
+      
+      console.log(`✓ Duplicated section: ${originalSection.sectionId} -> ${newSection.sectionId}`);
+      return newSection;
+    } catch (error) {
+      console.error('Failed to duplicate section:', error);
+      throw error;
+    }
   },
 
   /**

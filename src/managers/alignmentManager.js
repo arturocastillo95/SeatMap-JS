@@ -100,6 +100,10 @@ export const AlignmentManager = {
     Elements.stretchVSlider.addEventListener('input', (e) => this.setStretchV(parseFloat(e.target.value)));
     Elements.resetStretchVBtn.addEventListener('click', () => this.resetStretchV());
 
+    // Padding slider
+    Elements.paddingSlider.addEventListener('input', (e) => this.setPadding(parseInt(e.target.value)));
+    Elements.resetPaddingBtn.addEventListener('click', () => this.resetPadding());
+
     // Align Rows buttons
     const alignRowsButtons = document.querySelectorAll('.sidebar-align-btn');
     if (alignRowsButtons.length >= 3) {
@@ -571,6 +575,14 @@ export const AlignmentManager = {
     }
   },
 
+  setPadding(amount) {
+    if (State.selectedSections.length === 1) {
+      const section = State.selectedSections[0];
+      SectionManager.setSectionPadding(section, amount);
+      this.updateSidebarValues(section);
+    }
+  },
+
   setCurve(amount) {
     if (State.selectedSections.length === 1) {
       const section = State.selectedSections[0];
@@ -613,6 +625,12 @@ export const AlignmentManager = {
     }
   },
 
+  resetPadding() {
+    if (State.selectedSections.length === 1) {
+      this.setPadding(10);
+    }
+  },
+
   alignRowsLeft() {
     if (State.selectedSections.length === 1) {
       const section = State.selectedSections[0];
@@ -649,37 +667,74 @@ export const AlignmentManager = {
         Elements.alignBar.classList.remove('show');
       }
       
-      // Show sidebar for single section
-      if (selectedCount === 1) {
-        const section = State.selectedSections[0];
+      const singleContent = document.getElementById('singleSectionContent');
+      const multiContent = document.getElementById('multiSectionContent');
+      const multiCount = document.getElementById('multiSelectionCount');
+      const multiTotalSeats = document.getElementById('multiSelectionTotalSeats');
+      const sidebarTitleChip = document.querySelector('.sidebar-title-chip');
+
+      if (selectedCount > 0) {
         Elements.sectionSidebar.classList.add('show');
-        this.updateSidebarValues(section);
         
-        // Show resize handles only for single GA section selection
-        if (section.isGeneralAdmission && !section.resizeHandles) {
-          SectionManager.addResizeHandles(section);
-        }
-        
-        // Update sidebar title based on type
-        const sidebarChip = document.querySelector('.sidebar-title-chip');
-        const nameLabel = document.querySelector('#sectionNameInput').previousElementSibling;
-        
-        if (sidebarChip) {
-          if (section.isZone) {
-            sidebarChip.textContent = 'ZONE';
-          } else if (section.isGeneralAdmission) {
-            sidebarChip.textContent = 'GA';
-          } else {
-            sidebarChip.textContent = 'SECTION';
+        if (selectedCount === 1) {
+          // Single selection mode
+          if (singleContent) singleContent.style.display = 'block';
+          if (multiContent) multiContent.style.display = 'none';
+          
+          const section = State.selectedSections[0];
+          this.updateSidebarValues(section);
+          
+          // Show resize handles only for single GA section selection
+          if (section.isGeneralAdmission && !section.resizeHandles) {
+            SectionManager.addResizeHandles(section);
           }
-        }
-        
-        if (nameLabel) {
-           if (section.isZone) {
-            nameLabel.textContent = 'Zone Title';
-          } else {
-            nameLabel.textContent = 'Section Title';
+          
+          // Update sidebar title based on type
+          const nameLabel = document.querySelector('#sectionNameInput').previousElementSibling;
+          
+          if (sidebarTitleChip) {
+            if (section.isZone) {
+              sidebarTitleChip.textContent = 'ZONE';
+            } else if (section.isGeneralAdmission) {
+              sidebarTitleChip.textContent = 'GA';
+            } else {
+              sidebarTitleChip.textContent = 'SECTION';
+            }
           }
+          
+          if (nameLabel) {
+             if (section.isZone) {
+              nameLabel.textContent = 'Zone Title';
+            } else {
+              nameLabel.textContent = 'Section Title';
+            }
+          }
+        } else {
+          // Multi selection mode
+          if (singleContent) singleContent.style.display = 'none';
+          if (multiContent) multiContent.style.display = 'block';
+          
+          if (sidebarTitleChip) {
+            sidebarTitleChip.textContent = 'MULTIPLE';
+          }
+          
+          // Calculate total seats
+          let totalSeats = 0;
+          State.selectedSections.forEach(section => {
+            if (section.isGeneralAdmission) {
+              totalSeats += (section.gaCapacity || 0);
+            } else {
+              totalSeats += section.seats.length;
+            }
+            
+            // Remove resize handles from all sections in multi-select
+            if (section.resizeHandles) {
+              SectionManager.removeResizeHandles(section);
+            }
+          });
+          
+          if (multiCount) multiCount.textContent = selectedCount;
+          if (multiTotalSeats) multiTotalSeats.textContent = totalSeats;
         }
       } else {
         Elements.sectionSidebar.classList.remove('show');
@@ -763,6 +818,7 @@ export const AlignmentManager = {
       Elements.addRowsSection.style.display = 'none';
       Elements.stretchHSection.style.display = 'none';
       Elements.stretchVSection.style.display = 'none';
+      if (Elements.paddingSection) Elements.paddingSection.style.display = 'none';
       
       Elements.styleHeader.parentElement.style.display = 'block';
       
@@ -789,6 +845,7 @@ export const AlignmentManager = {
       Elements.addRowsSection.style.display = 'none';
       Elements.stretchHSection.style.display = 'none';
       Elements.stretchVSection.style.display = 'none';
+      if (Elements.paddingSection) Elements.paddingSection.style.display = 'none';
       Elements.styleHeader.parentElement.style.display = 'block';
       // Hide only seat color inputs for GA sections
       document.getElementById('seatColorSection').style.display = 'none';
@@ -807,6 +864,7 @@ export const AlignmentManager = {
       Elements.addRowsSection.style.display = 'block';
       Elements.stretchHSection.style.display = 'block';
       Elements.stretchVSection.style.display = 'block';
+      if (Elements.paddingSection) Elements.paddingSection.style.display = 'block';
       Elements.styleHeader.parentElement.style.display = 'block';
       // Show all color inputs for regular sections
       document.getElementById('seatColorSection').style.display = 'block';
@@ -814,7 +872,7 @@ export const AlignmentManager = {
       
       // Calculate and display actual row and seat counts
       const seatCount = section.seats ? section.seats.length : 0;
-      const uniqueRows = section.seats ? new Set(section.seats.map(seat => seat.userData?.row).filter(row => row !== undefined)).size : 0;
+      const uniqueRows = section.seats ? new Set(section.seats.map(seat => seat.rowIndex).filter(row => row !== undefined)).size : 0;
       Elements.seatsInfo.textContent = `${uniqueRows} rows / ${seatCount} seats`;
     }
     
@@ -881,6 +939,15 @@ export const AlignmentManager = {
     Elements.stretchHValue.textContent = `${stretchH}`;
     Elements.stretchVSlider.value = stretchV;
     Elements.stretchVValue.textContent = `${stretchV}`;
+
+    // Update padding slider
+    const padding = section.sectionPadding !== undefined ? section.sectionPadding : 10;
+    if (Elements.paddingSlider) {
+      Elements.paddingSlider.value = padding;
+    }
+    if (Elements.paddingValue) {
+      Elements.paddingValue.textContent = `${padding}px`;
+    }
   },
 
   // ============================================

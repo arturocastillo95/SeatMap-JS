@@ -105,6 +105,9 @@ export class Section extends PIXI.Graphics {
     this._baseWidth = config.width;
     this._baseHeight = config.height;
     
+    // Padding
+    this._sectionPadding = config.sectionPadding !== undefined ? config.sectionPadding : 10;
+    
     // Transformation properties
     this._rotationDegrees = config.rotationDegrees || 0;
     this._stretchH = config.stretchH || 0;
@@ -386,6 +389,17 @@ export class Section extends PIXI.Graphics {
       throw new Error('Glow blur must be a positive number');
     }
     this._glowBlur = value;
+  }
+
+  get sectionPadding() {
+    return this._sectionPadding;
+  }
+
+  set sectionPadding(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Section padding must be a non-negative number');
+    }
+    this._sectionPadding = value;
   }
 
   get contentWidth() {
@@ -761,6 +775,7 @@ export class Section extends PIXI.Graphics {
       stretchH: this._stretchH,
       stretchV: this._stretchV,
       curve: this._curve,
+      padding: this._sectionPadding,
       glow: {
         enabled: this._glowEnabled,
         color: this._glowColor,

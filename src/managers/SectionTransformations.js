@@ -44,6 +44,84 @@ export const SectionTransformations = {
   },
 
   /**
+   * Calculate the grid spacing from existing seats
+   * @param {Section} section - The section
+   * @returns {Object} { spacingX, spacingY }
+   */
+  calculateGridSpacing(section) {
+    let spacingX = 24; // Default fallback
+    let spacingY = 24; // Default fallback
+    let countX = 0;
+    let countY = 0;
+    let totalSpacingX = 0;
+    let totalSpacingY = 0;
+
+    // Calculate X spacing (average of adjacent seats in rows)
+    const rowMap = new Map();
+    section.seats.forEach(seat => {
+      if (!rowMap.has(seat.rowIndex)) rowMap.set(seat.rowIndex, []);
+      rowMap.get(seat.rowIndex).push(seat);
+    });
+
+    rowMap.forEach(seats => {
+      seats.sort((a, b) => a.colIndex - b.colIndex);
+      for (let i = 1; i < seats.length; i++) {
+        const curr = seats[i];
+        const prev = seats[i-1];
+        
+        // VALIDATION: Skip seats with undefined/null base positions
+        if (curr.baseRelativeX == null || prev.baseRelativeX == null) {
+          continue;
+        }
+        
+        const colDiff = curr.colIndex - prev.colIndex;
+        if (colDiff > 0) {
+          const dist = curr.baseRelativeX - prev.baseRelativeX;
+          totalSpacingX += dist / colDiff;
+          countX++;
+        }
+      }
+    });
+
+    if (countX > 0) {
+      spacingX = totalSpacingX / countX;
+    }
+
+    // Calculate Y spacing (average of adjacent seats in columns)
+    const colMap = new Map();
+    section.seats.forEach(seat => {
+      if (!colMap.has(seat.colIndex)) colMap.set(seat.colIndex, []);
+      colMap.get(seat.colIndex).push(seat);
+    });
+
+    colMap.forEach(seats => {
+      seats.sort((a, b) => a.rowIndex - b.rowIndex);
+      for (let i = 1; i < seats.length; i++) {
+        const curr = seats[i];
+        const prev = seats[i-1];
+        
+        // VALIDATION: Skip seats with undefined/null base positions
+        if (curr.baseRelativeY == null || prev.baseRelativeY == null) {
+          continue;
+        }
+        
+        const rowDiff = curr.rowIndex - prev.rowIndex;
+        if (rowDiff > 0) {
+          const dist = curr.baseRelativeY - prev.baseRelativeY;
+          totalSpacingY += dist / rowDiff;
+          countY++;
+        }
+      }
+    });
+
+    if (countY > 0) {
+      spacingY = totalSpacingY / countY;
+    }
+    
+    return { spacingX, spacingY };
+  },
+
+  /**
    * Apply stretch to seats (modifies relativeX/Y)
    * @param {Section} section - The section
    */
@@ -71,21 +149,21 @@ export const SectionTransformations = {
     });
     const sortedRows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
     
-    // Calculate the standard grid spacing (24px)
-    const GRID_SPACING = 24;
+    // Calculate the standard grid spacing
+    const { spacingX: GRID_SPACING_X, spacingY: GRID_SPACING_Y } = this.calculateGridSpacing(section);
     
     // Minimum spacing to prevent overlap (seat diameter is 20px, add 2px gap)
     const MIN_SPACING = 22;
     
     // Clamp stretch values to prevent overlap
-    const maxNegativeStretchH = -(GRID_SPACING - MIN_SPACING);
-    const maxNegativeStretchV = -(GRID_SPACING - MIN_SPACING);
+    const maxNegativeStretchH = -(GRID_SPACING_X - MIN_SPACING);
+    const maxNegativeStretchV = -(GRID_SPACING_Y - MIN_SPACING);
     const clampedStretchH = Math.max(stretchH, maxNegativeStretchH);
     const clampedStretchV = Math.max(stretchV, maxNegativeStretchV);
     
     // Calculate the effective spacing after stretch
-    const effectiveSpacingX = GRID_SPACING + clampedStretchH;
-    const effectiveSpacingY = GRID_SPACING + clampedStretchV;
+    const effectiveSpacingX = GRID_SPACING_X + clampedStretchH;
+    const effectiveSpacingY = GRID_SPACING_Y + clampedStretchV;
     
     // Process each row independently to preserve horizontal alignment
     sortedRows.forEach(([baseY, rowSeats], arrayIndex) => {
@@ -97,7 +175,7 @@ export const SectionTransformations = {
       const maxColIndex = Math.max(...rowSeats.map(s => s.colIndex));
       
       // Calculate the row's width with base spacing and with stretched spacing
-      const baseRowWidth = (maxColIndex - minColIndex) * GRID_SPACING;
+      const baseRowWidth = (maxColIndex - minColIndex) * GRID_SPACING_X;
       const stretchedRowWidth = (maxColIndex - minColIndex) * effectiveSpacingX;
       const widthDifference = stretchedRowWidth - baseRowWidth;
       
@@ -129,7 +207,7 @@ export const SectionTransformations = {
         seat.relativeX = baseReferenceX + alignmentOffset + (colOffset * effectiveSpacingX);
         
         // Vertical: use the base Y position plus vertical stretch based on array position
-        seat.relativeY = baseY + (arrayIndex * (effectiveSpacingY - GRID_SPACING));
+        seat.relativeY = baseY + (arrayIndex * (effectiveSpacingY - GRID_SPACING_Y));
       });
     });
   },
@@ -197,18 +275,18 @@ export const SectionTransformations = {
     const sortedRows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
 
     // Calculate standard grid spacing
-    const GRID_SPACING = 24;
+    const { spacingX: GRID_SPACING_X, spacingY: GRID_SPACING_Y } = this.calculateGridSpacing(section);
     const MIN_SPACING = 22;
     
     // Clamp stretch values
-    const maxNegativeStretchH = -(GRID_SPACING - MIN_SPACING);
-    const maxNegativeStretchV = -(GRID_SPACING - MIN_SPACING);
+    const maxNegativeStretchH = -(GRID_SPACING_X - MIN_SPACING);
+    const maxNegativeStretchV = -(GRID_SPACING_Y - MIN_SPACING);
     const clampedStretchH = Math.max(stretchH, maxNegativeStretchH);
     const clampedStretchV = Math.max(stretchV, maxNegativeStretchV);
     
     // Effective spacing after stretch
-    const effectiveSpacingX = GRID_SPACING + clampedStretchH;
-    const effectiveSpacingY = GRID_SPACING + clampedStretchV;
+    const effectiveSpacingX = GRID_SPACING_X + clampedStretchH;
+    const effectiveSpacingY = GRID_SPACING_Y + clampedStretchV;
 
     // Calculate curvature parameters
     const k = curve / 2000;
@@ -237,7 +315,7 @@ export const SectionTransformations = {
     // 2) Global logical column (stable, uses BASE spacing)
     section.seats.forEach(seat => {
       const dx = seat.baseRelativeX - worldCenterX;
-      seat._logicalCol = Math.round(dx / GRID_SPACING);
+      seat._logicalCol = Math.round(dx / GRID_SPACING_X);
     });
 
     // 3) Flat baseline Y for the first row
@@ -450,7 +528,7 @@ export const SectionTransformations = {
       });
     }
     
-    const EDGE_PADDING = 10;
+    const EDGE_PADDING = section.sectionPadding !== undefined ? section.sectionPadding : 10;
     
     // Calculate dimensions
     const contentWidth = maxX - minX;
@@ -572,12 +650,15 @@ export const SectionTransformations = {
    * @param {Section} section - The section
    */
   rebuildBasePositions(section) {
-    console.log(`Rebuilding base positions for ${section.id || 'undefined'}`);
+    console.log(`Rebuilding base positions for ${section.sectionId || 'undefined'}`);
     
     // Get unique row indices to find the top row
     const rowIndices = [...new Set(section.seats.map(s => s.rowIndex))].sort((a, b) => a - b);
     
-    if (rowIndices.length === 0) return;
+    if (rowIndices.length === 0) {
+      console.warn('  No seats found in section, skipping rebuild');
+      return;
+    }
 
     // Find the first seat in the first row to get the original anchor point
     const firstRow = rowIndices[0];
@@ -588,28 +669,105 @@ export const SectionTransformations = {
       seat.colIndex < min.colIndex ? seat : min
     );
     
-    // Use this seat's CURRENT baseRelativeX/Y as the anchor
-    const anchorX = anchorSeat.baseRelativeX;
-    const anchorY = anchorSeat.baseRelativeY;
+    // VALIDATION: Use relativeX/Y as fallback if baseRelativeX/Y are missing
+    const anchorX = anchorSeat.baseRelativeX != null ? anchorSeat.baseRelativeX : (anchorSeat.relativeX || 0);
+    const anchorY = anchorSeat.baseRelativeY != null ? anchorSeat.baseRelativeY : (anchorSeat.relativeY || 0);
     const anchorCol = anchorSeat.colIndex;
     const anchorRow = anchorSeat.rowIndex;
     
     console.log(`  Anchor: [${anchorRow},${anchorCol}] at (${anchorX}, ${anchorY})`);
     
-    // Standard spacing
-    const SEAT_SPACING = 24;
+    // Calculate actual spacing from the data instead of hardcoding
+    let spacingX = 24; // Default fallback
+    let spacingY = 24; // Default fallback
+    let countX = 0;
+    let countY = 0;
+    let totalSpacingX = 0;
+    let totalSpacingY = 0;
+
+    // Calculate X spacing (average of adjacent seats in rows)
+    const rowMap = new Map();
+    section.seats.forEach(seat => {
+      if (!rowMap.has(seat.rowIndex)) rowMap.set(seat.rowIndex, []);
+      rowMap.get(seat.rowIndex).push(seat);
+    });
+
+    rowMap.forEach(seats => {
+      seats.sort((a, b) => a.colIndex - b.colIndex);
+      for (let i = 1; i < seats.length; i++) {
+        const curr = seats[i];
+        const prev = seats[i-1];
+        const colDiff = curr.colIndex - prev.colIndex;
+        if (colDiff > 0) {
+          const dist = curr.baseRelativeX - prev.baseRelativeX;
+          totalSpacingX += dist / colDiff;
+          countX++;
+        }
+      }
+    });
+
+    if (countX > 0) {
+      spacingX = totalSpacingX / countX;
+    }
+
+    // Calculate Y spacing (average of adjacent seats in columns)
+    const colMap = new Map();
+    section.seats.forEach(seat => {
+      if (!colMap.has(seat.colIndex)) colMap.set(seat.colIndex, []);
+      colMap.get(seat.colIndex).push(seat);
+    });
+
+    colMap.forEach(seats => {
+      seats.sort((a, b) => a.rowIndex - b.rowIndex);
+      for (let i = 1; i < seats.length; i++) {
+        const curr = seats[i];
+        const prev = seats[i-1];
+        const rowDiff = curr.rowIndex - prev.rowIndex;
+        if (rowDiff > 0) {
+          const dist = curr.baseRelativeY - prev.baseRelativeY;
+          totalSpacingY += dist / rowDiff;
+          countY++;
+        }
+      }
+    });
+
+    if (countY > 0) {
+      spacingY = totalSpacingY / countY;
+    }
+
+    console.log(`  Detected spacing: X=${spacingX.toFixed(2)}, Y=${spacingY.toFixed(2)}`);
+    
+    // VALIDATION: Ensure spacing is reasonable (prevent extreme values)
+    if (spacingX < 10 || spacingX > 100) {
+      console.warn(`  Unusual X spacing detected (${spacingX}), using default 24`);
+      spacingX = 24;
+    }
+    if (spacingY < 10 || spacingY > 100) {
+      console.warn(`  Unusual Y spacing detected (${spacingY}), using default 24`);
+      spacingY = 24;
+    }
     
     // Rebuild ALL positions using exact grid math
+    let rebuiltCount = 0;
     section.seats.forEach(seat => {
       // Calculate difference in logic grid steps
       const colDiff = seat.colIndex - anchorCol;
       const rowDiff = seat.rowIndex - anchorRow;
       
-      // Set clean base position based on 24px spacing times the difference
-      seat.baseRelativeX = anchorX + (colDiff * SEAT_SPACING);
-      seat.baseRelativeY = anchorY + (rowDiff * SEAT_SPACING);
+      // Set clean base position based on calculated spacing times the difference
+      const newBaseX = anchorX + (colDiff * spacingX);
+      const newBaseY = anchorY + (rowDiff * spacingY);
+      
+      // Only update if values are finite
+      if (isFinite(newBaseX) && isFinite(newBaseY)) {
+        seat.baseRelativeX = newBaseX;
+        seat.baseRelativeY = newBaseY;
+        rebuiltCount++;
+      } else {
+        console.warn(`  Skipped seat [${seat.rowIndex},${seat.colIndex}] - invalid position`);
+      }
     });
     
-    console.log(`  Rebuilt ${section.seats.length} seats with clean 24px grid`);
+    console.log(`  Rebuilt ${rebuiltCount}/${section.seats.length} seats with clean grid`);
   }
 };

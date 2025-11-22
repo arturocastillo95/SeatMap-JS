@@ -1048,6 +1048,21 @@
       <div class="sidebar-title-chip">Section</div>
     </div>
 
+    <div id="multiSectionContent" style="display: none;">
+      <div class="sidebar-section">
+        <div class="sidebar-header">Selection Summary</div>
+        <div class="sidebar-input-group">
+          <label class="sidebar-label">Selected Sections</label>
+          <div class="sidebar-text-value" id="multiSelectionCount" style="color: #fff; font-size: 14px; font-weight: 500;">0</div>
+        </div>
+        <div class="sidebar-input-group">
+          <label class="sidebar-label">Total Seats</label>
+          <div class="sidebar-text-value" id="multiSelectionTotalSeats" style="color: #fff; font-size: 14px; font-weight: 500;">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="singleSectionContent">
     <!-- SECTION -->
     <div class="sidebar-section">
       <div class="sidebar-header">Properties</div>
@@ -1652,8 +1667,43 @@
               />
             </div>
           </div>
+
+          <div class="sidebar-input-group" id="paddingSection">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+              "
+            >
+              <label class="sidebar-label" style="margin-bottom: 0;"
+                >Padding
+                <span id="paddingValue" style="color: #3a9cff;">10px</span></label
+              >
+              <button
+                class="sidebar-increment-btn"
+                id="resetPaddingBtn"
+                title="Reset Padding"
+              >
+                <span class="material-symbols">refresh</span>
+              </button>
+            </div>
+            <div class="sidebar-slider">
+              <input
+                type="range"
+                class="sidebar-slider-input"
+                id="paddingSlider"
+                min="0"
+                max="100"
+                value="10"
+                step="1"
+              />
+            </div>
+          </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 
@@ -1954,6 +2004,10 @@
     <button class="context-menu-item" id="contextEditSeats">
       <span class="material-symbols">grid_on</span>
       <span>Edit Seats</span>
+    </button>
+    <button class="context-menu-item" id="contextDuplicateSection">
+      <span class="material-symbols">content_copy</span>
+      <span>Duplicate Section</span>
     </button>
     <button class="context-menu-item" id="contextDeleteSection">
       <span class="material-symbols">delete</span>

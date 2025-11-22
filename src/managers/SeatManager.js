@@ -526,7 +526,7 @@ export const SeatManager = {
       });
     }
 
-    const EDGE_PADDING = 10;
+    const EDGE_PADDING = section.sectionPadding !== undefined ? section.sectionPadding : 10;
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
     const shiftX = EDGE_PADDING - minX;

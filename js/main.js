@@ -120,6 +120,10 @@ function initializeElements() {
   Elements.stretchVValue = document.getElementById('stretchVValue');
   Elements.resetStretchVBtn = document.getElementById('resetStretchVBtn');
   Elements.stretchVSection = document.getElementById('stretchVSection');
+  Elements.paddingSlider = document.getElementById('paddingSlider');
+  Elements.paddingValue = document.getElementById('paddingValue');
+  Elements.resetPaddingBtn = document.getElementById('resetPaddingBtn');
+  Elements.paddingSection = document.getElementById('paddingSection');
   Elements.sectionColorPicker = document.getElementById('sectionColorPicker');
   Elements.sectionColorInput = document.getElementById('sectionColorInput');
   Elements.seatColorPicker = document.getElementById('seatColorPicker');
@@ -209,6 +213,19 @@ function setupContextMenu() {
       State.contextMenuSection = null;
     }
   });
+
+  // Duplicate Section option
+  const duplicateBtn = document.getElementById('contextDuplicateSection');
+  if (duplicateBtn) {
+    duplicateBtn.addEventListener('click', async () => {
+      if (State.contextMenuSection) {
+        const { SectionManager } = await import('../src/managers/sectionManager.js');
+        SectionManager.duplicateSection(State.contextMenuSection);
+        Elements.contextMenu.classList.remove('show');
+        State.contextMenuSection = null;
+      }
+    });
+  }
 
   // Delete Section option
   Elements.contextDeleteSection.addEventListener('click', () => {
