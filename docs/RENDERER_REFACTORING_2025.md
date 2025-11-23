@@ -257,6 +257,19 @@ const renderer = await SeatMapRenderer.create(container);
 - ✅ Separation of concerns
 - ✅ Full documentation
 
+### Critical Updates (November 22, 2025) ✅
+Addressed critical stability and performance issues:
+
+1.  **Critical Error Handling**: Wrapped `init()` in try-catch to prevent silent failures.
+2.  **State Reset**: Fixed `loadData()` to properly clear `seatsByKey`, `animatingSeats`, and `selectedSeats` to prevent memory leaks and ghost interactions.
+3.  **Initialization Guards**: Added `isInitialized` checks to all public methods to prevent race conditions.
+4.  **Safe Destruction**: Hardened `destroy()` method with null checks to prevent crashes during cleanup.
+5.  **Event Listener Cleanup**: Implemented proper PIXI object destruction in `loadData` to remove event listeners and free WebGL resources.
+6.  **Unmatched Key Detection**: Added tracking and reporting for inventory keys that don't match any seat.
+7.  **Ghost Touch Fix**: Added `pointercancel` and `pointerleave` handlers to prevent erratic zoom on mobile.
+8.  **Rendering Optimization**: Switched from `PIXI.Graphics` to `PIXI.Sprite` with cached textures, reducing draw calls and memory usage significantly.
+9.  **High-Res Textures**: Implemented `SEAT_TEXTURE_RESOLUTION` to maintain sharpness when zooming in on sprite-based seats.
+
 ---
 
 ## Testing Recommendations

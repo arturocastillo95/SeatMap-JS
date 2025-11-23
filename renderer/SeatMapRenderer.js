@@ -21,7 +21,8 @@ export class SeatMapRenderer {
         TOOLTIP_SPEED: 0.15,      // Tooltip fade animation speed in seconds
         UI_PADDING: 40,           // Padding for UI elements
         ZONE_FADE_RATIO: 6,       // Ratio for zone fade out duration
-        ANIMATION_THRESHOLD: 0.01 // Threshold for stopping animations
+        ANIMATION_THRESHOLD: 0.01, // Threshold for stopping animations
+        SEAT_TEXTURE_RESOLUTION: 4 // Resolution multiplier for seat textures
     };
 
     static async create(container, options = {}) {
@@ -60,6 +61,8 @@ export class SeatMapRenderer {
             initialPosition: null
         };
 
+        this.isInitialized = false;
+
         this.animatingSeats = new Set(); // Track seats currently animating
         this.seatsByKey = {}; // Lookup for seats by key
         this.selectedSeats = new Set(); // Track selected seats
@@ -76,26 +79,34 @@ export class SeatMapRenderer {
      * @private
      */
     async init() {
-        await this.app.init(this.options);
-        this.container.appendChild(this.app.canvas);
-        this.app.stage.addChild(this.viewport);
+        try {
+            this.textureCache = {}; // Initialize texture cache
+            await this.app.init(this.options);
+            this.container.appendChild(this.app.canvas);
+            this.app.stage.addChild(this.viewport);
 
-        // Create UI layer
-        this.createUI();
-        
-        // Initialize Tooltip Manager
-        this.tooltipManager = new TooltipManager({
-            animationSpeed: SeatMapRenderer.CONFIG.TOOLTIP_SPEED
-        });
+            // Create UI layer
+            this.createUI();
+            
+            // Initialize Tooltip Manager
+            this.tooltipManager = new TooltipManager({
+                animationSpeed: SeatMapRenderer.CONFIG.TOOLTIP_SPEED
+            });
 
-        // Setup interaction (pan/zoom)
-        this.setupInteraction();
-        
-        // Setup animation loop for seats
-        this.app.ticker.add(this.updateSeatAnimations);
-        
-        // Handle window resize
-        window.addEventListener('resize', this.resizeHandler);
+            // Setup interaction (pan/zoom)
+            this.setupInteraction();
+            
+            // Setup animation loop for seats
+            this.app.ticker.add(this.updateSeatAnimations);
+            
+            // Handle window resize
+            window.addEventListener('resize', this.resizeHandler);
+            
+            this.isInitialized = true;
+        } catch (error) {
+            console.error('Failed to initialize SeatMapRenderer:', error);
+            throw error;
+        }
     }
 
     /**
@@ -111,32 +122,46 @@ export class SeatMapRenderer {
      * Clean up resources and event listeners
      */
     destroy() {
+        this.isInitialized = false;
+
+        // Destroy cached textures
+        if (this.textureCache) {
+            Object.values(this.textureCache).forEach(texture => texture.destroy(true));
+            this.textureCache = {};
+        }
+
         // Remove event listeners
         window.removeEventListener('resize', this.resizeHandler);
-        this.container.removeEventListener('wheel', this.wheelHandler);
+        if (this.container) {
+            this.container.removeEventListener('wheel', this.wheelHandler);
+        }
         
         // Remove ticker
-        if (this.app.ticker) {
+        if (this.app && this.app.ticker) {
             this.app.ticker.remove(this.updateSeatAnimations);
         }
         
         // Destroy PIXI app
-        this.app.destroy(true, { children: true, texture: true });
+        if (this.app) {
+            this.app.destroy(true, { children: true, texture: true });
+            this.app = null;
+        }
         
         // Destroy Tooltip Manager
         if (this.tooltipManager) {
             this.tooltipManager.destroy();
+            this.tooltipManager = null;
         }
         
         // Clear references
-        this.activePointers.clear();
-        this.selectedSeats.clear();
-        this.animatingSeats.clear();
+        if (this.activePointers) this.activePointers.clear();
+        if (this.selectedSeats) this.selectedSeats.clear();
+        if (this.animatingSeats) this.animatingSeats.clear();
+        
         this.seatsByKey = {};
         this.viewport = null;
         this.uiContainer = null;
         this.resetButton = null;
-        this.tooltipManager = null;
     }
 
     /**
@@ -278,6 +303,21 @@ export class SeatMapRenderer {
 
         stage.on('pointerup', onPointerUp);
         stage.on('pointerupoutside', onPointerUp);
+
+        // Handle pointer cancellation and leaving to prevent ghost touches
+        stage.on('pointercancel', (e) => {
+            this.activePointers.delete(e.pointerId);
+            this.state.isDragging = false;
+            this.state.lastDist = null;
+            this.state.lastCenter = null;
+        });
+
+        stage.on('pointerleave', (e) => {
+            this.activePointers.delete(e.pointerId);
+            if (this.activePointers.size === 0) {
+                this.state.isDragging = false;
+            }
+        });
 
         stage.on('pointermove', (e) => {
             // Update pointer position
@@ -457,9 +497,24 @@ export class SeatMapRenderer {
      * @param {Object} data - The parsed JSON data
      */
     async loadData(data) {
-        // Clear existing
-        this.viewport.removeChildren();
+        if (!this.isInitialized) {
+            console.error('SeatMapRenderer not initialized. Call init() first.');
+            return;
+        }
+
+        // Clear existing content and ensure proper cleanup of PIXI objects and listeners
+        if (this.viewport.children.length > 0) {
+            this.viewport.removeChildren().forEach(child => {
+                child.destroy({ children: true, texture: false, baseTexture: false });
+            });
+        }
+        
         this.zoneContainers = []; // Reset zone containers list
+        
+        // Reset state to prevent memory leaks and ghost interactions
+        this.seatsByKey = {};
+        this.animatingSeats.clear();
+        this.selectedSeats.clear();
 
         if (!data) {
             console.error("No data provided to loadData");
@@ -777,22 +832,20 @@ export class SeatMapRenderer {
                     seatContainer.addChild(glowGraphics);
                 }
 
-                // Seat Circle
-                const circle = new PIXI.Graphics();
-                circle.circle(0, 0, SeatMapRenderer.CONFIG.SEAT_RADIUS);
+                // Seat Sprite (Optimized)
+                const seatColor = seatData.specialNeeds ? 0x2563eb : defaultSeatColor;
+                const texture = this.createSeatTexture(
+                    SeatMapRenderer.CONFIG.SEAT_RADIUS, 
+                    seatColor, 
+                    seatStrokeWidth, 
+                    seatStrokeColor
+                );
                 
-                if (seatData.specialNeeds) {
-                    circle.fill({ color: 0x2563eb }); // Blue for special needs
-                } else {
-                    circle.fill({ color: defaultSeatColor });
-                }
-
-                if (seatStrokeWidth > 0) {
-                    circle.stroke({ width: seatStrokeWidth, color: seatStrokeColor });
-                }
-
-                seatContainer.addChild(circle);
-                // seatContainer.circle = circle; // No longer needed for animation
+                const seatSprite = new PIXI.Sprite(texture);
+                seatSprite.anchor.set(0.5);
+                const resolution = SeatMapRenderer.CONFIG.SEAT_TEXTURE_RESOLUTION || 4;
+                seatSprite.scale.set(1 / resolution);
+                seatContainer.addChild(seatSprite);
 
                 // Seat Label/Icon
                 let labelText = seatData.number || "";
@@ -1041,6 +1094,8 @@ export class SeatMapRenderer {
      * Fit the view to show all content (underlay or sections) centered and scaled to fit viewport height
      */
     fitToView(animate = true) {
+        if (!this.isInitialized) return;
+
         // Use getLocalBounds to get unscaled dimensions
         const bounds = this.viewport.getLocalBounds();
         if (bounds.width === 0 || bounds.height === 0) return;
@@ -1117,6 +1172,8 @@ export class SeatMapRenderer {
      * @param {PIXI.Container} sectionContainer 
      */
     zoomToSection(sectionContainer) {
+        if (!this.isInitialized) return;
+
         const screenWidth = this.app.screen.width;
         const screenHeight = this.app.screen.height;
         const padding = SeatMapRenderer.CONFIG.SECTION_ZOOM_PADDING;
@@ -1334,6 +1391,11 @@ export class SeatMapRenderer {
      * @param {Object} inventoryData - The inventory data
      */
     loadInventory(inventoryData) {
+        if (!this.isInitialized) {
+            console.error('SeatMapRenderer not initialized. Call init() first.');
+            return;
+        }
+
         // Validate structure
         if (!this.validateInventoryData(inventoryData)) {
             console.error('Invalid inventory data structure:', inventoryData);
@@ -1341,6 +1403,9 @@ export class SeatMapRenderer {
         }
 
         console.log("Loading inventory data...", inventoryData);
+
+        // Reset unmatched keys tracking
+        this._unmatchedKeys = [];
 
         inventoryData.seats.forEach(item => {
             if (!item.key || typeof item.key !== 'string') {
@@ -1362,15 +1427,58 @@ export class SeatMapRenderer {
                 // Here you could also update visual state based on inventory
                 // e.g. if (item.status === 'sold') seatContainer.alpha = 0.5;
             } else {
-                // console.warn(`Seat not found for key: ${key}`);
+                console.warn(`Seat not found for key: ${key}. Expected format: "Section;;Row;;SeatNum"`);
+                this._unmatchedKeys.push(key);
             }
         });
+
+        if (this._unmatchedKeys.length > 0) {
+            console.warn(`Found ${this._unmatchedKeys.length} unmatched inventory keys. Call getUnmatchedInventoryKeys() for details.`);
+        }
+    }
+
+    /**
+     * Get list of inventory keys that didn't match any seat
+     * @returns {string[]}
+     */
+    getUnmatchedInventoryKeys() {
+        return this._unmatchedKeys || [];
     }
 
     validateInventoryData(data) {
         return data 
             && typeof data === 'object' 
             && Array.isArray(data.seats);
+    }
+
+    /**
+     * Create or retrieve a cached texture for a seat
+     * @param {number} radius 
+     * @param {number} color 
+     * @param {number} strokeWidth 
+     * @param {number} strokeColor 
+     * @returns {PIXI.Texture}
+     * @private
+     */
+    createSeatTexture(radius, color, strokeWidth, strokeColor) {
+        const resolution = SeatMapRenderer.CONFIG.SEAT_TEXTURE_RESOLUTION || 4;
+        const key = `seat-${radius}-${color}-${strokeWidth}-${strokeColor}-res${resolution}`;
+        if (this.textureCache[key]) return this.textureCache[key];
+
+        const scaledRadius = radius * resolution;
+        const scaledStroke = strokeWidth * resolution;
+
+        const gr = new PIXI.Graphics();
+        gr.circle(0, 0, scaledRadius);
+        gr.fill({ color: color });
+        if (strokeWidth > 0) {
+            gr.stroke({ width: scaledStroke, color: strokeColor });
+        }
+
+        // Render this graphic to a texture
+        const texture = this.app.renderer.generateTexture(gr);
+        this.textureCache[key] = texture;
+        return texture;
     }
 
     /**
