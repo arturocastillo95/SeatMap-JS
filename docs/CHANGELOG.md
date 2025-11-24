@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Join Zones** - Merge multiple zones into a single complex polygon
+  - Select multiple zones in "Edit Zones" mode
+  - Right-click and choose "Join Zones"
+  - Merges geometries using boolean union operations
+  - Preserves the label and properties of the first selected zone
+- **Custom Zone Shapes** - Support for non-rectangular zone geometries
+  - Zones can now be defined by an arbitrary array of points
+  - Rendering engine updated to draw polygons instead of just rectangles
+  - Resize handles correctly scale custom polygon shapes
+- **Zone Layering** - Improved rendering order
+  - Zones now render on their own dedicated layer
+  - Order: Grid -> Underlay -> Zones -> Sections -> Seats
+  - Ensures zones are always behind sections but above the background
 - **Edit Zones Mode** - Dedicated mode for managing zones
   - New "Edit Zones" button in the sidebar
   - Restricts selection to only zones when active

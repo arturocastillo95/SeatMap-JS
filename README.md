@@ -5,6 +5,7 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 ## ✨ Key Features
 
 - **Drag-to-Create Sections**: Draw rectangular seating sections with real-time preview and grid snapping
+- **Join Zones**: Merge multiple zones into complex polygon shapes (L-shapes, U-shapes, etc.)
 - **General Admission (GA) Sections**: Create standing/GA areas without individual seats, with capacity control and interactive resize handles
 - **Edit Seats Mode**: Select and delete individual seats with drag-to-select functionality
 - **Multi-Section Alignment**: Align and distribute multiple sections with intelligent collision prevention

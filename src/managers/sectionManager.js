@@ -318,6 +318,182 @@ export const SectionManager = {
       }
     });
   },
+
+  // ============================================
+  // ZONE OPERATIONS
+  // ============================================
+
+  async joinZones(zones) {
+    if (!zones || zones.length < 2) {
+      console.warn('Need at least 2 zones to join');
+      return;
+    }
+
+    try {
+      // Dynamic import to avoid loading turf unless needed
+      // Pin to v6.5.0 to ensure pairwise union support
+      const { default: union } = await import('https://cdn.jsdelivr.net/npm/@turf/union@6.5.0/+esm');
+      const { polygon } = await import('https://cdn.jsdelivr.net/npm/@turf/helpers@6.5.0/+esm');
+
+      // 1. Convert zones to Turf polygons
+      const turfPolys = zones.map(zone => {
+        // Get global coordinates of the zone corners
+        // We need to account for rotation and position
+        
+        let coords;
+        if (zone.points && zone.points.length > 0) {
+           // Convert flat array [x,y, x,y] to [[x,y], [x,y]...]
+           // Points are local to the zone's top-left (0,0)
+           // We need to transform them to global space
+           
+           const pts = [];
+           const cos = Math.cos(zone.rotation);
+           const sin = Math.sin(zone.rotation);
+           
+           // Zone global position (center)
+           const cx = zone.x;
+           const cy = zone.y;
+           
+           // Pivot offset (center relative to top-left)
+           const px = zone.contentWidth / 2;
+           const py = zone.contentHeight / 2;
+
+           for(let i=0; i<zone.points.length; i+=2) {
+             const lx = zone.points[i];
+             const ly = zone.points[i+1];
+             
+             // Transform to global
+             // 1. Shift to center-relative
+             const dx = lx - px;
+             const dy = ly - py;
+             
+             // 2. Rotate and translate
+             const gx = cx + (dx * cos - dy * sin);
+             const gy = cy + (dx * sin + dy * cos);
+             
+             pts.push([gx, gy]);
+           }
+           
+           // Close the loop
+           if (pts.length > 0 && (pts[0][0] !== pts[pts.length-1][0] || pts[0][1] !== pts[pts.length-1][1])) {
+             pts.push([pts[0][0], pts[0][1]]);
+           }
+           coords = [pts];
+        } else {
+           // Rectangle
+           // Zone x/y is the center (pivot).
+           const w = zone.contentWidth;
+           const h = zone.contentHeight;
+           const x = zone.x;
+           const y = zone.y;
+           const rot = zone.rotation; // radians
+           
+           // Corners relative to center
+           const corners = [
+             {x: -w/2, y: -h/2},
+             {x: w/2, y: -h/2},
+             {x: w/2, y: h/2},
+             {x: -w/2, y: h/2}
+           ];
+           
+           // Rotate and translate
+           const cos = Math.cos(rot);
+           const sin = Math.sin(rot);
+           
+           const transformed = corners.map(p => ({
+             x: x + (p.x * cos - p.y * sin),
+             y: y + (p.x * sin + p.y * cos)
+           }));
+           
+           coords = [[
+             [transformed[0].x, transformed[0].y],
+             [transformed[1].x, transformed[1].y],
+             [transformed[2].x, transformed[2].y],
+             [transformed[3].x, transformed[3].y],
+             [transformed[0].x, transformed[0].y] // Close loop
+           ]];
+        }
+        
+        return polygon(coords);
+      });
+
+      // 2. Union them sequentially
+      let merged = turfPolys[0];
+      for (let i = 1; i < turfPolys.length; i++) {
+        merged = union(merged, turfPolys[i]);
+      }
+
+      if (!merged) {
+        throw new Error('Failed to merge zones');
+      }
+
+      // 3. Convert back to points
+      let finalCoords;
+      if (merged.geometry.type === 'Polygon') {
+        finalCoords = merged.geometry.coordinates[0];
+      } else if (merged.geometry.type === 'MultiPolygon') {
+        console.warn('Merged zone resulted in MultiPolygon. Using first polygon.');
+        finalCoords = merged.geometry.coordinates[0][0];
+      }
+
+      // Convert [[x,y]...] to [x,y, x,y...]
+      const flatPoints = [];
+      // Calculate bounds to set x,y, width, height
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      
+      finalCoords.forEach(pt => {
+        flatPoints.push(pt[0], pt[1]);
+        minX = Math.min(minX, pt[0]);
+        minY = Math.min(minY, pt[1]);
+        maxX = Math.max(maxX, pt[0]);
+        maxY = Math.max(maxY, pt[1]);
+      });
+
+      // 4. Create new Zone
+      const width = maxX - minX;
+      const height = maxY - minY;
+      
+      // Center of the bounding box
+      const centerX = minX + width / 2;
+      const centerY = minY + height / 2;
+
+      // Create the zone
+      // Note: createZone takes top-left x/y if we look at SectionFactory usually, 
+      // but SectionManager.createZone calls SectionFactory.createZone.
+      // Let's check SectionFactory.createZone signature.
+      // Usually it takes x, y, w, h.
+      // And Section constructor takes x, y.
+      // Section.js: this.x = config.x + config.width / 2;
+      // So config.x should be top-left.
+      
+      const newZone = this.createZone(minX, minY, width, height);
+      
+      // Transform global points to local points relative to top-left (minX, minY)
+      // Since the new zone is unrotated (rotation 0), the local space aligns with global axes.
+      const localPoints = [];
+      for(let i=0; i<flatPoints.length; i+=2) {
+        localPoints.push(flatPoints[i] - minX);
+        localPoints.push(flatPoints[i+1] - minY);
+      }
+      
+      newZone.points = localPoints;
+      newZone.zoneLabel = zones[0].zoneLabel + " +";
+      
+      // 5. Remove old zones
+      // Create a copy of the array because deleteSection modifies State.selectedSections
+      // which 'zones' might be a reference to.
+      [...zones].forEach(z => this.deleteSection(z));
+      
+      // Select the new zone
+      this.deselectAll();
+      this.selectSection(newZone);
+      
+      return newZone;
+
+    } catch (e) {
+      console.error('Error joining zones:', e);
+    }
+  },
 };
 
 /**

@@ -202,7 +202,18 @@ export const SectionInteractionHandler = {
     // Show/hide "Edit Seats" option based on section type
     const editSeatsOption = document.getElementById('contextEditSeats');
     if (editSeatsOption) {
-      editSeatsOption.style.display = section.isGeneralAdmission ? 'none' : 'flex';
+      editSeatsOption.style.display = section.isGeneralAdmission || section.isZone ? 'none' : 'flex';
+    }
+
+    // Show/hide "Join Zones" option
+    const joinZonesOption = document.getElementById('contextJoinZones');
+    if (joinZonesOption) {
+      const canJoin = State.isEditZonesMode && 
+                      section.isZone && 
+                      State.selectedSections.length >= 2 &&
+                      State.selectedSections.every(s => s.isZone);
+      
+      joinZonesOption.style.display = canJoin ? 'flex' : 'none';
     }
     
     // Store the section in State for the context menu actions to use

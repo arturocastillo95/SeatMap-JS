@@ -7,6 +7,7 @@ export const State = {
   world: null,
   gridLayer: null,
   underlayLayer: null,  // Layer for background images
+  zoneLayer: null,      // Layer for zones (below sections)
   sectionLayer: null,
   seatLayer: null,
   sections: [],

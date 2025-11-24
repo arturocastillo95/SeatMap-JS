@@ -173,6 +173,9 @@ export const FileManager = {
         serialized.showZoneLabel = section.showZoneLabel;
         serialized.showZone = section.showZone;
         serialized.fillOpacity = section.fillOpacity;
+        if (section.points) {
+          serialized.points = section.points;
+        }
       }
 
       return serialized;
@@ -509,6 +512,7 @@ export const FileManager = {
         if (data.showZoneLabel !== undefined) section.showZoneLabel = data.showZoneLabel;
         if (data.showZone !== undefined) section.showZone = data.showZone;
         if (data.fillOpacity !== undefined) section.fillOpacity = data.fillOpacity;
+        if (data.points) section.points = data.points;
         
       } else {
         // Create GA section

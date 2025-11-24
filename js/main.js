@@ -17,6 +17,7 @@ async function initializeApp() {
   State.world = new PIXI.Container();
   State.gridLayer = new PIXI.Container();
   State.underlayLayer = new PIXI.Container();
+  State.zoneLayer = new PIXI.Container();
   State.sectionLayer = new PIXI.Container();
   State.seatLayer = new PIXI.Container();
 
@@ -27,10 +28,11 @@ async function initializeApp() {
     background: CONFIG.BACKGROUND,
   });
 
-  // Add layers in correct z-order: grid -> underlay -> sections -> seats
+  // Add layers in correct z-order: grid -> underlay -> zones -> sections -> seats
   State.app.stage.addChild(State.world);
   State.world.addChild(State.gridLayer);
   State.world.addChild(State.underlayLayer);
+  State.world.addChild(State.zoneLayer);
   State.world.addChild(State.sectionLayer);
   State.world.addChild(State.seatLayer);
   
@@ -213,6 +215,19 @@ function setupContextMenu() {
       State.contextMenuSection = null;
     }
   });
+
+  // Join Zones option
+  const joinZonesBtn = document.getElementById('contextJoinZones');
+  if (joinZonesBtn) {
+    joinZonesBtn.addEventListener('click', async () => {
+      if (State.selectedSections.length >= 2) {
+        const { SectionManager } = await import('../src/managers/sectionManager.js');
+        await SectionManager.joinZones(State.selectedSections);
+        Elements.contextMenu.classList.remove('show');
+        State.contextMenuSection = null;
+      }
+    });
+  }
 
   // Duplicate Section option
   const duplicateBtn = document.getElementById('contextDuplicateSection');

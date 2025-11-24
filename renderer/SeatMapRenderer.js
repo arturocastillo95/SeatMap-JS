@@ -620,8 +620,13 @@ export class SeatMapRenderer {
             strokeAlpha = style.strokeVisible === false ? 0 : ((style.opacity ?? 1) * 0.8);
         }
         
-        // Draw Rect
-        graphics.rect(0, 0, width, height);
+        // Draw Shape (Polygon or Rect)
+        if (data.points && data.points.length > 0) {
+            graphics.poly(data.points);
+        } else {
+            graphics.rect(0, 0, width, height);
+        }
+        
         if (fillAlpha > 0) graphics.fill({ color: fillColor, alpha: fillAlpha });
         if (strokeAlpha > 0) graphics.stroke({ width: 2, color: fillColor, alpha: strokeAlpha });
 

@@ -172,6 +172,27 @@ Use the Underlay feature to import venue blueprints or floor plans as background
 - URL-loaded images are converted to Base64 for portability
 - Use CORS-enabled image URLs for external loading
 
+## Edit Zones Mode
+
+**Note:** Edit Zones mode is for managing general areas (Zones) that contain sections.
+
+### Creating Zones
+1. Click **Edit Zones** in the left mode bar.
+2. Click **Create Zone** in the toolbar.
+3. Drag on the canvas to create a rectangular zone.
+
+### Joining Zones
+You can merge multiple zones into a single complex shape (e.g., L-shaped or U-shaped zones).
+
+1. Switch to **Edit Zones** mode.
+2. Create or position two or more zones so they overlap or touch.
+3. Select all the zones you want to merge (Shift+Click or drag selection).
+4. **Right-click** on the selection.
+5. Choose **Join Zones** from the context menu.
+6. The zones will be merged into a single polygon, inheriting the properties (color, label) of the first selected zone.
+
+### Zone Properties
+
 ## Edit Seats Mode
 
 **Note:** Edit Seats mode is only available for regular sections with individual seats. GA sections cannot enter this mode.

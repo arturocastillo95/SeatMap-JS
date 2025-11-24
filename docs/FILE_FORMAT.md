@@ -85,6 +85,9 @@ Each regular section in the `sections` array contains:
     "stretchV": 0
   },
   
+  "isZone": false,
+  "points": [0, 0, 100, 0, 100, 100, 0, 100],
+  
   "rowLabels": {
     "type": "letters",
     "start": "A",
@@ -129,7 +132,18 @@ Each regular section in the `sections` array contains:
 }
 ```
 
-### General Admission (GA) Section
+### Zone Section Fields
+
+Zones are a special type of section used to define areas.
+
+- `isZone`: Boolean, true if the section is a zone.
+- `zoneLabel`: String, the label text displayed in the zone.
+- `showZoneLabel`: Boolean, visibility of the label.
+- `showZone`: Boolean, visibility of the zone graphic.
+- `fillOpacity`: Number (0-1), opacity of the zone fill.
+- `points`: Array of numbers `[x1, y1, x2, y2, ...]` defining the polygon vertices relative to the section's origin. If present, these points are used to render the shape instead of width/height.
+
+### General Admission (GA) Section Fields
 
 GA sections are used for standing areas or general admission zones without individual seats:
 

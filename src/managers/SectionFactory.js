@@ -102,7 +102,11 @@ export const SectionFactory = {
    * @param {Section} section - The section to register
    */
   registerSection(section) {
-    State.sectionLayer.addChild(section);
+    if (section.isZone) {
+      State.zoneLayer.addChild(section);
+    } else {
+      State.sectionLayer.addChild(section);
+    }
     State.sections.push(section);
   },
 
@@ -247,7 +251,11 @@ export const SectionFactory = {
     }
     
     // Remove from stage and destroy
-    State.sectionLayer.removeChild(section);
+    if (section.isZone) {
+      State.zoneLayer.removeChild(section);
+    } else {
+      State.sectionLayer.removeChild(section);
+    }
     section.destroy({ children: true });
     
     console.log(`Deleted section: ${section.sectionId}`);

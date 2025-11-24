@@ -61,6 +61,16 @@ export class Section extends PIXI.Graphics {
         throw new Error('Section color must be a valid hex color number');
       }
     }
+
+    if (config.points !== undefined) {
+      if (!Array.isArray(config.points)) {
+        throw new Error('Points must be an array of numbers');
+      }
+      // Basic check for even number of points (x, y pairs)
+      if (config.points.length % 2 !== 0) {
+        throw new Error('Points array must contain even number of values (x, y pairs)');
+      }
+    }
   }
 
   /**
@@ -83,6 +93,7 @@ export class Section extends PIXI.Graphics {
       this._showZoneLabel = config.showZoneLabel !== undefined ? config.showZoneLabel : true;
       this._showZone = config.showZone !== undefined ? config.showZone : true;
       this._fillOpacity = config.fillOpacity !== undefined ? config.fillOpacity : 0.5;
+      this._points = config.points || null; // Array of [x, y, x, y...]
     }
 
     // Seat colors
@@ -167,7 +178,11 @@ export class Section extends PIXI.Graphics {
       return;
     }
 
-    this.rect(0, 0, this._contentWidth, this._contentHeight);
+    if (this._points && this._points.length > 0) {
+      this.poly(this._points);
+    } else {
+      this.rect(0, 0, this._contentWidth, this._contentHeight);
+    }
     
     // Apply fill only if visible
     if (this._fillVisible) {
@@ -701,6 +716,15 @@ export class Section extends PIXI.Graphics {
     this.redrawGraphics();
   }
 
+  get points() { return this._points; }
+  set points(value) {
+    if (value !== null && (!Array.isArray(value) || value.length % 2 !== 0)) {
+      throw new Error('Points must be an array of numbers (x, y pairs)');
+    }
+    this._points = value;
+    this.redrawGraphics();
+  }
+
   /**
    * Resize the section (for GA sections)
    * @param {number} newWidth - New width
@@ -717,6 +741,18 @@ export class Section extends PIXI.Graphics {
 
     if (typeof newHeight !== 'number' || newHeight <= 0 || !isFinite(newHeight)) {
       throw new Error('New height must be a positive number');
+    }
+
+    // If we have custom points (polygon), we need to scale them
+    if (this._points && this._points.length > 0) {
+      const scaleX = newWidth / this._contentWidth;
+      const scaleY = newHeight / this._contentHeight;
+      
+      // Scale all points
+      for (let i = 0; i < this._points.length; i += 2) {
+        this._points[i] *= scaleX;
+        this._points[i + 1] *= scaleY;
+      }
     }
 
     this._contentWidth = newWidth;
@@ -803,6 +839,9 @@ export class Section extends PIXI.Graphics {
       base.showZoneLabel = this._showZoneLabel;
       base.showZone = this._showZone;
       base.fillOpacity = this._fillOpacity;
+      if (this._points) {
+        base.points = this._points;
+      }
       // Zones don't have seats or capacity
       base.seats = [];
     } else if (this._isGeneralAdmission) {
