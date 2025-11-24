@@ -419,6 +419,13 @@ export const InteractionManager = {
       );
       
       if (intersects && !State.selectedSections.includes(section)) {
+        // Zone Mode Restriction
+        if (State.isEditZonesMode) {
+          if (!section.isZone) return; // Can only select zones in zone mode
+        } else {
+          if (section.isZone) return; // Cannot select zones in other modes
+        }
+
         State.selectedSections.push(section);
         SectionManager.selectSection(section);
       }

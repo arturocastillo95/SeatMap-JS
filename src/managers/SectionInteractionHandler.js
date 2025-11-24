@@ -22,6 +22,14 @@ export const SectionInteractionHandler = {
       
       // Only prepare for drag, don't start it immediately
       if (!State.isDeleteMode && !State.isEditSeatsMode && !State.isCreateMode && !State.isCreateGAMode) {
+        
+        // Zone Mode Restriction
+        if (State.isEditZonesMode) {
+          if (!section.isZone) return; // Can only select zones in zone mode
+        } else {
+          if (section.isZone) return; // Cannot select zones in other modes
+        }
+
         let selectionChanged = false;
         
         // If clicking on a non-selected section, select it first
@@ -62,6 +70,13 @@ export const SectionInteractionHandler = {
     section.on('pointertap', async (e) => {
       e.stopPropagation();
       
+      // Zone Mode Restriction
+      if (State.isEditZonesMode) {
+        if (!section.isZone) return;
+      } else {
+        if (section.isZone) return;
+      }
+
       if (State.isDeleteMode) {
         const { SectionFactory } = await import('./SectionFactory.js');
         SectionFactory.deleteSection(section);
@@ -76,12 +91,27 @@ export const SectionInteractionHandler = {
     
     section.on('rightdown', (e) => {
       e.stopPropagation();
+      
+      // Zone Mode Restriction
+      if (State.isEditZonesMode) {
+        if (!section.isZone) return;
+      } else {
+        if (section.isZone) return;
+      }
+
       if (!State.isDeleteMode && !State.isEditSeatsMode) {
         this.showContextMenu(e.global.x, e.global.y, section);
       }
     });
     
     section.on('pointerover', () => {
+      // Zone Mode Restriction
+      if (State.isEditZonesMode) {
+        if (!section.isZone) return;
+      } else {
+        if (section.isZone) return;
+      }
+
       if (!State.isDeleteMode && !State.isEditSeatsMode) {
         Utils.showTooltip(section.sectionId);
       }

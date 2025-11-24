@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Edit Zones Mode** - Dedicated mode for managing zones
+  - New "Edit Zones" button in the sidebar
+  - Restricts selection to only zones when active
+  - Prevents selection of zones in other modes (Schema, Edit Seats)
+  - Dims non-zone sections for better visibility
+  - Shows only Zone creation tool in toolbar
+- **Updated Row Label Logic** - Changed letter sequence behavior
+  - Previous: A-Z, AA, AB, AC...
+  - New: A-Z, AA, BB, CC... (repeating characters)
+  - Consistent with common venue labeling standards
+
+### Fixed
+- **Renderer Special Needs Icons** - Improved visibility and rendering
+  - Icons are now always visible (not just on hover)
+  - Fixed font weight mismatch (300 vs 400) causing text fallback
+  - Added font loading check to ensure icons render correctly
+  - Adjusted icon scale to fit renderer seat size
+
+### Added
 - **Row Label Color Customization** - Control the color of row labels per section
   - Color picker and hex input in Row Labels accordion
   - Real-time visual updates when changing colors

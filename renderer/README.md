@@ -14,7 +14,7 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ Display seats with correct positions and transformations
 - ✅ Show row labels (letters/numbers)
 - ✅ Display underlay images (backgrounds/blueprints)
-- ✅ Special needs seat visualization (wheelchair accessible)
+- ✅ Special needs seat visualization (wheelchair accessible) - Always visible with high-contrast icon
 - ✅ Section colors and styling
 - ✅ Glow effects on seats
 - ✅ Pan and zoom viewport controls

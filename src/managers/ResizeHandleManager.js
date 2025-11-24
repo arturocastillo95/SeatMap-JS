@@ -191,9 +191,19 @@ export const ResizeHandleManager = {
       }
       
       // Snap dimensions to grid
-      const snappedDims = Utils.calculateSeatDimensions(newWidth, newHeight);
-      const snappedWidth = snappedDims.snappedWidth;
-      const snappedHeight = snappedDims.snappedHeight;
+      let snappedWidth, snappedHeight;
+      
+      if (section.isZone) {
+        // For zones, scale freely (no snapping to seat grid)
+        // Just ensure minimum dimensions
+        snappedWidth = Math.max(50, newWidth);
+        snappedHeight = Math.max(50, newHeight);
+      } else {
+        // For GA sections, snap to seat grid
+        const snappedDims = Utils.calculateSeatDimensions(newWidth, newHeight);
+        snappedWidth = snappedDims.snappedWidth;
+        snappedHeight = snappedDims.snappedHeight;
+      }
       
       // Recalculate position based on snapped dimensions
       // We need to keep the opposite corner fixed when resizing

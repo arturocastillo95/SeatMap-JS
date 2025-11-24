@@ -8,7 +8,7 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 - **General Admission (GA) Sections**: Create standing/GA areas without individual seats, with capacity control and interactive resize handles
 - **Edit Seats Mode**: Select and delete individual seats with drag-to-select functionality
 - **Multi-Section Alignment**: Align and distribute multiple sections with intelligent collision prevention
-- **Advanced Labeling**: Customize row labels (A-Z, AA-ZZ, numbers) with custom starting points, reverse ordering, and hidden mode for viewer use
+- **Advanced Labeling**: Customize row labels (A-Z, AA-ZZ, numbers) with custom starting points, reverse ordering, and hidden mode for viewer use. Letter labels now follow the pattern A-Z, AA-ZZ, AAA-ZZZ (repeating characters).
 - **Smart Seat Numbering**: Configure seat numbering with custom start values and direction control
 - **Row Alignment with Gap Preservation**: Align rows while maintaining original spacing from deleted seats
 - **Section Transformations**: Rotate, curve, and stretch sections with live preview
@@ -79,6 +79,7 @@ venue-map-js/
 
 ### App Modes
 - **Edit Layout (Schema)**: Create, move, and transform sections (default mode)
+- **Edit Zones**: Create and manage zones (areas containing sections) without interference from other elements
 - **Edit Seats**: Select and delete individual seats within a section
 - **Pricing**: Configure ticket pricing with base prices and service fees per section
 - More modes planned: Underlay, Venue Shape

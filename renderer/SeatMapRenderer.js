@@ -9,7 +9,7 @@ export class SeatMapRenderer {
     static CONFIG = {
         PADDING: 0,               // Padding around the map when fitting to view
         MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
-        MAX_ZOOM: 5,              // Maximum zoom level
+        MAX_ZOOM: 3.5,              // Maximum zoom level
         ZOOM_SPEED: 1.1,          // Zoom speed multiplier
         BACKGROUND_COLOR: 0x0f0f13,
         SECTION_ZOOM_PADDING: 50, // Padding when zooming to a section
@@ -37,6 +37,7 @@ export class SeatMapRenderer {
             backgroundColor: SeatMapRenderer.CONFIG.BACKGROUND_COLOR,
             backgroundAlpha: 1,
             resizeTo: container,
+
             antialias: true,
             resolution: window.devicePixelRatio || 1,
             autoDensity: true,
@@ -102,6 +103,13 @@ export class SeatMapRenderer {
             // Handle window resize
             window.addEventListener('resize', this.resizeHandler);
             
+            // Wait for Material Symbols font to load (weight 300 as specified in HTML)
+            try {
+                await document.fonts.load("300 14px 'Material Symbols Outlined'");
+            } catch (e) {
+                console.warn("Failed to load icon font:", e);
+            }
+
             this.isInitialized = true;
         } catch (error) {
             console.error('Failed to initialize SeatMapRenderer:', error);
@@ -862,15 +870,26 @@ export class SeatMapRenderer {
                     labelText = 'accessible_forward'; // Material Symbol name
                     fontStyle.fontFamily = 'Material Symbols Outlined';
                     fontStyle.fontSize = 14;
-                    fontStyle.fontWeight = 'normal';
+                    fontStyle.fontWeight = '300'; // Match the loaded weight
                     fontStyle.fill = 0xffffff; // White icon on blue background
                 }
 
                 const text = new PIXI.Text({ text: labelText, style: fontStyle });
                 text.anchor.set(0.5);
-                // Initially hidden and small
-                text.alpha = 0;
-                text.scale.set(0.5);
+                
+                // Initial visibility state
+                if (seatData.specialNeeds) {
+                    // Special needs icon always visible
+                    text.alpha = 1;
+                    // Scale down slightly to fit the smaller seats in renderer (radius 6 vs 10 in editor)
+                    // 14px font on 12px diameter seat needs scaling
+                    text.scale.set(0.7); 
+                } else {
+                    // Regular labels hidden until hover
+                    text.alpha = 0;
+                    text.scale.set(0.5);
+                }
+                
                 seatContainer.addChild(text);
                 seatContainer.text = text; // Reference for animation
 
@@ -900,8 +919,9 @@ export class SeatMapRenderer {
 
                 // Animation state
                 seatContainer.targetScale = 1;
-                seatContainer.targetTextAlpha = 0;
-                seatContainer.targetTextScale = 0.5;
+                // Default target state depends on special needs
+                seatContainer.targetTextAlpha = seatData.specialNeeds ? 1 : 0;
+                seatContainer.targetTextScale = seatData.specialNeeds ? 0.7 : 0.5;
 
                 seatContainer.on('pointerover', () => {
                     if (this.state.isDragging) return;
@@ -938,8 +958,9 @@ export class SeatMapRenderer {
                     // Only revert if not selected
                     if (!seatContainer.selected) {
                         seatContainer.targetScale = 1;
-                        seatContainer.targetTextAlpha = 0;
-                        seatContainer.targetTextScale = 0.5;
+                        // Revert to default state (visible for special needs, hidden for others)
+                        seatContainer.targetTextAlpha = seatData.specialNeeds ? 1 : 0;
+                        seatContainer.targetTextScale = seatData.specialNeeds ? 0.7 : 0.5;
                         this.animatingSeats.add(seatContainer);
                     }
                 });

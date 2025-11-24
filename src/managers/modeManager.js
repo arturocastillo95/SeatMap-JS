@@ -9,6 +9,7 @@ export const ModeManager = {
   init() {
     this.setupModeButtons();
     this.updateModeButtonStates();
+    this.updateToolVisibility('schema'); // Set initial tool visibility
     
     // Listen for selection changes to update button states
     document.addEventListener('selectionchanged', () => {
@@ -88,9 +89,21 @@ export const ModeManager = {
       this.hidePricingSidebar();
       this.hideUnderlaySidebar();
       this.disableUnderlayInteractions();
+    } else if (mode === 'zones') {
+      if (previousMode === 'seats') {
+        this.exitEditSeatsMode();
+      }
+      this.enterEditZonesMode();
+      this.hideSeatSidebar();
+      this.hidePricingSidebar();
+      this.hideUnderlaySidebar();
+      this.disableUnderlayInteractions();
     } else if (mode === 'pricing') {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
+      }
+      if (previousMode === 'zones') {
+        this.exitEditZonesMode();
       }
       this.hideSeatSidebar();
       this.showPricingSidebar();
@@ -99,6 +112,9 @@ export const ModeManager = {
     } else if (mode === 'underlay') {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
+      }
+      if (previousMode === 'zones') {
+        this.exitEditZonesMode();
       }
       this.hideSeatSidebar();
       if (previousMode === 'pricing') {
@@ -110,6 +126,9 @@ export const ModeManager = {
       if (previousMode === 'seats') {
         this.exitEditSeatsMode();
       }
+      if (previousMode === 'zones') {
+        this.exitEditZonesMode();
+      }
       this.hideSeatSidebar();
       if (previousMode === 'pricing') {
         this.hidePricingSidebar();
@@ -118,9 +137,93 @@ export const ModeManager = {
         this.hideUnderlaySidebar();
         this.disableUnderlayInteractions();
       }
+      
+      // Restore tools for schema mode
+      this.updateToolVisibility('schema');
     }
     
     console.log(`Switched to mode: ${mode}`);
+  },
+  
+  enterEditZonesMode() {
+    State.isEditZonesMode = true;
+    
+    // Turn off other creation tools if active
+    if (State.isCreateMode || State.isCreateGAMode) {
+      State.isCreateMode = false;
+      State.isCreateGAMode = false;
+      document.getElementById('createSectionBtn')?.classList.remove('active');
+      document.getElementById('createGABtn')?.classList.remove('active');
+      State.app.stage.cursor = 'default';
+    }
+
+    // Deselect any non-zone sections
+    const nonZoneSelections = State.selectedSections.filter(s => !s.isZone);
+    if (nonZoneSelections.length > 0) {
+      // We need to import SectionInteractionHandler to deselect properly
+      // But to avoid circular deps, we might just clear the array and update visuals manually
+      // Or dispatch an event.
+      // Let's just clear selection for now and let the user select zones.
+      State.selectedSections = [];
+      document.dispatchEvent(new CustomEvent('selectionchanged'));
+    }
+    
+    // Dim all non-zone sections
+    State.sections.forEach(section => {
+      if (!section.isZone) {
+        section.alpha = VISUAL_CONFIG.SECTION.DIMMED_ALPHA;
+        section.eventMode = 'none'; // Disable interactions
+      } else {
+        section.alpha = 1.0;
+        section.eventMode = 'static'; // Ensure zones are interactive
+      }
+    });
+    
+    this.updateToolVisibility('zones');
+    console.log('✓ Entered Edit Zones mode');
+  },
+
+  exitEditZonesMode() {
+    State.isEditZonesMode = false;
+    
+    // Turn off zone creation tool if active
+    if (State.isCreateZoneMode) {
+      State.isCreateZoneMode = false;
+      const createZoneBtn = document.getElementById('createZoneBtn');
+      if (createZoneBtn) {
+        createZoneBtn.classList.remove('active');
+        // We can't easily access ToolManager.updateButtonLabel here without import
+        // But we can manually set text content if needed, or just rely on class removal
+        const label = createZoneBtn.querySelector('.tool-label');
+        if (label) label.textContent = 'Zone';
+      }
+      State.app.stage.cursor = 'default';
+    }
+
+    // Restore all sections to normal state
+    State.sections.forEach(section => {
+      section.alpha = 1.0;
+      section.eventMode = 'static';
+    });
+    
+    console.log('✓ Exited Edit Zones mode');
+  },
+
+  updateToolVisibility(mode) {
+    const createSectionBtn = document.getElementById('createSectionBtn');
+    const createGABtn = document.getElementById('createGABtn');
+    const createZoneBtn = document.getElementById('createZoneBtn');
+    
+    if (mode === 'zones') {
+      if (createSectionBtn) createSectionBtn.style.display = 'none';
+      if (createGABtn) createGABtn.style.display = 'none';
+      if (createZoneBtn) createZoneBtn.style.display = 'flex';
+    } else {
+      // Schema mode (default)
+      if (createSectionBtn) createSectionBtn.style.display = 'flex';
+      if (createGABtn) createGABtn.style.display = 'flex';
+      if (createZoneBtn) createZoneBtn.style.display = 'none';
+    }
   },
   
   enterEditSeatsMode() {

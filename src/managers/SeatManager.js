@@ -361,11 +361,15 @@ export const SeatManager = {
       let labelIndex = index + offset;
       let label = '';
       
-      // Handle multi-letter labels (A-Z, then AA, AB, etc.)
-      while (labelIndex >= 0) {
-        label = String.fromCharCode(65 + (labelIndex % 26)) + label;
-        labelIndex = Math.floor(labelIndex / 26) - 1;
-      }
+      // Handle multi-letter labels (A-Z, then AA, BB, CC, etc.)
+      // Calculate how many times to repeat the letter
+      const repeatCount = Math.floor(labelIndex / 26) + 1;
+      // Calculate which letter to use (0=A, 1=B, etc.)
+      const charCode = 65 + (labelIndex % 26);
+      const char = String.fromCharCode(charCode);
+      
+      // Repeat the character
+      label = char.repeat(repeatCount);
       
       return label;
     }

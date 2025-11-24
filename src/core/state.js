@@ -25,10 +25,11 @@ export const State = {
   wasSpacePressed: false,
   
   // App modes
-  currentMode: 'schema',  // 'schema' | 'seats' | 'underlay' | 'venue-shape' | 'pricing'
+  currentMode: 'schema',  // 'schema' | 'seats' | 'underlay' | 'venue-shape' | 'pricing' | 'zones'
   
   // Seat editing
   isEditSeatsMode: false,
+  isEditZonesMode: false,
   selectedSeats: [],
   activeSectionForSeats: null,
   seatSelectionStart: null,

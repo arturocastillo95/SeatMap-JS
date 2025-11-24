@@ -76,7 +76,7 @@ export const FileManager = {
   serializeSection(section) {
     // Handle GA sections differently
     if (section.isGeneralAdmission) {
-      return {
+      const serialized = {
         // Identity
         id: section.sectionId,
         name: section.sectionId,
@@ -166,6 +166,16 @@ export const FileManager = {
         // Extensible metadata
         metadata: {}
       };
+
+      if (section.isZone) {
+        serialized.isZone = true;
+        serialized.zoneLabel = section.zoneLabel;
+        serialized.showZoneLabel = section.showZoneLabel;
+        serialized.showZone = section.showZone;
+        serialized.fillOpacity = section.fillOpacity;
+      }
+
+      return serialized;
     }
     
     // Regular section with seats
