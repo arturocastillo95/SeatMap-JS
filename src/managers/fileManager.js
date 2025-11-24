@@ -16,7 +16,7 @@ export const FileManager = {
     const mapData = {
       // Format metadata
       format: "SMF",
-      version: "2.0.0",
+      version: "2.1.0",
       created: timestamp,
       modified: timestamp,
       
@@ -39,7 +39,7 @@ export const FileManager = {
       
       // Underlay image (background)
       underlay: State.underlayData ? {
-        dataUrl: State.underlayData,
+        dataUrl: State.underlaySourceUrl ? null : State.underlayData,
         fileName: State.underlayFileName,
         sourceUrl: State.underlaySourceUrl || null,
         x: State.underlayX,
@@ -338,21 +338,37 @@ export const FileManager = {
           seat.id = Utils.generateShortId();
         }
 
-        return {
+        // Optimized seat object (Sparse Object)
+        const seatData = {
           id: seat.id,
-          rowIndex: seat.rowIndex,
-          colIndex: seat.colIndex,
-          number: seat.seatLabel ? seat.seatLabel.text : (seat.children[2] instanceof PIXI.Text ? seat.children[2].text : (seat.colIndex + 1).toString()),
-          specialNeeds: seat.specialNeeds || false,
-          isManualNumber: seat.isManualNumber || false,
-          // Save transformed position relative to section center
-          relativeX: seat.relativeX !== undefined ? seat.relativeX : seat.x,
-          relativeY: seat.relativeY !== undefined ? seat.relativeY : seat.y,
-          // Save base position (grid position)
-          baseX: seat.baseRelativeX,
-          baseY: seat.baseRelativeY,
-          metadata: {}
+          r: seat.rowIndex,
+          c: seat.colIndex,
+          n: seat.seatLabel ? seat.seatLabel.text : (seat.children[2] instanceof PIXI.Text ? seat.children[2].text : (seat.colIndex + 1).toString()),
+          x: seat.relativeX !== undefined ? seat.relativeX : seat.x,
+          y: seat.relativeY !== undefined ? seat.relativeY : seat.y
         };
+
+        // Optional fields - only add if true/present
+        if (seat.specialNeeds) seatData.sn = true;
+        if (seat.isManualNumber) seatData.mn = true;
+        
+        // Base coordinates - only if different from relative (transformed)
+        const baseX = seat.baseRelativeX;
+        const baseY = seat.baseRelativeY;
+        
+        if (baseX !== undefined && Math.abs(baseX - seatData.x) > 0.01) {
+            seatData.bx = baseX;
+        }
+        if (baseY !== undefined && Math.abs(baseY - seatData.y) > 0.01) {
+            seatData.by = baseY;
+        }
+        
+        // Metadata
+        if (seat.metadata && Object.keys(seat.metadata).length > 0) {
+            seatData.m = seat.metadata;
+        }
+
+        return seatData;
       }),
       
       // Visual styling
@@ -571,7 +587,7 @@ export const FileManager = {
     
     // Regular section with seats
     // Determine if this is v2.0.0 format with individual seat data
-    const hasIndividualSeats = Array.isArray(data.seats) && data.seats.length > 0 && data.seats[0].rowIndex !== undefined;
+    const hasIndividualSeats = Array.isArray(data.seats) && data.seats.length > 0 && (data.seats[0].rowIndex !== undefined || data.seats[0].r !== undefined);
     
     // Create section with base dimensions
     const section = SectionManager.createSection(
@@ -708,12 +724,16 @@ export const FileManager = {
     // Handle deleted seats and restore special needs status (v2.0.0+)
     if (hasIndividualSeats) {
       // Create a map of seat data for fast lookup
-      const seatDataMap = new Map(data.seats.map(s => [`${s.rowIndex},${s.colIndex}`, s]));
+      const seatDataMap = new Map(data.seats.map(s => {
+          const r = s.r !== undefined ? s.r : s.rowIndex;
+          const c = s.c !== undefined ? s.c : s.colIndex;
+          return [`${r},${c}`, s];
+      }));
       
       // Import SeatManager once for efficiency
       const { SeatManager } = await import('./SeatManager.js');
       
-      // Remove deleted seats and restore specialNeeds property
+      // Remove deleted seats and restore special needs status
       const keptSeats = [];
       for (const seat of section.seats) {
         const key = `${seat.rowIndex},${seat.colIndex}`;
@@ -725,40 +745,60 @@ export const FileManager = {
           seat.destroy();
         } else {
           // Restore seat positions from saved data
-          if (seatData.baseX !== undefined) {
-            seat.baseRelativeX = seatData.baseX;
+          // Handle both legacy (baseX) and optimized (bx) keys
+          const bx = seatData.bx !== undefined ? seatData.bx : seatData.baseX;
+          const by = seatData.by !== undefined ? seatData.by : seatData.baseY;
+          
+          // Handle both legacy (relativeX) and optimized (x) keys
+          const rx = seatData.x !== undefined ? seatData.x : seatData.relativeX;
+          const ry = seatData.y !== undefined ? seatData.y : seatData.relativeY;
+
+          if (bx !== undefined) {
+            seat.baseRelativeX = bx;
           }
-          if (seatData.baseY !== undefined) {
-            seat.baseRelativeY = seatData.baseY;
+          if (by !== undefined) {
+            seat.baseRelativeY = by;
           }
           
           // Restore transformed positions if available (v2.0.0+)
-          if (seatData.relativeX !== undefined) {
-            seat.relativeX = seatData.relativeX;
-          } else if (seatData.baseX !== undefined) {
+          if (rx !== undefined) {
+            seat.relativeX = rx;
+          } else if (bx !== undefined) {
             // Fallback for older files without relativeX/Y
-            seat.relativeX = seatData.baseX;
+            seat.relativeX = bx;
           }
           
-          if (seatData.relativeY !== undefined) {
-            seat.relativeY = seatData.relativeY;
-          } else if (seatData.baseY !== undefined) {
+          if (ry !== undefined) {
+            seat.relativeY = ry;
+          } else if (by !== undefined) {
             // Fallback for older files without relativeX/Y
-            seat.relativeY = seatData.baseY;
+            seat.relativeY = by;
+          }
+          
+          // If base coords were omitted in optimized format (because they matched relative),
+          // restore them from relative
+          if (seat.baseRelativeX === undefined && seat.relativeX !== undefined) {
+             seat.baseRelativeX = seat.relativeX;
+          }
+          if (seat.baseRelativeY === undefined && seat.relativeY !== undefined) {
+             seat.baseRelativeY = seat.relativeY;
           }
           
           // Restore seat number if available
-          if (seatData.number !== undefined) {
+          // Handle legacy (number) and optimized (n)
+          const number = seatData.n !== undefined ? seatData.n : seatData.number;
+          if (number !== undefined) {
             if (seat.seatLabel) {
-              seat.seatLabel.text = seatData.number;
+              seat.seatLabel.text = number;
             } else if (seat.children[2] instanceof PIXI.Text) {
-              seat.children[2].text = seatData.number;
+              seat.children[2].text = number;
             }
-            seat.seatNumber = seatData.number;
+            seat.seatNumber = number;
           }
 
           // Restore manual number flag
-          if (seatData.isManualNumber) {
+          // Handle legacy (isManualNumber) and optimized (mn)
+          if (seatData.mn || seatData.isManualNumber) {
             seat.isManualNumber = true;
           }
 
@@ -768,9 +808,18 @@ export const FileManager = {
           }
           
           // Restore special needs status
-          if (seatData.specialNeeds) {
+          // Handle legacy (specialNeeds) and optimized (sn)
+          if (seatData.sn || seatData.specialNeeds) {
             SeatManager.setSpecialNeeds(seat, true);
           }
+          
+          // Restore metadata
+          if (seatData.m) {
+             seat.metadata = seatData.m;
+          } else if (seatData.metadata) {
+             seat.metadata = seatData.metadata;
+          }
+
           keptSeats.push(seat);
         }
       }

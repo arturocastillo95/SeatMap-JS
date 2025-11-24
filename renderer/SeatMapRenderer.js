@@ -570,10 +570,11 @@ export class SeatMapRenderer {
      * @private
      */
     async renderUnderlay(underlayData) {
-        if (!underlayData.dataUrl) return;
+        if (!underlayData.dataUrl && !underlayData.sourceUrl) return;
 
         try {
-            const texture = await PIXI.Assets.load(underlayData.dataUrl);
+            const urlToLoad = underlayData.sourceUrl || underlayData.dataUrl;
+            const texture = await PIXI.Assets.load(urlToLoad);
             const sprite = new PIXI.Sprite(texture);
             
             sprite.x = underlayData.x || 0;
@@ -791,7 +792,8 @@ export class SeatMapRenderer {
         if (data.seats) {
             const rows = {};
             data.seats.forEach(seat => {
-                if (!rows[seat.rowIndex]) rows[seat.rowIndex] = true;
+                const r = seat.r !== undefined ? seat.r : seat.rowIndex;
+                if (r !== undefined) rows[r] = true;
             });
             const rowIndices = Object.keys(rows).map(Number).sort((a, b) => a - b);
             const config = data.rowLabels || { type: 'numbers' }; // Default to numbers if missing
@@ -819,8 +821,9 @@ export class SeatMapRenderer {
                 
                 // Position
                 // Use relativeX/Y if available (v2.0+), otherwise baseX/Y
-                let x = seatData.relativeX ?? seatData.baseX;
-                let y = seatData.relativeY ?? seatData.baseY;
+                // Support optimized keys x, y
+                let x = seatData.x ?? seatData.relativeX ?? seatData.baseX;
+                let y = seatData.y ?? seatData.relativeY ?? seatData.baseY;
                 
                 // Apply layout shift (for row labels)
                 x += layoutShiftX;
@@ -845,8 +848,11 @@ export class SeatMapRenderer {
                     seatContainer.addChild(glowGraphics);
                 }
 
+                // Determine special needs status early for styling
+                const isSpecial = seatData.sn || seatData.specialNeeds;
+
                 // Seat Sprite (Optimized)
-                const seatColor = seatData.specialNeeds ? 0x2563eb : defaultSeatColor;
+                const seatColor = isSpecial ? 0x2563eb : defaultSeatColor;
                 const texture = this.createSeatTexture(
                     SeatMapRenderer.CONFIG.SEAT_RADIUS, 
                     seatColor, 
@@ -861,7 +867,7 @@ export class SeatMapRenderer {
                 seatContainer.addChild(seatSprite);
 
                 // Seat Label/Icon
-                let labelText = seatData.number || "";
+                let labelText = seatData.n ?? seatData.number ?? "";
                 
                 let fontStyle = {
                     fontFamily: 'system-ui, sans-serif',
@@ -871,7 +877,7 @@ export class SeatMapRenderer {
                     align: 'center'
                 };
 
-                if (seatData.specialNeeds) {
+                if (isSpecial) {
                     labelText = 'accessible_forward'; // Material Symbol name
                     fontStyle.fontFamily = 'Material Symbols Outlined';
                     fontStyle.fontSize = 14;
@@ -883,7 +889,7 @@ export class SeatMapRenderer {
                 text.anchor.set(0.5);
                 
                 // Initial visibility state
-                if (seatData.specialNeeds) {
+                if (isSpecial) {
                     // Special needs icon always visible
                     text.alpha = 1;
                     // Scale down slightly to fit the smaller seats in renderer (radius 6 vs 10 in editor)
@@ -909,24 +915,26 @@ export class SeatMapRenderer {
                 seatContainer.originalLabel = labelText;
                 
                 // Store colors for tooltip
-                seatContainer.seatColor = seatData.specialNeeds ? 0x2563eb : defaultSeatColor;
-                seatContainer.seatTextColor = seatData.specialNeeds ? 0xffffff : defaultTextColor;
+                seatContainer.seatColor = isSpecial ? 0x2563eb : defaultSeatColor;
+                seatContainer.seatTextColor = isSpecial ? 0xffffff : defaultTextColor;
                 
                 // Store section pricing for fallback
                 seatContainer.sectionPricing = data.pricing;
 
                 // Generate Key for Inventory Lookup
-                const rowLabel = rowLabelMap[seatData.rowIndex] || "";
+                const r = seatData.r !== undefined ? seatData.r : seatData.rowIndex;
+                const rowLabel = rowLabelMap[r] || "";
+                const seatNum = seatData.n ?? seatData.number;
                 // Key format: SectionName;;RowLabel;;SeatNumber
-                const key = `${data.name};;${rowLabel};;${seatData.number}`;
+                const key = `${data.name};;${rowLabel};;${seatNum}`;
                 seatContainer.key = key;
                 this.seatsByKey[key] = seatContainer;
 
                 // Animation state
                 seatContainer.targetScale = 1;
                 // Default target state depends on special needs
-                seatContainer.targetTextAlpha = seatData.specialNeeds ? 1 : 0;
-                seatContainer.targetTextScale = seatData.specialNeeds ? 0.7 : 0.5;
+                seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
+                seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
 
                 seatContainer.on('pointerover', () => {
                     if (this.state.isDragging) return;
@@ -964,8 +972,8 @@ export class SeatMapRenderer {
                     if (!seatContainer.selected) {
                         seatContainer.targetScale = 1;
                         // Revert to default state (visible for special needs, hidden for others)
-                        seatContainer.targetTextAlpha = seatData.specialNeeds ? 1 : 0;
-                        seatContainer.targetTextScale = seatData.specialNeeds ? 0.7 : 0.5;
+                        seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
+                        seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
                         this.animatingSeats.add(seatContainer);
                     }
                 });
@@ -1022,8 +1030,9 @@ export class SeatMapRenderer {
         // Group seats by row index
         const rows = {};
         seats.forEach(seat => {
-            if (!rows[seat.rowIndex]) rows[seat.rowIndex] = [];
-            rows[seat.rowIndex].push(seat);
+            const r = seat.r !== undefined ? seat.r : seat.rowIndex;
+            if (!rows[r]) rows[r] = [];
+            rows[r].push(seat);
         });
 
         const rowIndices = Object.keys(rows).map(Number).sort((a, b) => a - b);
@@ -1034,8 +1043,8 @@ export class SeatMapRenderer {
             const rowSeats = rows[rowIndex];
             // Sort by x position
             rowSeats.sort((a, b) => {
-                const ax = a.relativeX ?? a.baseX;
-                const bx = b.relativeX ?? b.baseX;
+                const ax = a.x ?? a.relativeX ?? a.baseX;
+                const bx = b.x ?? b.relativeX ?? b.baseX;
                 return ax - bx;
             });
 
@@ -1047,11 +1056,11 @@ export class SeatMapRenderer {
             const firstSeat = rowSeats[0];
             const lastSeat = rowSeats[rowSeats.length - 1];
             
-            let firstX = firstSeat.relativeX ?? firstSeat.baseX;
-            let firstY = firstSeat.relativeY ?? firstSeat.baseY;
+            let firstX = firstSeat.x ?? firstSeat.relativeX ?? firstSeat.baseX;
+            let firstY = firstSeat.y ?? firstSeat.relativeY ?? firstSeat.baseY;
             
-            let lastX = lastSeat.relativeX ?? lastSeat.baseX;
-            let lastY = lastSeat.relativeY ?? lastSeat.baseY;
+            let lastX = lastSeat.x ?? lastSeat.relativeX ?? lastSeat.baseX;
+            let lastY = lastSeat.y ?? lastSeat.relativeY ?? lastSeat.baseY;
             
             // Apply layout shift
             firstX += layoutShiftX;
@@ -1291,7 +1300,7 @@ export class SeatMapRenderer {
         const content = {
             section: sectionName,
             row: rowLabel,
-            seat: seatData.number,
+            seat: seatData.n ?? seatData.number,
             price: price,
             category: category
         };
@@ -1356,7 +1365,13 @@ export class SeatMapRenderer {
             seatContainer.targetScale = SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER / SeatMapRenderer.CONFIG.SEAT_RADIUS;
             seatContainer.targetTextAlpha = 1;
             seatContainer.targetTextScale = 1;
-            seatContainer.text.text = seatContainer.originalLabel;
+            
+            // Restore original label (icon for special needs, number for others)
+            if (seatContainer.seatData.sn || seatContainer.seatData.specialNeeds) {
+                seatContainer.text.text = 'accessible_forward';
+            } else {
+                seatContainer.text.text = seatContainer.originalLabel;
+            }
         }
         
         // Bring to front
@@ -1392,7 +1407,7 @@ export class SeatMapRenderer {
                 id: data.id,
                 key: container.key,
                 price: price,
-                special: data.special || null
+                special: data.sn || data.specialNeeds || data.special || null
             };
         });
 

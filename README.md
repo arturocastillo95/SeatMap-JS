@@ -17,7 +17,7 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 - **Section Colors**: Customize background and border colors per section with color picker and hex input
 - **Pricing Management**: Set base prices and service fees (fixed amount or percentage) per section
 - **Context Menu**: Right-click sections for quick access to Edit Seats and Delete options
-- **Save & Load**: Export/import venue maps in SMF (Seat Map Format) v2.0.0 with GA section support and backward compatibility
+- **Save & Load**: Export/import venue maps in SMF (Seat Map Format) v2.1.0 with sparse object optimization for smaller file sizes
 - **Collision Detection**: Smooth dragging with automatic edge-sliding and post-alignment separation accounting for rotated sections and resized GA areas
 - **Pan & Zoom**: Space+drag to pan, scroll to zoom, zoom-to-fit with intelligent bounds calculation
 

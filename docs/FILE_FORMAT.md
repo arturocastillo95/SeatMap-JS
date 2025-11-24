@@ -31,7 +31,8 @@ SeatMap JS uses a JSON-based file format called SMF (Seat Map Format) for saving
   },
   
   "underlay": {
-    "dataUrl": "data:image/png;base64,...",
+    "dataUrl": null,
+    "sourceUrl": "https://example.com/blueprint.png",
     "fileName": "blueprint.png",
     "x": 0,
     "y": 0,
@@ -107,13 +108,12 @@ Each regular section in the `sections` array contains:
   
   "seats": [
     {
-      "rowIndex": 0,
-      "colIndex": 0,
-      "number": "1",
-      "baseX": 10,
-      "baseY": 10,
-      "specialNeeds": false,
-      "metadata": {}
+      "r": 0,
+      "c": 0,
+      "n": "1",
+      "x": 10,
+      "y": 10,
+      "sn": 1
     }
   ],
   
@@ -241,9 +241,9 @@ The optional `underlay` object contains background image data:
 
 ### Underlay Fields
 
-- `dataUrl`: Base64-encoded image data URL (supports PNG, SVG, JPG)
+- `dataUrl`: Base64-encoded image data URL. Can be `null` if `sourceUrl` is provided.
 - `fileName`: Original filename for reference
-- `sourceUrl`: Optional original URL if loaded from external source (can be `null`)
+- `sourceUrl`: URL to the image source. If present, `dataUrl` may be omitted to save space.
 - `x`, `y`: Top-left position coordinates in world space
 - `centerX`, `centerY`: Exact center position for pixel-perfect positioning (v2.0.0+)
 - `scale`: Scale factor (0.1 to 5.0, where 1.0 is 100%)
@@ -356,16 +356,26 @@ Initial format with basic section, transformation, and styling support.
 
 ### Individual Seat Data (Regular Sections Only)
 
-Each seat object contains:
+**Optimized Sparse Format (v2.1.0+):**
+To reduce file size, seat objects use short keys and omit default values:
+- `r`: Row Index (integer)
+- `c`: Column Index (integer)
+- `n`: Seat Number (string)
+- `x`: Base X Position (integer)
+- `y`: Base Y Position (integer)
+- `sn`: Special Needs (1 if true, omitted if false)
+- `mn`: Manual Number (1 if true, omitted if false)
+- `id`: Unique Seat ID (string, 8 chars)
+
+**Legacy Format (v2.0.0):**
 - `rowIndex`: 0-based row index
 - `colIndex`: 0-based column index
-- `number`: Display number as string (preserved exactly as shown, critical for deleted seats)
-- `baseX`, `baseY`: Base position relative to section (before transformations)
-- `relativeX`, `relativeY`: Current position with transformations applied (v2.0.0+)
-- `specialNeeds`: Boolean indicating wheelchair-accessible seat (default: false)
-- `metadata`: Extensible custom data
+- `number`: Display number as string
+- `baseX`, `baseY`: Base position relative to section
+- `specialNeeds`: Boolean
+- `metadata`: Custom data
 
-**Note:** The `baseX/baseY` store untransformed positions for editing, while `relativeX/relativeY` store the final transformed positions (including row alignment, curve, stretch) for accurate restoration.
+**Note:** The renderer supports both formats for backward compatibility.
 
 **Important:** The `number` field preserves the exact seat numbering, which is critical when seats have been deleted. For example, if seats 1, 2, and 5 remain after deleting 3 and 4, the numbers "1", "2", "5" are preserved exactly. Do not recalculate seat numbers from position - always restore from saved data.
 

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Optimized
+- **Sparse Map Format (SMF) Optimization** - Reduced JSON file size by ~50%
+  - Implemented sparse object keys for seats (`r`, `c`, `n`, `x`, `y` instead of full names)
+  - Omitted default values (e.g., `specialNeeds: false`) to save space
+  - Updated renderer to support both legacy (v2.0) and optimized (v2.1) formats
+- **Underlay Image Referencing** - Optimized storage for external images
+  - When an underlay is loaded from a URL, the JSON now stores the `sourceUrl` reference instead of embedding the full Base64 data
+  - Significantly reduces file size for maps using high-resolution background images hosted externally
+  - Automatically falls back to embedding if no source URL is present
+
 ### Added
 - **Join Zones** - Merge multiple zones into a single complex polygon
   - Select multiple zones in "Edit Zones" mode

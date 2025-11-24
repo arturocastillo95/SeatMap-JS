@@ -302,13 +302,14 @@ export const UnderlayManager = {
    * @param {object} data - Saved underlay data
    */
   async restore(data) {
-    if (!data || !data.dataUrl) {
+    if (!data || (!data.dataUrl && !data.sourceUrl)) {
       return;
     }
 
     try {
-      // Load texture from data URL
-      const texture = await PIXI.Assets.load(data.dataUrl);
+      // Load texture from data URL or source URL
+      const urlToLoad = data.sourceUrl || data.dataUrl;
+      const texture = await PIXI.Assets.load(urlToLoad);
       const sprite = new PIXI.Sprite(texture);
       
       // Store original dimensions
@@ -327,7 +328,7 @@ export const UnderlayManager = {
       this.clear();
       State.underlayLayer.addChild(sprite);
       State.underlaySprite = sprite;
-      State.underlayData = data.dataUrl;
+      State.underlayData = data.dataUrl || urlToLoad; // If dataUrl was null, use the sourceUrl as the data
       State.underlayFileName = data.fileName || 'underlay';
       State.underlaySourceUrl = data.sourceUrl || null;
       State.underlayX = sprite.x;
@@ -349,7 +350,8 @@ export const UnderlayManager = {
         detail: {
           fileName: State.underlayFileName,
           width: texture.width,
-          height: texture.height
+          height: texture.height,
+          sourceUrl: State.underlaySourceUrl
         }
       }));
     } catch (error) {
