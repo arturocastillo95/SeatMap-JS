@@ -8,6 +8,7 @@ export class SelectionManager {
      * @param {number} options.maxSelectedSeats - Maximum seats allowed
      * @param {boolean} options.preventOrphanSeats - Enable orphan prevention
      * @param {HTMLElement} options.container - DOM container for events
+     * @param {Function} options.getGASelectionCount - Function to get current GA selection count
      */
     constructor(options = {}) {
         this.options = {
@@ -19,6 +20,7 @@ export class SelectionManager {
         this.selectedSeats = new Set();
         this.seatsByRow = {}; // seatsByRow[sectionId][rowIndex] = [sorted seats]
         this.container = options.container;
+        this.getGASelectionCount = options.getGASelectionCount || (() => 0);
     }
 
     /**
@@ -56,11 +58,29 @@ export class SelectionManager {
     }
 
     /**
-     * Check if selection limit is reached
+     * Check if selection limit is reached (includes GA selections)
      * @returns {boolean}
      */
     isLimitReached() {
-        return this.selectedSeats.size >= this.options.maxSelectedSeats;
+        const totalSelected = this.selectedSeats.size + this.getGASelectionCount();
+        return totalSelected >= this.options.maxSelectedSeats;
+    }
+
+    /**
+     * Get remaining available slots
+     * @returns {number}
+     */
+    getRemainingSlots() {
+        const totalSelected = this.selectedSeats.size + this.getGASelectionCount();
+        return Math.max(0, this.options.maxSelectedSeats - totalSelected);
+    }
+
+    /**
+     * Set the GA selection count getter function
+     * @param {Function} fn
+     */
+    setGASelectionCountGetter(fn) {
+        this.getGASelectionCount = fn || (() => 0);
     }
 
     /**

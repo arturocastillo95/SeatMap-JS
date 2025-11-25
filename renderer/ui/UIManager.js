@@ -110,6 +110,9 @@ export class UIManager {
         opacityFactor = Math.max(0, Math.min(1, opacityFactor));
 
         this.zoneContainers.forEach(container => {
+            // Skip fading for GA sections - they should remain visible at all zoom levels
+            if (container.isGASection) return;
+            
             if (container.zoneBackground) {
                 if (container.zoneBackground.originalAlpha === undefined) {
                     container.zoneBackground.originalAlpha = container.zoneBackground.alpha;

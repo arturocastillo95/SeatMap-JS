@@ -190,6 +190,12 @@ export const FileManager = {
         if (section.points) {
           serialized.points = section.points;
         }
+      } else {
+        // Non-zone GA section - save GA label properties
+        serialized.gaLabelFontSize = section.gaLabelFontSize;
+        serialized.gaLabelColor = section.gaLabelColor;
+        serialized.gaLabelOffsetX = section.gaLabelOffsetX;
+        serialized.gaLabelOffsetY = section.gaLabelOffsetY;
       }
 
       return serialized;
@@ -566,6 +572,12 @@ export const FileManager = {
         if (data.ga) {
           section.gaCapacity = data.ga.capacity || 0;
         }
+        
+        // Restore GA label properties
+        if (data.gaLabelFontSize !== undefined) section.gaLabelFontSize = data.gaLabelFontSize;
+        if (data.gaLabelColor !== undefined) section.gaLabelColor = data.gaLabelColor;
+        if (data.gaLabelOffsetX !== undefined) section.gaLabelOffsetX = data.gaLabelOffsetX;
+        if (data.gaLabelOffsetY !== undefined) section.gaLabelOffsetY = data.gaLabelOffsetY;
       }
       
       // Restore section name

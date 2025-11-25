@@ -24,11 +24,12 @@ export class CartManager {
     }
 
     /**
-     * Build cart data from selected seats
+     * Build cart data from selected seats and GA selections
      * @param {Set<PIXI.Container>} selectedSeats
+     * @param {Array} gaSelections - Array of GA selections
      * @returns {Object} Cart data
      */
-    buildCartData(selectedSeats) {
+    buildCartData(selectedSeats, gaSelections = []) {
         const seats = Array.from(selectedSeats).map(container => {
             const data = container.seatData;
             const price = this.getSeatPrice(data, container.sectionPricing);
@@ -41,18 +42,35 @@ export class CartManager {
             };
         });
 
+        // Format GA selections for cart
+        const ga = gaSelections.map(selection => ({
+            sectionId: selection.sectionId,
+            sectionName: selection.sectionName,
+            quantity: selection.quantity,
+            pricePerItem: selection.pricePerItem,
+            totalPrice: selection.totalPrice
+        }));
+
+        // Calculate total item count (seats + GA tickets)
+        const gaCount = ga.reduce((sum, item) => sum + item.quantity, 0);
+        const totalCount = seats.length + gaCount;
+
         return {
             seats: seats,
-            ga: [] // GA selection not yet implemented
+            ga: ga,
+            seatCount: seats.length,
+            gaCount: gaCount,
+            totalCount: totalCount
         };
     }
 
     /**
      * Dispatch cart change event
      * @param {Set<PIXI.Container>} selectedSeats
+     * @param {Array} gaSelections - Array of GA selections
      */
-    handleCartChange(selectedSeats) {
-        const cartData = this.buildCartData(selectedSeats);
+    handleCartChange(selectedSeats, gaSelections = []) {
+        const cartData = this.buildCartData(selectedSeats, gaSelections);
 
         // Dispatch custom event
         if (this.container) {
@@ -71,12 +89,17 @@ export class CartManager {
     /**
      * Get total price of selected seats
      * @param {Set<PIXI.Container>} selectedSeats
+     * @param {Array} gaSelections - Array of GA selections
      * @returns {number}
      */
-    getTotalPrice(selectedSeats) {
+    getTotalPrice(selectedSeats, gaSelections = []) {
         let total = 0;
         for (const container of selectedSeats) {
             total += this.getSeatPrice(container.seatData, container.sectionPricing);
+        }
+        // Add GA totals
+        for (const ga of gaSelections) {
+            total += ga.totalPrice || 0;
         }
         return total;
     }
@@ -84,13 +107,17 @@ export class CartManager {
     /**
      * Get cart summary
      * @param {Set<PIXI.Container>} selectedSeats
+     * @param {Array} gaSelections - Array of GA selections
      * @returns {Object}
      */
-    getSummary(selectedSeats) {
+    getSummary(selectedSeats, gaSelections = []) {
+        const cartData = this.buildCartData(selectedSeats, gaSelections);
         return {
-            count: selectedSeats.size,
-            totalPrice: this.getTotalPrice(selectedSeats),
-            seats: this.buildCartData(selectedSeats).seats
+            seatCount: selectedSeats.size,
+            gaCount: gaSelections.reduce((sum, ga) => sum + ga.quantity, 0),
+            totalPrice: this.getTotalPrice(selectedSeats, gaSelections),
+            seats: cartData.seats,
+            ga: cartData.ga
         };
     }
 

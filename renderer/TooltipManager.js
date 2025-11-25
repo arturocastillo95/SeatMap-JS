@@ -104,7 +104,15 @@ export class TooltipManager {
 
         // Update DOM
         if (this.elements.section) this.elements.section.textContent = content.section || '--';
-        if (this.elements.row) this.elements.row.textContent = content.row || '--';
+        
+        if (this.elements.row) {
+            if (content.row === null) {
+                this.elements.row.parentElement.style.display = 'none';
+            } else {
+                this.elements.row.parentElement.style.display = 'flex';
+                this.elements.row.textContent = content.row || '--';
+            }
+        }
         
         if (this.elements.seat) {
             if (content.seat === null) {

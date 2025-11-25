@@ -7,7 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added - GA Section Enhancements (November 2025)
+
+- **GA Label Customization** - Full control over General Admission section labels (non-zone)
+  - Font size slider (8-72px) in sidebar
+  - Label color picker with hex input
+  - X/Y offset sliders (-200 to +200) for precise positioning
+  - Real-time visual updates in editor
+  - Persists in file save/load format (`gaLabelFontSize`, `gaLabelColor`, `gaLabelOffsetX`, `gaLabelOffsetY`)
+  - Renderer support with proper rotation handling
+
+- **GA Quantity Selection Dialog** - Interactive ticket selection for GA sections in renderer
+  - Click on any GA section to open selection dialog
+  - Quantity +/- buttons with smooth UI
+  - Respects `maxSelectedSeats` limit across seats AND GA tickets combined
+  - Inventory support with available quantity limits
+  - Styled modal matching existing tooltip design
+  - `gaSelectionConfirm` and `ga-selection-change` events dispatched
+
+- **Unified Cart with GA Support** - Single cart for seats + GA tickets
+  - `CartManager` now accepts `gaSelections` array
+  - Cart data includes `seatCount`, `gaCount`, and `totalCount`
+  - `cartChange` event includes both `seats` and `ga` arrays
+  - Price totals include GA ticket prices
+
+- **GA Tooltip on Hover** - Shows section info when hovering GA sections
+  - Displays section name, price, and "General Admission" category
+  - Uses section color for footer styling
+  - Hides row/seat columns (not applicable for GA)
+
+- **New Module: GASelectionManager** - Dedicated manager for GA interactions
+  - `renderer/interaction/GASelectionManager.js`
+  - Handles dialog UI, inventory, and selection state
+  - Methods: `show()`, `confirm()`, `getSelectionsArray()`, `clearAll()`
+  - Integrates with SelectionManager for combined limit enforcement
+
+### Changed
+
+- **SelectionManager** - Now accounts for GA selections in limit checks
+  - `isLimitReached()` includes GA ticket count
+  - Added `getRemainingSlots()` method
+  - Added `setGASelectionCountGetter()` for cross-manager communication
+
+- **Renderer GA Behavior** - GA sections no longer fade on zoom
+  - GA sections remain at full opacity at all zoom levels
+  - Only Zone sections fade based on zoom (semantic zoom)
+  - GA sections marked with `container.isGASection = true`
+
+- **Tooltip Row Handling** - Intelligently hides row column
+  - When `content.row === null`, the row column is hidden entirely
+  - Cleaner display for GA and other non-seat elements
+
+### Fixed
+
+- **GA Label Duplication Bug** - Old labels no longer persist when renaming GA sections
+  - `createGALabel()` now removes existing label before creating new one
+  - Matches pattern used by `createZoneLabel()`
+
+---
+
+### Added - Modular Architecture (Previous)
 - **Modular Renderer Architecture** - Major refactoring of the ~2000-line monolithic `SeatMapRenderer` into a clean, modular architecture
   - **Core Modules**:
     - `TextureCache.js` - Seat texture creation and caching for performance optimization

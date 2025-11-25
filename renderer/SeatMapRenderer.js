@@ -10,6 +10,7 @@ import { ViewportManager } from './core/ViewportManager.js';
 import { InputHandler } from './interaction/InputHandler.js';
 import { SelectionManager } from './interaction/SelectionManager.js';
 import { CartManager } from './interaction/CartManager.js';
+import { GASelectionManager } from './interaction/GASelectionManager.js';
 import { UIManager } from './ui/UIManager.js';
 import { InventoryManager } from './inventory/InventoryManager.js';
 import { renderUnderlay } from './rendering/UnderlayRenderer.js';
@@ -20,7 +21,7 @@ export class SeatMapRenderer {
     static CONFIG = {
         PADDING: 0,
         MIN_ZOOM: 0.1,
-        MAX_ZOOM: 3,
+        MAX_ZOOM: 2.5,
         ZOOM_SPEED: 1.1,
         BACKGROUND_COLOR: 0x0f0f13,
         SECTION_ZOOM_PADDING: 50,
@@ -146,6 +147,19 @@ export class SeatMapRenderer {
                 container: this.container,
                 onCartChange: this.options.onCartChange
             });
+
+            this.gaSelectionManager = new GASelectionManager({
+                container: this.container,
+                maxSelectedSeats: this.options.maxSelectedSeats,
+                getCurrentSelectionCount: () => this.selectionManager.getSelectionCount(),
+                onConfirm: (data) => this.handleGASelectionConfirm(data),
+                onCancel: () => this.handleGASelectionCancel()
+            });
+
+            // Wire up SelectionManager to know about GA selections
+            this.selectionManager.setGASelectionCountGetter(
+                () => this.gaSelectionManager.getTotalGASelections()
+            );
 
             this.uiManager = new UIManager({
                 app: this.app,
@@ -286,6 +300,8 @@ export class SeatMapRenderer {
 
         if (isZoneOrGA) {
             container.zoneBackground = graphics;
+            // Mark GA sections so they don't fade on zoom (only zones should fade)
+            container.isGASection = data.type === 'ga' && !data.isZone;
             this.uiManager.registerZoneContainer(container);
         }
 
@@ -304,6 +320,32 @@ export class SeatMapRenderer {
             });
         } else {
             graphics.eventMode = 'none';
+        }
+
+        // Add tooltip hover and click for GA sections (non-zone)
+        if (data.type === 'ga' && !data.isZone) {
+            graphics.eventMode = 'static';
+            graphics.cursor = 'pointer';
+            container.sectionData = data; // Store data for tooltip
+            
+            graphics.on('pointerover', () => {
+                if (!this.state.isDragging) {
+                    this.showGATooltip(data);
+                }
+            });
+            
+            graphics.on('pointerout', () => {
+                this.hideTooltip();
+            });
+            
+            // Click to open GA selection dialog
+            graphics.on('pointertap', (e) => {
+                if (!this.state.isDragging) {
+                    e.stopPropagation();
+                    this.hideTooltip();
+                    this.gaSelectionManager.show(data);
+                }
+            });
         }
 
         // Render content
@@ -530,7 +572,10 @@ export class SeatMapRenderer {
             if (this.options.onSeatDeselect) this.options.onSeatDeselect(eventData);
         }
 
-        this.cartManager.handleCartChange(this.selectionManager.getSelectedSeats());
+        this.cartManager.handleCartChange(
+            this.selectionManager.getSelectedSeats(),
+            this.gaSelectionManager ? this.gaSelectionManager.getSelectionsArray() : []
+        );
     }
 
     updateSeatAnimations() {
@@ -589,6 +634,32 @@ export class SeatMapRenderer {
         this.tooltipManager.show(content);
     }
 
+    showGATooltip(data) {
+        if (!this.tooltipManager) return;
+
+        const pricing = data.pricing || {};
+        const priceValue = pricing.basePrice || 0;
+        let price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : '';
+        
+        const sectionName = data.name || 'GA';
+
+        const content = {
+            section: sectionName,
+            row: null,
+            seat: null,
+            price: price,
+            category: 'General Admission'
+        };
+
+        // Use section color for footer
+        const style = data.style || {};
+        if (style.sectionColor !== undefined) {
+            content.color = '#' + style.sectionColor.toString(16).padStart(6, '0');
+        }
+
+        this.tooltipManager.show(content);
+    }
+
     hideTooltip() {
         if (this.tooltipManager) this.tooltipManager.hide();
     }
@@ -604,6 +675,12 @@ export class SeatMapRenderer {
             (seatContainer) => this.updateSeatVisuals(seatContainer)
         );
 
+        // Load GA inventory into GASelectionManager
+        if (this.gaSelectionManager && inventoryData.ga) {
+            this.gaSelectionManager.loadInventory({ ga: inventoryData.ga });
+            console.log("GA inventory loaded:", inventoryData.ga.length, "sections");
+        }
+
         console.log("Inventory loaded:", result);
     }
 
@@ -612,7 +689,10 @@ export class SeatMapRenderer {
             seatContainer,
             (radius, color, strokeWidth, strokeColor) => 
                 this.textureCache.getSeatTexture(radius, color, strokeWidth, strokeColor),
-            () => this.cartManager.handleCartChange(this.selectionManager.getSelectedSeats())
+            () => this.cartManager.handleCartChange(
+                this.selectionManager.getSelectedSeats(),
+                this.gaSelectionManager ? this.gaSelectionManager.getSelectionsArray() : []
+            )
         );
     }
 
@@ -632,6 +712,41 @@ export class SeatMapRenderer {
     zoomToSection(sectionContainer) {
         if (!this.isInitialized) return;
         this.viewportManager.zoomToSection(sectionContainer);
+    }
+
+    // GA Selection handlers
+    handleGASelectionConfirm(selectionData) {
+        console.log('GA selection confirmed:', selectionData);
+        // Dispatch event for external handling
+        this.container.dispatchEvent(new CustomEvent('gaSelectionConfirm', {
+            detail: selectionData,
+            bubbles: true
+        }));
+        // Trigger cart update
+        this.cartManager.handleCartChange(
+            this.selectionManager.getSelectedSeats(),
+            this.gaSelectionManager.getSelectionsArray()
+        );
+    }
+
+    handleGASelectionCancel() {
+        console.log('GA selection cancelled');
+    }
+
+    // Get all GA selections
+    getGASelections() {
+        return this.gaSelectionManager ? this.gaSelectionManager.getSelectionsArray() : [];
+    }
+
+    // Clear all GA selections
+    clearGASelections() {
+        if (this.gaSelectionManager) {
+            this.gaSelectionManager.clearAll();
+            this.cartManager.handleCartChange(
+                this.selectionManager.getSelectedSeats(),
+                []
+            );
+        }
     }
 
     // Legacy getters for backward compatibility

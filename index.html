@@ -1375,6 +1375,82 @@
               </div>
             </div>
           </div>
+
+          <!-- GA Label Controls (for non-zone GA sections) -->
+          <div id="gaLabelControls" style="display: none; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+             <label class="sidebar-label" style="margin-bottom: 8px;">GA Label</label>
+             
+             <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Size <span id="gaLabelSizeValue" style="color: #3a9cff;">18px</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="gaLabelSizeSlider"
+                    min="8"
+                    max="72"
+                    value="18"
+                    step="1"
+                  />
+                </div>
+             </div>
+
+             <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Offset X <span id="gaLabelOffsetXValue" style="color: #3a9cff;">0</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="gaLabelOffsetXSlider"
+                    min="-200"
+                    max="200"
+                    value="0"
+                    step="1"
+                  />
+                </div>
+             </div>
+
+             <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Offset Y <span id="gaLabelOffsetYValue" style="color: #3a9cff;">0</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="gaLabelOffsetYSlider"
+                    min="-200"
+                    max="200"
+                    value="0"
+                    step="1"
+                  />
+                </div>
+             </div>
+
+            <div class="sidebar-input-group">
+              <label class="sidebar-label" style="font-size: 11px;">Color</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input
+                  type="color"
+                  id="gaLabelColorPicker"
+                  value="#ffffff"
+                  style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+                />
+                <input
+                  type="text"
+                  class="sidebar-input"
+                  id="gaLabelColorInput"
+                  value="#ffffff"
+                  placeholder="#ffffff"
+                  style="flex: 1; text-transform: uppercase;"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

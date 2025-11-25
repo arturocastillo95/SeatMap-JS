@@ -152,6 +152,17 @@ function initializeElements() {
   Elements.zoneLabelColorPicker = document.getElementById('zoneLabelColorPicker');
   Elements.zoneLabelColorInput = document.getElementById('zoneLabelColorInput');
   
+  // GA Label Controls (for non-zone GA sections)
+  Elements.gaLabelControls = document.getElementById('gaLabelControls');
+  Elements.gaLabelSizeSlider = document.getElementById('gaLabelSizeSlider');
+  Elements.gaLabelSizeValue = document.getElementById('gaLabelSizeValue');
+  Elements.gaLabelOffsetXSlider = document.getElementById('gaLabelOffsetXSlider');
+  Elements.gaLabelOffsetXValue = document.getElementById('gaLabelOffsetXValue');
+  Elements.gaLabelOffsetYSlider = document.getElementById('gaLabelOffsetYSlider');
+  Elements.gaLabelOffsetYValue = document.getElementById('gaLabelOffsetYValue');
+  Elements.gaLabelColorPicker = document.getElementById('gaLabelColorPicker');
+  Elements.gaLabelColorInput = document.getElementById('gaLabelColorInput');
+  
   // Glow elements
   Elements.glowEnabledToggle = document.getElementById('glowEnabledToggle');
   Elements.glowColorPicker = document.getElementById('glowColorPicker');

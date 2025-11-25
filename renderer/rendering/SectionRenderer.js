@@ -13,13 +13,24 @@ import * as PIXI from 'pixi.js';
  * @param {PIXI.Container} labelsLayer - Labels layer for global labels
  */
 export function renderGAContent(container, data, width, height, labelsLayer) {
+    // GA Label defaults (must match VISUAL_CONFIG.GA_LABEL in editor)
+    const GA_LABEL_DEFAULTS = {
+        FONT_SIZE: 18,
+        COLOR: 0xffffff
+    };
+
+    const fontSize = data.gaLabelFontSize || GA_LABEL_DEFAULTS.FONT_SIZE;
+    const fontColor = data.gaLabelColor !== undefined ? data.gaLabelColor : GA_LABEL_DEFAULTS.COLOR;
+    const offsetX = data.gaLabelOffsetX || 0;
+    const offsetY = data.gaLabelOffsetY || 0;
+
     const text = new PIXI.Text({
         text: data.name || "GA",
         style: {
             fontFamily: 'system-ui, sans-serif',
-            fontSize: 18,
+            fontSize: fontSize,
             fontWeight: 'bold',
-            fill: 0xffffff,
+            fill: fontColor,
             align: 'center'
         }
     });
@@ -27,42 +38,24 @@ export function renderGAContent(container, data, width, height, labelsLayer) {
     text.eventMode = 'none';
 
     if (labelsLayer) {
-        text.x = container.x;
-        text.y = container.y;
-        text.rotation = container.rotation;
+        const rotation = container.rotation;
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        
+        const rotatedOffsetX = offsetX * cos - offsetY * sin;
+        const rotatedOffsetY = offsetX * sin + offsetY * cos;
+
+        text.x = container.x + rotatedOffsetX;
+        text.y = container.y + rotatedOffsetY;
+        text.rotation = rotation;
         labelsLayer.addChild(text);
     } else {
-        text.x = width / 2;
-        text.y = height / 2;
+        text.x = (width / 2) + offsetX;
+        text.y = (height / 2) + offsetY;
         container.addChild(text);
     }
 
     container.zoneLabel = text;
-
-    // Capacity
-    if (data.ga && data.ga.capacity) {
-        const capText = new PIXI.Text({
-            text: `Capacity: ${data.ga.capacity}`,
-            style: {
-                fontFamily: 'system-ui, sans-serif',
-                fontSize: 12,
-                fill: 0xcccccc,
-                align: 'center'
-            }
-        });
-        capText.anchor.set(0.5);
-        capText.eventMode = 'none';
-        
-        if (labelsLayer) {
-            capText.x = 0;
-            capText.y = 20;
-            text.addChild(capText);
-        } else {
-            capText.x = width / 2;
-            capText.y = height / 2 + 20;
-            container.addChild(capText);
-        }
-    }
 }
 
 /**

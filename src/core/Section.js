@@ -157,6 +157,14 @@ export class Section extends PIXI.Graphics {
     if (this._isGeneralAdmission) {
       this._gaCapacity = config.gaCapacity || 0;
       this._gaLabel = null; // Will be set during graphics initialization
+      
+      // GA Label customization (for non-zone GA sections)
+      if (!this._isZone) {
+        this._gaLabelFontSize = config.gaLabelFontSize || VISUAL_CONFIG.GA_LABEL.FONT_SIZE;
+        this._gaLabelColor = config.gaLabelColor !== undefined ? config.gaLabelColor : VISUAL_CONFIG.GA_LABEL.COLOR;
+        this._gaLabelOffsetX = config.gaLabelOffsetX || 0;
+        this._gaLabelOffsetY = config.gaLabelOffsetY || 0;
+      }
     }
     
     // Set pivot to center for rotation
@@ -288,22 +296,43 @@ export class Section extends PIXI.Graphics {
    * Create center label for GA sections
    */
   createGALabel() {
+    // Remove existing label if any (fixes duplicate label bug)
+    if (this._gaLabel) {
+      this.removeChild(this._gaLabel);
+      this._gaLabel = null;
+    }
+
     const gaLabel = new PIXI.Text({
       text: this._sectionId,
       style: {
         fontFamily: VISUAL_CONFIG.GA_LABEL.FONT_FAMILY,
-        fontSize: VISUAL_CONFIG.GA_LABEL.FONT_SIZE,
+        fontSize: this._gaLabelFontSize || VISUAL_CONFIG.GA_LABEL.FONT_SIZE,
         fontWeight: VISUAL_CONFIG.GA_LABEL.FONT_WEIGHT,
-        fill: VISUAL_CONFIG.GA_LABEL.COLOR,
+        fill: this._gaLabelColor !== undefined ? this._gaLabelColor : VISUAL_CONFIG.GA_LABEL.COLOR,
         align: 'center'
       }
     });
     gaLabel.anchor.set(0.5, 0.5);
-    gaLabel.x = this._contentWidth / 2;
-    gaLabel.y = this._contentHeight / 2;
+    gaLabel.x = (this._contentWidth / 2) + (this._gaLabelOffsetX || 0);
+    gaLabel.y = (this._contentHeight / 2) + (this._gaLabelOffsetY || 0);
     gaLabel.eventMode = 'none';
     this.addChild(gaLabel);
     this._gaLabel = gaLabel;
+  }
+
+  /**
+   * Update GA label style and position without recreating (for efficient slider updates)
+   */
+  updateGALabel() {
+    if (!this._gaLabel) return;
+    
+    // Update style
+    this._gaLabel.style.fontSize = this._gaLabelFontSize || VISUAL_CONFIG.GA_LABEL.FONT_SIZE;
+    this._gaLabel.style.fill = this._gaLabelColor !== undefined ? this._gaLabelColor : VISUAL_CONFIG.GA_LABEL.COLOR;
+    
+    // Update position
+    this._gaLabel.x = (this._contentWidth / 2) + (this._gaLabelOffsetX || 0);
+    this._gaLabel.y = (this._contentHeight / 2) + (this._gaLabelOffsetY || 0);
   }
 
   // ============================================
@@ -804,6 +833,63 @@ export class Section extends PIXI.Graphics {
     this._zoneLabel = value;
     if (this._isZone && this._showZoneLabel) {
       this.createZoneLabel();
+    }
+  }
+
+  // GA Label getters/setters (for non-zone GA sections)
+  get gaLabelFontSize() {
+    return this._gaLabelFontSize;
+  }
+
+  set gaLabelFontSize(value) {
+    if (typeof value !== 'number' || value <= 0) {
+      throw new Error('GA Label font size must be a positive number');
+    }
+    this._gaLabelFontSize = value;
+    if (this._isGeneralAdmission && !this._isZone) {
+      this.updateGALabel();
+    }
+  }
+
+  get gaLabelColor() {
+    return this._gaLabelColor;
+  }
+
+  set gaLabelColor(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('GA Label color must be a valid hex color number');
+    }
+    this._gaLabelColor = value;
+    if (this._isGeneralAdmission && !this._isZone) {
+      this.updateGALabel();
+    }
+  }
+
+  get gaLabelOffsetX() {
+    return this._gaLabelOffsetX;
+  }
+
+  set gaLabelOffsetX(value) {
+    if (typeof value !== 'number') {
+      throw new Error('GA Label offset X must be a number');
+    }
+    this._gaLabelOffsetX = value;
+    if (this._isGeneralAdmission && !this._isZone) {
+      this.updateGALabel();
+    }
+  }
+
+  get gaLabelOffsetY() {
+    return this._gaLabelOffsetY;
+  }
+
+  set gaLabelOffsetY(value) {
+    if (typeof value !== 'number') {
+      throw new Error('GA Label offset Y must be a number');
+    }
+    this._gaLabelOffsetY = value;
+    if (this._isGeneralAdmission && !this._isZone) {
+      this.updateGALabel();
     }
   }
 

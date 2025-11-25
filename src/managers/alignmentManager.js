@@ -446,6 +446,69 @@ export const AlignmentManager = {
         }
       }
     });
+
+    // GA Label Size (for non-zone GA sections)
+    Elements.gaLabelSizeSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission && !section.isZone) {
+          const size = parseInt(e.target.value);
+          Elements.gaLabelSizeValue.textContent = `${size}px`;
+          section.gaLabelFontSize = size;
+        }
+      }
+    });
+
+    // GA Label Offset X
+    Elements.gaLabelOffsetXSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission && !section.isZone) {
+          const offset = parseInt(e.target.value);
+          Elements.gaLabelOffsetXValue.textContent = `${offset}`;
+          section.gaLabelOffsetX = offset;
+        }
+      }
+    });
+
+    // GA Label Offset Y
+    Elements.gaLabelOffsetYSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission && !section.isZone) {
+          const offset = parseInt(e.target.value);
+          Elements.gaLabelOffsetYValue.textContent = `${offset}`;
+          section.gaLabelOffsetY = offset;
+        }
+      }
+    });
+
+    // GA Label Color
+    Elements.gaLabelColorPicker.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission && !section.isZone) {
+          const colorHex = e.target.value;
+          Elements.gaLabelColorInput.value = colorHex.toUpperCase();
+          section.gaLabelColor = parseInt(colorHex.replace('#', ''), 16);
+        }
+      }
+    });
+
+    Elements.gaLabelColorInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isGeneralAdmission && !section.isZone) {
+          let colorHex = e.target.value.trim();
+          if (!colorHex.startsWith('#')) colorHex = '#' + colorHex;
+          if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+            Elements.gaLabelColorPicker.value = colorHex;
+            Elements.gaLabelColorInput.value = colorHex.toUpperCase();
+            section.gaLabelColor = parseInt(colorHex.replace('#', ''), 16);
+          }
+        }
+      }
+    });
   },
 
   setRowLabelType(type) {
@@ -896,6 +959,9 @@ export const AlignmentManager = {
         Elements.zoneLabelColorPicker.value = labelColorHex;
         Elements.zoneLabelColorInput.value = labelColorHex.toUpperCase();
       }
+      
+      // Hide GA Label Controls for zones
+      if (Elements.gaLabelControls) Elements.gaLabelControls.style.display = 'none';
 
       Elements.rowLabelsHeader.parentElement.style.display = 'none';
       Elements.seatNumberingSection.style.display = 'none';
@@ -925,6 +991,29 @@ export const AlignmentManager = {
       Elements.gaHeightInput.value = Math.round(section.contentHeight);
       Elements.zoneOpacityControl.style.display = 'none';
       if (Elements.zoneLabelControls) Elements.zoneLabelControls.style.display = 'none';
+      
+      // Show GA Label Controls for non-zone GA sections
+      if (Elements.gaLabelControls) {
+        Elements.gaLabelControls.style.display = 'block';
+        
+        const gaLabelSize = section.gaLabelFontSize || 18;
+        Elements.gaLabelSizeSlider.value = gaLabelSize;
+        Elements.gaLabelSizeValue.textContent = `${gaLabelSize}px`;
+        
+        const gaLabelOffsetX = section.gaLabelOffsetX || 0;
+        Elements.gaLabelOffsetXSlider.value = gaLabelOffsetX;
+        Elements.gaLabelOffsetXValue.textContent = `${gaLabelOffsetX}`;
+
+        const gaLabelOffsetY = section.gaLabelOffsetY || 0;
+        Elements.gaLabelOffsetYSlider.value = gaLabelOffsetY;
+        Elements.gaLabelOffsetYValue.textContent = `${gaLabelOffsetY}`;
+        
+        const gaLabelColor = section.gaLabelColor !== undefined ? section.gaLabelColor : 0xffffff;
+        const gaLabelColorHex = '#' + gaLabelColor.toString(16).padStart(6, '0');
+        Elements.gaLabelColorPicker.value = gaLabelColorHex;
+        Elements.gaLabelColorInput.value = gaLabelColorHex.toUpperCase();
+      }
+      
       Elements.rowLabelsHeader.parentElement.style.display = 'none';
       Elements.seatNumberingSection.style.display = 'none';
       Elements.alignRowsSection.style.display = 'none';
@@ -945,6 +1034,7 @@ export const AlignmentManager = {
       Elements.gaSizeControls.style.display = 'none';
       Elements.zoneOpacityControl.style.display = 'none';
       if (Elements.zoneLabelControls) Elements.zoneLabelControls.style.display = 'none';
+      if (Elements.gaLabelControls) Elements.gaLabelControls.style.display = 'none';
       Elements.rowLabelsHeader.parentElement.style.display = 'block';
       Elements.seatNumberingSection.style.display = 'block';
       Elements.alignRowsSection.style.display = 'block';

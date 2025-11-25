@@ -22,7 +22,7 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ Auto-fit to viewport (100% height, centered)
 - ✅ Intelligent zoom limits (can zoom in, prevents zoom out beyond initial view)
 - ✅ **Smart Tooltips**: Shows pricing, location, and category with auto-positioning
-- ✅ **Cart Integration**: Emits `cartChange` events with selected items
+- ✅ **Cart Integration**: Emits `cartChange` events with selected items (seats + GA)
 - ✅ **Inventory Loading**: Supports external pricing and availability data
 - ✅ **Section Zoom**: Click to zoom into specific sections
 - ✅ **Semantic Zoom**: Zones fade out and seats fade in based on zoom level
@@ -33,6 +33,8 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ **Fully configurable via constructor options**
 - ✅ **Modular Architecture**: Clean separation of concerns with focused single-responsibility modules
 - ✅ **Vite Build System**: ES and UMD bundles for flexible deployment
+- ✅ **GA Quantity Selection**: Click GA sections to select ticket quantities with dialog UI
+- ✅ **Unified Cart**: Combined seat + GA ticket selection with shared max limit
 
 ### Future Features (Phase 3+)
 - 🔄 Seat status updates (sold, reserved, available) visual styles
@@ -152,17 +154,39 @@ container.addEventListener('orphan-seat-blocked', (event) => {
 ### With Cart Integration
 
 ```javascript
-// Listen for cart changes
+// Listen for cart changes (includes both seats and GA tickets)
 container.addEventListener('cartChange', (e) => {
-    console.log('Cart updated:', e.detail);
+    const { seats, ga, seatCount, gaCount, totalCount } = e.detail;
+    console.log(`Selected: ${seatCount} seats + ${gaCount} GA tickets = ${totalCount} total`);
+    console.log('Seats:', seats);
+    console.log('GA:', ga);
+});
+
+// Listen for GA selection confirmations
+container.addEventListener('gaSelectionConfirm', (e) => {
+    console.log('GA selection confirmed:', e.detail);
 });
 
 // Load inventory data (optional)
 renderer.loadInventory({
     seats: [
         { key: "Section 1;;A;;1", price: 150, status: "available" }
+    ],
+    ga: [
+        { sectionId: "GA Section", available: 100, status: "available" }
     ]
 });
+```
+
+### GA Selection API
+
+```javascript
+// Get current GA selections
+const gaSelections = renderer.getGASelections();
+// Returns: [{ sectionId, sectionName, quantity, pricePerItem, totalPrice }]
+
+// Clear all GA selections
+renderer.clearGASelections();
 ```
 
 ### Configuration Options
@@ -317,6 +341,26 @@ container.addEventListener('orphan-seat-blocked', (event) => {
 });
 ```
 
+#### `gaSelectionConfirm`
+Fired when a GA quantity selection is confirmed.
+
+```javascript
+container.addEventListener('gaSelectionConfirm', (event) => {
+    const { sectionId, quantity, sectionData, allSelections } = event.detail;
+    console.log(`Selected ${quantity} tickets for ${sectionId}`);
+});
+```
+
+#### `ga-selection-change`
+Fired whenever GA selections change (confirm or clear).
+
+```javascript
+container.addEventListener('ga-selection-change', (event) => {
+    const { sectionId, quantity, allSelections } = event.detail;
+    console.log('All GA selections:', allSelections);
+});
+```
+
 ## File Format Support
 
 The renderer supports SMF (Seat Map Format) v2.0.0, which includes:
@@ -351,7 +395,8 @@ renderer/
 ├── interaction/
 │   ├── InputHandler.js     # Pan/zoom/touch input
 │   ├── SelectionManager.js # Seat selection & orphan detection
-│   └── CartManager.js      # Cart state & events
+│   ├── CartManager.js      # Cart state & events
+│   └── GASelectionManager.js # GA quantity selection dialog
 ├── rendering/
 │   ├── UnderlayRenderer.js # Background image rendering
 │   ├── SectionRenderer.js  # Section containers & content
@@ -369,8 +414,9 @@ renderer/
 | `TextureCache` | Creates and caches seat textures for performance |
 | `ViewportManager` | Viewport fitting, zoom animations, position constraints |
 | `InputHandler` | Mouse wheel, pan, pinch-to-zoom gestures |
-| `SelectionManager` | Seat selection logic, orphan seat prevention |
-| `CartManager` | Cart state, price calculation, event dispatching |
+| `SelectionManager` | Seat selection logic, orphan seat prevention, combined limit tracking |
+| `CartManager` | Cart state, price calculation, event dispatching (seats + GA) |
+| `GASelectionManager` | GA ticket quantity dialog, inventory limits, selection state |
 | `UnderlayRenderer` | Async background image loading and rendering |
 | `SectionRenderer` | Section containers, backgrounds, GA/Zone content |
 | `RowLabelRenderer` | Row label text generation and positioning |
