@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Orphan Seat Prevention** - Prevents leaving single-seat gaps when selecting seats
+  - Configurable via `preventOrphanSeats` option (default: `true`)
+  - Blocks selections that would skip over a seat creating a gap
+  - Blocks deselections that would isolate a single seat with no selected neighbors
+  - Allows building up selections from edges (adjacent seats can be selected next)
+  - Allows peeling off selections from edges (deselecting end seats)
+  - Fires `orphan-seat-blocked` event with detailed message explaining why action was blocked
+  - Event includes: `action`, `seat`, `sectionId`, `orphanSeats`, `message`, `orphanCount`
+  - Uses row-indexed seat lookup for efficient adjacency detection
 - **Zone Label Positioning** - Fine-tune the position of zone labels
   - X and Y offset sliders in the sidebar for Zone sections
   - Real-time visual update in the editor

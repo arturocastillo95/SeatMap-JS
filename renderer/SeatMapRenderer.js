@@ -26,7 +26,8 @@ export class SeatMapRenderer {
         BOOKED_COLOR: 0x8B8B8B,   // Gray for booked seats
         RESERVED_COLOR: 0xff6666, // Lighter Red for reserved seats
         SPECIAL_SEAT_SCALE: 1.5,  // Scale for special needs seats
-        MAX_SELECTED_SEATS: 10     // Maximum number of seats that can be selected
+        MAX_SELECTED_SEATS: 10,    // Maximum number of seats that can be selected
+        PREVENT_ORPHAN_SEATS: true // Prevent leaving single-seat gaps when selecting
     };
 
     static async create(container, options = {}) {
@@ -59,6 +60,7 @@ export class SeatMapRenderer {
             reservedColor: SeatMapRenderer.CONFIG.RESERVED_COLOR,
             specialSeatScale: SeatMapRenderer.CONFIG.SPECIAL_SEAT_SCALE,
             maxSelectedSeats: SeatMapRenderer.CONFIG.MAX_SELECTED_SEATS,
+            preventOrphanSeats: SeatMapRenderer.CONFIG.PREVENT_ORPHAN_SEATS,
 
             // PIXI Application Options & Others
             backgroundAlpha: 1,
@@ -93,6 +95,7 @@ export class SeatMapRenderer {
         this.animatingSeats = new Set(); // Track seats currently animating
         this.seatsByKey = {}; // Lookup for seats by key
         this.seatsById = {}; // Lookup for seats by ID
+        this.seatsByRow = {}; // Lookup for seats by section and row: seatsByRow[sectionId][rowIndex] = [sorted seats]
         this.selectedSeats = new Set(); // Track selected seats
         this.activePointers = new Map(); // Track active pointers for multi-touch
         
@@ -552,6 +555,7 @@ export class SeatMapRenderer {
         // Reset state to prevent memory leaks and ghost interactions
         this.seatsByKey = {};
         this.seatsById = {};
+        this.seatsByRow = {};
         this.animatingSeats.clear();
         this.selectedSeats.clear();
 
@@ -1018,6 +1022,16 @@ export class SeatMapRenderer {
                     this.seatsById[seatData.id] = seatContainer;
                 }
 
+                // Store in row-indexed lookup for orphan detection
+                const sectionId = data.id || data.name;
+                if (!this.seatsByRow[sectionId]) {
+                    this.seatsByRow[sectionId] = {};
+                }
+                if (!this.seatsByRow[sectionId][r]) {
+                    this.seatsByRow[sectionId][r] = [];
+                }
+                this.seatsByRow[sectionId][r].push(seatContainer);
+
                 // Animation state
                 seatContainer.baseScale = isSpecial ? this.options.specialSeatScale : 1;
                 seatContainer.scale.set(seatContainer.baseScale);
@@ -1080,6 +1094,14 @@ export class SeatMapRenderer {
 
                 container.addChild(seatContainer);
             });
+
+            // Sort each row by x-position for adjacency detection
+            const sectionId = data.id || data.name;
+            if (this.seatsByRow[sectionId]) {
+                Object.keys(this.seatsByRow[sectionId]).forEach(rowIndex => {
+                    this.seatsByRow[sectionId][rowIndex].sort((a, b) => a.x - b.x);
+                });
+            }
         }
 
         // Render Row Labels
@@ -1461,6 +1483,38 @@ export class SeatMapRenderer {
             return;
         }
 
+        // Check for orphan seats if prevention is enabled
+        if (this.options.preventOrphanSeats) {
+            const action = seatContainer.selected ? 'deselect' : 'select';
+            const orphanCheck = this.wouldCreateOrphan(seatContainer, action);
+            
+            if (orphanCheck.wouldCreateOrphan) {
+                const orphanSeatLabels = orphanCheck.orphanSeats.map(s => {
+                    const row = s.seatData.rl || s.seatData.rowLabel || s.seatData.r;
+                    const seat = s.seatData.n || s.seatData.sl || s.seatData.seatLabel || s.seatData.s;
+                    return `Row ${row}, Seat ${seat}`;
+                }).join('; ');
+                
+                const message = action === 'deselect'
+                    ? `Cannot deselect this seat: it would leave ${orphanCheck.orphanSeats.length === 1 ? 'a single seat' : 'single seats'} isolated (${orphanSeatLabels})`
+                    : `Cannot select this seat: it would leave ${orphanCheck.orphanSeats.length === 1 ? 'a single seat' : 'single seats'} isolated (${orphanSeatLabels})`;
+                
+                console.warn('Action blocked:', message);
+                const event = new CustomEvent('orphan-seat-blocked', {
+                    detail: {
+                        action: action,
+                        seat: seatContainer.seatData,
+                        sectionId: seatContainer.sectionId,
+                        orphanSeats: orphanCheck.orphanSeats.map(s => s.seatData),
+                        message: message,
+                        orphanCount: orphanCheck.orphanSeats.length
+                    }
+                });
+                this.container.dispatchEvent(event);
+                return;
+            }
+        }
+
         // Toggle selection
         seatContainer.selected = !seatContainer.selected;
         
@@ -1816,5 +1870,183 @@ export class SeatMapRenderer {
      */
     hexColorFromNumber(colorNum) {
         return '#' + colorNum.toString(16).padStart(6, '0');
+    }
+
+    /**
+     * Get adjacent seats (left and right neighbors) for a given seat
+     * @param {PIXI.Container} seatContainer 
+     * @returns {{ left: PIXI.Container|null, right: PIXI.Container|null }}
+     * @private
+     */
+    getAdjacentSeats(seatContainer) {
+        const sectionId = seatContainer.sectionId;
+        const rowIndex = seatContainer.seatData.r ?? seatContainer.seatData.rowIndex;
+        
+        if (!this.seatsByRow[sectionId] || !this.seatsByRow[sectionId][rowIndex]) {
+            return { left: null, right: null };
+        }
+        
+        const rowSeats = this.seatsByRow[sectionId][rowIndex];
+        const index = rowSeats.indexOf(seatContainer);
+        
+        if (index === -1) {
+            return { left: null, right: null };
+        }
+        
+        return {
+            left: index > 0 ? rowSeats[index - 1] : null,
+            right: index < rowSeats.length - 1 ? rowSeats[index + 1] : null
+        };
+    }
+
+    /**
+     * Check if a seat is available (not booked/reserved)
+     * @param {PIXI.Container} seatContainer 
+     * @returns {boolean}
+     * @private
+     */
+    isSeatAvailable(seatContainer) {
+        const status = seatContainer.seatData.status || 'available';
+        return status === 'available';
+    }
+
+    /**
+     * Check if selecting/deselecting a seat would create an orphan (single isolated seat)
+     * @param {PIXI.Container} seatContainer - The seat being clicked
+     * @param {string} action - 'select' or 'deselect'
+     * @returns {{ wouldCreateOrphan: boolean, orphanSeats: PIXI.Container[] }}
+     * @private
+     */
+    wouldCreateOrphan(seatContainer, action) {
+        const sectionId = seatContainer.sectionId;
+        const rowIndex = seatContainer.seatData.r ?? seatContainer.seatData.rowIndex;
+        
+        if (!this.seatsByRow[sectionId] || !this.seatsByRow[sectionId][rowIndex]) {
+            return { wouldCreateOrphan: false, orphanSeats: [] };
+        }
+        
+        const rowSeats = this.seatsByRow[sectionId][rowIndex];
+        const seatIndex = rowSeats.indexOf(seatContainer);
+        
+        if (seatIndex === -1) {
+            return { wouldCreateOrphan: false, orphanSeats: [] };
+        }
+        
+        // Simulate the state after the action
+        // Build array of "would be selected" state for each seat in the row
+        const simulatedSelection = rowSeats.map((seat, idx) => {
+            // Only consider available seats
+            if (!this.isSeatAvailable(seat)) return false;
+            
+            if (idx === seatIndex) {
+                // This is the seat being clicked
+                return action === 'select';
+            }
+            return seat.selected;
+        });
+        
+        // Count total selected seats in simulation
+        const totalSelected = simulatedSelection.filter(s => s).length;
+        
+        // If 0 or 1 seats would be selected, no orphan issue possible
+        if (totalSelected <= 1) {
+            return { wouldCreateOrphan: false, orphanSeats: [] };
+        }
+        
+        const orphanSeats = [];
+        
+        if (action === 'select') {
+            // For SELECTING: Check for single-seat gaps that would be created
+            // A gap is an unselected available seat that would be "trapped"
+            for (let i = 0; i < simulatedSelection.length; i++) {
+                if (simulatedSelection[i]) continue; // Selected, not a gap
+                if (!this.isSeatAvailable(rowSeats[i])) continue; // Not available, skip
+                
+                // Check left side
+                let leftBoundary = false;
+                let leftSelected = false;
+                
+                if (i === 0) {
+                    leftBoundary = true;
+                } else {
+                    for (let j = i - 1; j >= 0; j--) {
+                        if (!this.isSeatAvailable(rowSeats[j])) {
+                            leftBoundary = true;
+                            break;
+                        }
+                        if (simulatedSelection[j]) {
+                            leftSelected = true;
+                            break;
+                        }
+                        break; // Found unselected available seat
+                    }
+                }
+                
+                // Check right side
+                let rightBoundary = false;
+                let rightSelected = false;
+                
+                if (i === simulatedSelection.length - 1) {
+                    rightBoundary = true;
+                } else {
+                    for (let j = i + 1; j < simulatedSelection.length; j++) {
+                        if (!this.isSeatAvailable(rowSeats[j])) {
+                            rightBoundary = true;
+                            break;
+                        }
+                        if (simulatedSelection[j]) {
+                            rightSelected = true;
+                            break;
+                        }
+                        break; // Found unselected available seat
+                    }
+                }
+                
+                const isMiddleGap = leftSelected && rightSelected;
+                const isLeftEdgeGap = leftBoundary && rightSelected;
+                const isRightEdgeGap = leftSelected && rightBoundary;
+                
+                // Allow if adjacent to clicked seat (user can fill it next)
+                const isAdjacentToClicked = (i === seatIndex - 1) || (i === seatIndex + 1);
+                
+                if (isMiddleGap) {
+                    // Middle gaps always bad - skipping a seat
+                    orphanSeats.push(rowSeats[i]);
+                } else if ((isLeftEdgeGap || isRightEdgeGap) && !isAdjacentToClicked) {
+                    // Edge gaps only bad if not adjacent
+                    orphanSeats.push(rowSeats[i]);
+                }
+            }
+        } else {
+            // For DESELECTING: Check if any SELECTED seat would become isolated
+            // A seat is isolated if it has no selected neighbors (and boundaries don't count as neighbors)
+            for (let i = 0; i < simulatedSelection.length; i++) {
+                if (!simulatedSelection[i]) continue; // Not selected after action, skip
+                if (!this.isSeatAvailable(rowSeats[i])) continue;
+                
+                // Check if this selected seat has any selected neighbors
+                let hasSelectedNeighbor = false;
+                
+                // Check left neighbor (only immediate neighbor matters)
+                if (i > 0 && this.isSeatAvailable(rowSeats[i - 1]) && simulatedSelection[i - 1]) {
+                    hasSelectedNeighbor = true;
+                }
+                
+                // Check right neighbor
+                if (i < simulatedSelection.length - 1 && this.isSeatAvailable(rowSeats[i + 1]) && simulatedSelection[i + 1]) {
+                    hasSelectedNeighbor = true;
+                }
+                
+                // If no selected neighbors, this seat would be isolated
+                if (!hasSelectedNeighbor) {
+                    orphanSeats.push(rowSeats[i]);
+                }
+            }
+        }
+        
+        return {
+            wouldCreateOrphan: orphanSeats.length > 0,
+            orphanSeats: orphanSeats
+        };
     }
 }

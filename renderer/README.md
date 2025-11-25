@@ -28,7 +28,8 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ **Semantic Zoom**: Zones fade out and seats fade in based on zoom level
 - ✅ **Touch Support**: Native pinch-to-zoom and pan gestures
 - ✅ **Zone Rendering**: Optimized polygon rendering for Zones
-- ✅ **Comprehensive event system** (selected/deselected/limit-reached)
+- ✅ **Comprehensive event system** (selected/deselected/limit-reached/orphan-blocked)
+- ✅ **Orphan Seat Prevention**: Prevents leaving single-seat gaps when selecting
 - ✅ **Fully configurable via constructor options**
 
 ### Future Features (Phase 3+)
@@ -83,6 +84,12 @@ container.addEventListener('seat-deselected', (event) => {
 container.addEventListener('selection-limit-reached', (event) => {
     alert(`You can only select ${event.detail.limit} seats.`);
 });
+
+// Listen for orphan seat prevention
+container.addEventListener('orphan-seat-blocked', (event) => {
+    console.log(event.detail.message); // Human-readable explanation
+    console.log('Would orphan:', event.detail.orphanSeats);
+});
 ```
 
 ### With Cart Integration
@@ -112,6 +119,7 @@ const renderer = await SeatMapRenderer.create(container, {
     
     // Interaction Options
     maxSelectedSeats: 5,
+    preventOrphanSeats: true,  // Prevent single-seat gaps
     enableSectionZoom: true,
     
     // Callbacks
@@ -127,7 +135,8 @@ All configuration values can be overridden via the `options` object passed to `c
 ```javascript
 SeatMapRenderer.CONFIG = {
     // ... defaults ...
-    MAX_SELECTED_SEATS: 10     // Maximum number of seats that can be selected
+    MAX_SELECTED_SEATS: 10,     // Maximum number of seats that can be selected
+    PREVENT_ORPHAN_SEATS: true  // Prevent leaving single-seat gaps
 };
 ```
 
@@ -238,6 +247,16 @@ Fired when the user tries to select more seats than allowed.
 ```javascript
 container.addEventListener('selection-limit-reached', (event) => {
     console.log(`Limit reached: ${event.detail.limit}`);
+});
+```
+
+#### `orphan-seat-blocked`
+Fired when a selection/deselection is blocked because it would leave a single seat isolated.
+
+```javascript
+container.addEventListener('orphan-seat-blocked', (event) => {
+    const { action, seat, sectionId, orphanSeats, message, orphanCount } = event.detail;
+    console.log(message); // e.g., "Cannot select this seat: it would leave a single seat isolated (Row A, Seat 5)"
 });
 ```
 
