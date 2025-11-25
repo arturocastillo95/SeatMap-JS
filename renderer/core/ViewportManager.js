@@ -1,0 +1,217 @@
+/**
+ * ViewportManager - Handles viewport transforms, fitting, and animations
+ */
+
+import * as PIXI from 'pixi.js';
+
+export class ViewportManager {
+    /**
+     * @param {Object} options - Configuration
+     * @param {PIXI.Application} options.app - PIXI application
+     * @param {PIXI.Container} options.viewport - Viewport container
+     * @param {Object} options.state - Shared state object
+     * @param {Object} options.config - Configuration options
+     * @param {Function} options.onUpdate - Callback after viewport changes
+     */
+    constructor(options) {
+        this.app = options.app;
+        this.viewport = options.viewport;
+        this.state = options.state;
+        this.config = options.config || {};
+        this.onUpdate = options.onUpdate;
+    }
+
+    /**
+     * Get constrained position within bounds
+     * @param {number} x - Target X position
+     * @param {number} y - Target Y position
+     * @param {number} scale - Current scale
+     * @returns {{x: number, y: number}}
+     */
+    getConstrainedPosition(x, y, scale) {
+        if (!this.state.initialBounds) return { x, y };
+
+        const screenWidth = this.app.screen.width;
+        const screenHeight = this.app.screen.height;
+
+        const contentWidth = this.state.initialBounds.width * scale;
+        const contentHeight = this.state.initialBounds.height * scale;
+        const contentLeft = this.state.initialBounds.x * scale;
+        const contentTop = this.state.initialBounds.y * scale;
+
+        let constrainedX, constrainedY;
+
+        // Horizontal
+        if (contentWidth < screenWidth) {
+            const centerX = (screenWidth - contentWidth) / 2;
+            constrainedX = centerX - contentLeft;
+        } else {
+            const minX = screenWidth - (contentLeft + contentWidth);
+            const maxX = -contentLeft;
+            constrainedX = Math.max(minX, Math.min(maxX, x));
+        }
+
+        // Vertical
+        if (contentHeight < screenHeight) {
+            const centerY = (screenHeight - contentHeight) / 2;
+            constrainedY = centerY - contentTop;
+        } else {
+            const minY = screenHeight - (contentTop + contentHeight);
+            const maxY = -contentTop;
+            constrainedY = Math.max(minY, Math.min(maxY, y));
+        }
+
+        return { x: constrainedX, y: constrainedY };
+    }
+
+    /**
+     * Fit the view to show all content
+     * @param {boolean} animate - Whether to animate the transition
+     */
+    fitToView(animate = true) {
+        const bounds = this.viewport.getLocalBounds();
+        if (bounds.width === 0 || bounds.height === 0) return;
+
+        const screenWidth = this.app.screen.width;
+        const screenHeight = this.app.screen.height;
+        const padding = this.config.padding || 0;
+
+        let targetBounds;
+        
+        if (this.state.hasUnderlay) {
+            const underlayChild = this.viewport.children[0];
+            if (underlayChild) {
+                const localBounds = underlayChild.getLocalBounds();
+                targetBounds = {
+                    x: underlayChild.x + (localBounds.x * underlayChild.scale.x),
+                    y: underlayChild.y + (localBounds.y * underlayChild.scale.y),
+                    width: localBounds.width * underlayChild.scale.x,
+                    height: localBounds.height * underlayChild.scale.y
+                };
+            } else {
+                targetBounds = bounds;
+            }
+        } else {
+            targetBounds = bounds;
+        }
+
+        const scaleX = (screenWidth - padding * 2) / targetBounds.width;
+        const scaleY = (screenHeight - padding * 2) / targetBounds.height;
+        const scale = Math.min(scaleX, scaleY, 1);
+
+        const centerX = targetBounds.x + targetBounds.width / 2;
+        const centerY = targetBounds.y + targetBounds.height / 2;
+        
+        const targetX = (screenWidth / 2) - (centerX * scale);
+        const targetY = (screenHeight / 2) - (centerY * scale);
+
+        // Update state
+        this.state.initialScale = scale;
+        this.state.initialBounds = {
+            x: targetBounds.x,
+            y: targetBounds.y,
+            width: targetBounds.width,
+            height: targetBounds.height
+        };
+        this.state.initialPosition = { x: targetX, y: targetY };
+
+        if (this.viewport.children.length > 0 && animate) {
+            this.animateViewport(targetX, targetY, scale);
+        } else {
+            this.viewport.scale.set(scale);
+            this.viewport.position.set(targetX, targetY);
+            if (this.onUpdate) this.onUpdate();
+        }
+    }
+
+    /**
+     * Zoom to fit a specific section
+     * @param {PIXI.Container} sectionContainer
+     */
+    zoomToSection(sectionContainer) {
+        const screenWidth = this.app.screen.width;
+        const screenHeight = this.app.screen.height;
+        const padding = this.config.sectionZoomPadding || 50;
+
+        const width = sectionContainer.sectionWidth;
+        const height = sectionContainer.sectionHeight;
+
+        const scaleX = (screenWidth - padding * 2) / width;
+        const scaleY = (screenHeight - padding * 2) / height;
+        
+        let targetScale = Math.min(scaleX, scaleY);
+        targetScale = Math.min(targetScale, this.config.maxZoom || 3);
+
+        const targetX = (screenWidth / 2) - (sectionContainer.x * targetScale);
+        const targetY = (screenHeight / 2) - (sectionContainer.y * targetScale);
+
+        this.animateViewport(targetX, targetY, targetScale);
+    }
+
+    /**
+     * Animate viewport to target position and scale
+     * @param {number} targetX
+     * @param {number} targetY
+     * @param {number} targetScale
+     */
+    animateViewport(targetX, targetY, targetScale) {
+        const startX = this.viewport.position.x;
+        const startY = this.viewport.position.y;
+        const startScale = this.viewport.scale.x;
+        
+        const startTime = performance.now();
+        const duration = this.config.animationDuration || 500;
+
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Ease out cubic
+            const ease = 1 - Math.pow(1 - progress, 3);
+
+            const currentScale = startScale + (targetScale - startScale) * ease;
+            const currentX = startX + (targetX - startX) * ease;
+            const currentY = startY + (targetY - startY) * ease;
+
+            this.viewport.scale.set(currentScale);
+            this.viewport.position.set(currentX, currentY);
+            
+            if (this.onUpdate) this.onUpdate();
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.viewport.scale.set(targetScale);
+                this.viewport.position.set(targetX, targetY);
+                if (this.onUpdate) this.onUpdate();
+            }
+        };
+
+        requestAnimationFrame(animate);
+    }
+
+    /**
+     * Get current zoom level
+     * @returns {number}
+     */
+    getZoom() {
+        return this.viewport.scale.x;
+    }
+
+    /**
+     * Check if zoomed in from initial
+     * @returns {boolean}
+     */
+    isZoomedIn() {
+        return this.viewport.scale.x > (this.state.initialScale * 1.001);
+    }
+
+    /**
+     * Cleanup
+     */
+    destroy() {
+        this.app = null;
+        this.viewport = null;
+        this.state = null;
+    }
+}

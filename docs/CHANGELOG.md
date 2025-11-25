@@ -8,6 +8,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Modular Renderer Architecture** - Major refactoring of the ~2000-line monolithic `SeatMapRenderer` into a clean, modular architecture
+  - **Core Modules**:
+    - `TextureCache.js` - Seat texture creation and caching for performance optimization
+    - `ViewportManager.js` - Viewport transforms, fitting, animations, and position constraints
+  - **Interaction Modules**:
+    - `InputHandler.js` - Pan/zoom/touch input with pinch-to-zoom support
+    - `SelectionManager.js` - Seat selection logic with orphan detection
+    - `CartManager.js` - Cart state management and event dispatching
+  - **Rendering Modules**:
+    - `UnderlayRenderer.js` - Background image rendering
+    - `SectionRenderer.js` - Section containers, backgrounds, GA and Zone content
+    - `RowLabelRenderer.js` - Row label generation and positioning
+  - **UI Modules**:
+    - `UIManager.js` - Reset button, zone visibility fade on zoom
+  - **Inventory Modules**:
+    - `InventoryManager.js` - Inventory data loading and seat status updates
+  - Main orchestrator reduced from ~2000 lines to ~500 lines
+  - Each module follows Single Responsibility Principle (SRP)
+  - Dependency injection pattern for better testability
+  - Explicit cleanup with `destroy()` methods
+
+- **Vite Build System** - Modern build tooling for the renderer
+  - ES Module build (`seatmap-renderer.es.js` ~53KB, ~14KB gzipped)
+  - UMD build for browsers (`seatmap-renderer.umd.js` ~35KB, ~11KB gzipped)
+  - Source maps for debugging
+  - Development server with hot module replacement
+  - Path aliases for clean imports (`@core`, `@interaction`, `@rendering`, `@ui`, `@inventory`)
+
+- **NPM Package Structure** - Prepared renderer for distribution
+  - `package.json` with proper exports for ES and UMD formats
+  - PIXI.js as peer dependency (v8+)
+  - Scripts: `npm run dev`, `npm run build`, `npm run preview`
+
+- **Documentation**
+  - `ARCHITECTURE.md` - Comprehensive guide to the modular renderer architecture
+  - Module responsibilities, dependency patterns, and migration guide
+
+### Changed
+- Renderer now uses ES module imports instead of global PIXI reference
+- Demo pages updated to use bundled UMD build with CDN PIXI.js
+- Organized renderer file structure:
+  - `renderer/core/` - Core utilities
+  - `renderer/interaction/` - User interaction handlers
+  - `renderer/rendering/` - Rendering utilities
+  - `renderer/ui/` - UI components
+  - `renderer/inventory/` - Inventory management
+- Renamed `venue-map-*.json` test files to `demo-venue.json` for clarity
+- Removed redundant HTML demo pages
+
+### Fixed
+- Module import errors when loading renderer outside of Vite dev server
+- PIXI.js resolution errors in standalone HTML pages
+
+---
+
+## Previous Changes
+
+### Added
 - **Orphan Seat Prevention** - Prevents leaving single-seat gaps when selecting seats
   - Configurable via `preventOrphanSeats` option (default: `true`)
   - Blocks selections that would skip over a seat creating a gap

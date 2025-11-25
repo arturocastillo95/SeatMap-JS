@@ -31,39 +31,96 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ **Comprehensive event system** (selected/deselected/limit-reached/orphan-blocked)
 - ✅ **Orphan Seat Prevention**: Prevents leaving single-seat gaps when selecting
 - ✅ **Fully configurable via constructor options**
+- ✅ **Modular Architecture**: Clean separation of concerns with focused single-responsibility modules
+- ✅ **Vite Build System**: ES and UMD bundles for flexible deployment
 
 ### Future Features (Phase 3+)
 - 🔄 Seat status updates (sold, reserved, available) visual styles
 - 🔄 Accessibility features (Keyboard navigation)
 
+## Installation
+
+### NPM (Recommended)
+
+```bash
+cd renderer
+npm install
+```
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+This generates:
+- `dist/seatmap-renderer.es.js` - ES Module (~53KB, ~14KB gzipped)
+- `dist/seatmap-renderer.umd.js` - UMD for browsers (~35KB, ~11KB gzipped)
+
+### Development Server
+
+```bash
+npm run dev
+```
+
+Opens `http://localhost:5173/dev.html` with hot module replacement.
+
 ## Usage
 
-### Basic Implementation
+### Using the UMD Build (Browser)
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
+    <script src="dist/seatmap-renderer.umd.js"></script>
 </head>
 <body>
     <div id="map-container" style="width: 100%; height: 600px;"></div>
     
-    <script type="module">
-        import { SeatMapRenderer } from './SeatMapRenderer.js';
-        
-        const container = document.getElementById('map-container');
-        
-        // Use factory method for safe async initialization
-        const renderer = await SeatMapRenderer.create(container);
-        
-        // Load map data
-        fetch('venue-map.json')
-            .then(res => res.json())
-            .then(data => renderer.loadData(data));
+    <script>
+        (async () => {
+            const container = document.getElementById('map-container');
+            const renderer = await SeatMapRenderer.SeatMapRenderer.create(container);
+            
+            // Load map data
+            fetch('demo-venue.json')
+                .then(res => res.json())
+                .then(data => renderer.loadData(data));
+        })();
     </script>
 </body>
 </html>
+```
+
+### Using ES Modules (with bundler)
+
+```javascript
+import { SeatMapRenderer } from '@seatmap-js/renderer';
+
+const container = document.getElementById('map-container');
+const renderer = await SeatMapRenderer.create(container);
+
+// Load map data
+const response = await fetch('venue-map.json');
+const data = await response.json();
+await renderer.loadData(data);
+```
+
+### Development Import (Direct)
+
+```html
+<script type="module">
+    import { SeatMapRenderer } from './SeatMapRenderer.js';
+    
+    const container = document.getElementById('map-container');
+    const renderer = await SeatMapRenderer.create(container);
+    
+    fetch('demo-venue.json')
+        .then(res => res.json())
+        .then(data => renderer.loadData(data));
+</script>
 ```
 
 ### With Seat Selection
@@ -280,88 +337,86 @@ See [FILE_FORMAT.md](../docs/FILE_FORMAT.md) for complete format specification.
 ## Architecture
 
 ### Modular Design
-The renderer is built with separation of concerns:
-- `SeatMapRenderer.js` - Main rendering engine (Canvas/PixiJS logic)
-- `TooltipManager.js` - Tooltip management (DOM manipulation)
 
-### Modern Patterns
-- **Factory Pattern**: Safe async initialization via `create()` method
-- **State Management**: Centralized state object for better organization
-- **Resource Management**: Comprehensive cleanup via `destroy()` method
-- **Separation of Concerns**: DOM and Canvas logic separated
+The renderer has been refactored from a ~2000-line monolith into focused, single-responsibility modules:
 
-### Lightweight
-- No editing tools or UI controls
-- No collision detection
-- No transformation/repositioning logic
-- Minimal dependencies (only PixiJS)
+```
+renderer/
+├── SeatMapRenderer.js      # Main orchestrator (~500 lines)
+├── index.js                # Barrel export
+├── TooltipManager.js       # DOM tooltips
+├── core/
+│   ├── TextureCache.js     # Seat texture caching
+│   └── ViewportManager.js  # Viewport transforms & animations
+├── interaction/
+│   ├── InputHandler.js     # Pan/zoom/touch input
+│   ├── SelectionManager.js # Seat selection & orphan detection
+│   └── CartManager.js      # Cart state & events
+├── rendering/
+│   ├── UnderlayRenderer.js # Background image rendering
+│   ├── SectionRenderer.js  # Section containers & content
+│   └── RowLabelRenderer.js # Row label generation
+├── ui/
+│   └── UIManager.js        # UI elements & zone visibility
+└── inventory/
+    └── InventoryManager.js # Inventory data & seat status
+```
 
-### Code Quality
-- Full JSDoc documentation
-- Memory leak prevention
-- Robust data validation
-- Modern JavaScript (ES6+, optional chaining, nullish coalescing)
+### Module Responsibilities
 
-### Future-Ready
-The architecture is designed to support:
-- Bidirectional communication with host page
-- External seat status updates
-- Custom event handlers
-- Plugin system for extensions
+| Module | Responsibility |
+|--------|----------------|
+| `TextureCache` | Creates and caches seat textures for performance |
+| `ViewportManager` | Viewport fitting, zoom animations, position constraints |
+| `InputHandler` | Mouse wheel, pan, pinch-to-zoom gestures |
+| `SelectionManager` | Seat selection logic, orphan seat prevention |
+| `CartManager` | Cart state, price calculation, event dispatching |
+| `UnderlayRenderer` | Async background image loading and rendering |
+| `SectionRenderer` | Section containers, backgrounds, GA/Zone content |
+| `RowLabelRenderer` | Row label text generation and positioning |
+| `UIManager` | Reset button, zone visibility based on zoom |
+| `InventoryManager` | Inventory loading, seat status updates |
+
+### Design Patterns
+
+- **Dependency Injection**: Modules receive dependencies via constructor options
+- **Factory Pattern**: Safe async initialization via `SeatMapRenderer.create()`
+- **Single Responsibility**: Each module handles one concern
+- **Explicit Cleanup**: All modules implement `destroy()` for memory management
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed documentation.
 
 ## Development
 
-### Testing Locally
+### Quick Start
 
-1. Start a local server:
 ```bash
-# Using Python 3
+cd renderer
+npm install
+npm run dev
+```
+
+Opens `http://localhost:5173/dev.html` with hot module replacement.
+
+### Build Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with HMR |
+| `npm run build` | Build production bundles (ES + UMD) |
+| `npm run preview` | Preview production build locally |
+
+### Testing Standalone HTML
+
+For testing without Vite, use the UMD build:
+
+```bash
+npm run build
+# Then open index.html in browser (requires a local server for CORS)
 python -m http.server 8000
-
-# Using Node.js
-npx http-server
 ```
 
-2. Open `http://localhost:8000/renderer/` in your browser
-
-3. Use browser console to load a map:
-```javascript
-fetch('../path/to/venue-map.json')
-    .then(res => res.json())
-    .then(data => window.seatMapRenderer.loadData(data));
-```
-
-### Integration with Backend
-
-The renderer can be integrated with any backend system:
-
-```javascript
-// Initialize renderer
-const renderer = await SeatMapRenderer.create(container);
-
-// Fetch map from API
-const response = await fetch('/api/venues/123/map');
-const mapData = await response.json();
-await renderer.loadData(mapData);
-
-// Listen for seat interactions
-container.addEventListener('seat-click', async (event) => {
-    const { seat, sectionId } = event.detail;
-    
-    // Send selection to backend
-    await fetch('/api/seats/reserve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            sectionId,
-            rowIndex: seat.rowIndex,
-            colIndex: seat.colIndex
-        })
-    });
-});
-```
-
-## Browser Support
+### Browser Support
 
 - Chrome/Edge 90+
 - Firefox 88+
@@ -383,17 +438,6 @@ container.addEventListener('seat-click', async (event) => {
 - **Pan**: Click and drag to move around
 - **Reset**: Click "Center Map" button to return to initial view
 
-### Zoom Limits
-The renderer prevents zooming out beyond the initial fitted view to maintain a consistent starting point. Users can zoom in to see details but cannot zoom out to see more than the intended content area.
-
-## Performance
-
-The renderer is optimized for large venues:
-- Efficiently renders 10,000+ seats
-- GPU-accelerated rendering via PixiJS
-- Minimal memory footprint
-- Smooth pan and zoom
-
 ## License
 
 Same as SeatMap JS project.
@@ -412,11 +456,12 @@ Same as SeatMap JS project.
 - External data updates
 - Hover tooltips
 - Configurable selection limits
+- **Modular architecture refactoring**
+- **Vite build system**
 
 ### Phase 3 (Planned)
 - Pricing display
 - Section filtering/highlighting
-- Mobile touch gestures
 - Accessibility improvements
 - Zoom presets
 - Mini-map navigator
