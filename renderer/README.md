@@ -18,7 +18,7 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ Section colors and styling
 - ✅ Glow effects on seats
 - ✅ Pan and zoom viewport controls
-- ✅ Seat click events & Selection state
+- ✅ **Seat selection with configurable limits**
 - ✅ Auto-fit to viewport (100% height, centered)
 - ✅ Intelligent zoom limits (can zoom in, prevents zoom out beyond initial view)
 - ✅ **Smart Tooltips**: Shows pricing, location, and category with auto-positioning
@@ -28,6 +28,8 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ **Semantic Zoom**: Zones fade out and seats fade in based on zoom level
 - ✅ **Touch Support**: Native pinch-to-zoom and pan gestures
 - ✅ **Zone Rendering**: Optimized polygon rendering for Zones
+- ✅ **Comprehensive event system** (selected/deselected/limit-reached)
+- ✅ **Fully configurable via constructor options**
 
 ### Future Features (Phase 3+)
 - 🔄 Seat status updates (sold, reserved, available) visual styles
@@ -63,16 +65,23 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 </html>
 ```
 
-### With Seat Selection (Coming Soon)
+### With Seat Selection
 
 ```javascript
-// Listen for seat clicks
-container.addEventListener('seat-click', (event) => {
+// Listen for seat selection events
+container.addEventListener('seat-selected', (event) => {
     const { seat, sectionId } = event.detail;
-    console.log(`Clicked seat in ${sectionId}:`, seat);
-    
-    // Send to your backend
-    // fetch('/api/reserve-seat', { ... });
+    console.log(`Selected seat in ${sectionId}:`, seat);
+});
+
+container.addEventListener('seat-deselected', (event) => {
+    const { seat, sectionId } = event.detail;
+    console.log(`Deselected seat in ${sectionId}:`, seat);
+});
+
+// Listen for limit reached
+container.addEventListener('selection-limit-reached', (event) => {
+    alert(`You can only select ${event.detail.limit} seats.`);
 });
 ```
 
@@ -95,40 +104,32 @@ renderer.loadInventory({
 ### Configuration Options
 
 ```javascript
-const renderer = new SeatMapRenderer(container, {
-    backgroundColor: 0x0f0f13,  // Dark background
-    backgroundAlpha: 1,
-    antialias: true,
-    resolution: window.devicePixelRatio || 1
+const renderer = await SeatMapRenderer.create(container, {
+    // Visual Options
+    backgroundColor: 0x0f0f13,
+    seatRadius: 8,
+    bookedColor: 0x555555,
+    
+    // Interaction Options
+    maxSelectedSeats: 5,
+    enableSectionZoom: true,
+    
+    // Callbacks
+    onSeatSelect: (data) => console.log('Selected', data),
+    onSeatDeselect: (data) => console.log('Deselected', data)
 });
 ```
 
 ### Renderer Configuration
 
-The renderer uses a centralized static configuration object:
+All configuration values can be overridden via the `options` object passed to `create()`. The static `SeatMapRenderer.CONFIG` object serves as the default values:
 
 ```javascript
 SeatMapRenderer.CONFIG = {
-    PADDING: 0,                  // Padding around map when fitting to view
-    MIN_ZOOM: 0.1,              // Minimum zoom level (not used for initial fit)
-    MAX_ZOOM: 5,                // Maximum zoom level
-    ZOOM_SPEED: 1.1,            // Zoom speed multiplier
-    BACKGROUND_COLOR: 0x0f0f13,
-    SECTION_ZOOM_PADDING: 50,   // Padding when zooming to a section
-    ANIMATION_DURATION: 500,    // Duration of zoom animation in ms
-    SEAT_RADIUS: 6,             // Default seat radius
-    SEAT_RADIUS_HOVER: 12,      // Hovered seat radius
-    SEAT_HOVER_SPEED: 0.35,     // Speed of hover animation (lerp factor)
-    SEAT_LABEL_SIZE: 7,         // Font size for seat labels
-    TOOLTIP_SPEED: 0.15,        // Tooltip fade animation speed in seconds
-    UI_PADDING: 40,             // Padding for UI elements
-    ZONE_FADE_RATIO: 6,         // Ratio for zone fade out duration
-    ANIMATION_THRESHOLD: 0.01,  // Threshold for stopping animations
-    SEAT_TEXTURE_RESOLUTION: 4  // Resolution multiplier for seat textures (Higher = sharper zoom)
+    // ... defaults ...
+    MAX_SELECTED_SEATS: 10     // Maximum number of seats that can be selected
 };
 ```
-
-You can modify these values before creating a renderer instance.
 
 ## Performance & Optimization
 
@@ -213,23 +214,32 @@ renderer.centerMap(); // Same as fitToView()
 
 ### Events
 
-#### `seat-click`
-Fired when a seat is clicked.
+#### `seat-selected`
+Fired when a seat is selected.
 
 ```javascript
-container.addEventListener('seat-click', (event) => {
+container.addEventListener('seat-selected', (event) => {
     const { seat, sectionId } = event.detail;
-    // Handle seat click
 });
 ```
 
-**Event Detail:**
-- `seat` (Object) - Seat data from SMF file
-  - `rowIndex` (number)
-  - `colIndex` (number)
-  - `number` (string)
-  - `specialNeeds` (boolean)
-- `sectionId` (string) - ID of the section containing the seat
+#### `seat-deselected`
+Fired when a seat is deselected.
+
+```javascript
+container.addEventListener('seat-deselected', (event) => {
+    const { seat, sectionId } = event.detail;
+});
+```
+
+#### `selection-limit-reached`
+Fired when the user tries to select more seats than allowed.
+
+```javascript
+container.addEventListener('selection-limit-reached', (event) => {
+    console.log(`Limit reached: ${event.detail.limit}`);
+});
+```
 
 ## File Format Support
 
@@ -377,11 +387,12 @@ Same as SeatMap JS project.
 - Pan and zoom controls
 - Seat click events
 
-### Phase 2 (🔄 In Progress)
+### Phase 2 (✅ Complete)
 - Seat selection API
 - Seat status visualization (available/sold/reserved)
 - External data updates
 - Hover tooltips
+- Configurable selection limits
 
 ### Phase 3 (Planned)
 - Pricing display

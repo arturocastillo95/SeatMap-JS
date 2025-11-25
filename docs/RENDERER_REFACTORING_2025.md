@@ -262,7 +262,7 @@ Addressed critical stability and performance issues:
 
 1.  **Critical Error Handling**: Wrapped `init()` in try-catch to prevent silent failures.
 2.  **State Reset**: Fixed `loadData()` to properly clear `seatsByKey`, `animatingSeats`, and `selectedSeats` to prevent memory leaks and ghost interactions.
-3.  **Initialization Guards**: Added `isInitialized` checks to all public methods to prevent race conditions.
+3.  **Initialization Guards**: Added `isInitialized` checks to all public methods to prevent race conditions
 4.  **Safe Destruction**: Hardened `destroy()` method with null checks to prevent crashes during cleanup.
 5.  **Event Listener Cleanup**: Implemented proper PIXI object destruction in `loadData` to remove event listeners and free WebGL resources.
 6.  **Unmatched Key Detection**: Added tracking and reporting for inventory keys that don't match any seat.
@@ -321,3 +321,16 @@ Addressed critical stability and performance issues:
 - [Memory Management in JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management)
 - [Optional Chaining](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining)
 - [Nullish Coalescing](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing)
+
+### Configuration & Events Update (November 24, 2025) ✅
+Addressed flexibility and interaction requirements:
+
+1.  **Full Configurability**: Refactored `SeatMapRenderer` to accept all configuration options via the constructor/factory method.
+    - Moved static `CONFIG` to instance-based `this.options`.
+    - Allows runtime customization of colors, dimensions, speeds, and limits without modifying source code.
+2.  **Seat Selection Limits**: Implemented `maxSelectedSeats` option and enforcement logic.
+3.  **Enhanced Event System**:
+    - Added `seat-selected` and `seat-deselected` events for precise state tracking.
+    - Added `selection-limit-reached` event.
+    - Deprecated generic `seat-click` event.
+4.  **Interaction Fixes**: Resolved issue where zone/row labels blocked clicks on seats by disabling pointer events on label text objects.

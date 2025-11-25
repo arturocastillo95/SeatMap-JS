@@ -22,7 +22,11 @@ export class SeatMapRenderer {
         UI_PADDING: 40,           // Padding for UI elements
         ZONE_FADE_RATIO: 5,       // Ratio for zone fade out duration
         ANIMATION_THRESHOLD: 0.01, // Threshold for stopping animations
-        SEAT_TEXTURE_RESOLUTION: 4 // Resolution multiplier for seat textures
+        SEAT_TEXTURE_RESOLUTION: 4, // Resolution multiplier for seat textures
+        BOOKED_COLOR: 0x8B8B8B,   // Gray for booked seats
+        RESERVED_COLOR: 0xff6666, // Lighter Red for reserved seats
+        SPECIAL_SEAT_SCALE: 1.5,  // Scale for special needs seats
+        MAX_SELECTED_SEATS: 10     // Maximum number of seats that can be selected
     };
 
     static async create(container, options = {}) {
@@ -34,15 +38,37 @@ export class SeatMapRenderer {
     constructor(container, options = {}) {
         this.container = container;
         this.options = {
+            // Configuration Defaults
+            padding: SeatMapRenderer.CONFIG.PADDING,
+            minZoom: SeatMapRenderer.CONFIG.MIN_ZOOM,
+            maxZoom: SeatMapRenderer.CONFIG.MAX_ZOOM,
+            zoomSpeed: SeatMapRenderer.CONFIG.ZOOM_SPEED,
             backgroundColor: SeatMapRenderer.CONFIG.BACKGROUND_COLOR,
+            sectionZoomPadding: SeatMapRenderer.CONFIG.SECTION_ZOOM_PADDING,
+            animationDuration: SeatMapRenderer.CONFIG.ANIMATION_DURATION,
+            seatRadius: SeatMapRenderer.CONFIG.SEAT_RADIUS,
+            seatRadiusHover: SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER,
+            seatHoverSpeed: SeatMapRenderer.CONFIG.SEAT_HOVER_SPEED,
+            seatLabelSize: SeatMapRenderer.CONFIG.SEAT_LABEL_SIZE,
+            tooltipSpeed: SeatMapRenderer.CONFIG.TOOLTIP_SPEED,
+            uiPadding: SeatMapRenderer.CONFIG.UI_PADDING,
+            zoneFadeRatio: SeatMapRenderer.CONFIG.ZONE_FADE_RATIO,
+            animationThreshold: SeatMapRenderer.CONFIG.ANIMATION_THRESHOLD,
+            seatTextureResolution: SeatMapRenderer.CONFIG.SEAT_TEXTURE_RESOLUTION,
+            bookedColor: SeatMapRenderer.CONFIG.BOOKED_COLOR,
+            reservedColor: SeatMapRenderer.CONFIG.RESERVED_COLOR,
+            specialSeatScale: SeatMapRenderer.CONFIG.SPECIAL_SEAT_SCALE,
+            maxSelectedSeats: SeatMapRenderer.CONFIG.MAX_SELECTED_SEATS,
+
+            // PIXI Application Options & Others
             backgroundAlpha: 1,
             resizeTo: container,
-
             antialias: true,
             resolution: window.devicePixelRatio || 1,
             autoDensity: true,
             enableSectionZoom: false, // Default to false as requested
             enableZoneZoom: true,     // Default to true for zones
+            
             ...options
         };
 
@@ -66,6 +92,7 @@ export class SeatMapRenderer {
 
         this.animatingSeats = new Set(); // Track seats currently animating
         this.seatsByKey = {}; // Lookup for seats by key
+        this.seatsById = {}; // Lookup for seats by ID
         this.selectedSeats = new Set(); // Track selected seats
         this.activePointers = new Map(); // Track active pointers for multi-touch
         
@@ -91,7 +118,7 @@ export class SeatMapRenderer {
             
             // Initialize Tooltip Manager
             this.tooltipManager = new TooltipManager({
-                animationSpeed: SeatMapRenderer.CONFIG.TOOLTIP_SPEED
+                animationSpeed: this.options.tooltipSpeed
             });
 
             // Setup interaction (pan/zoom)
@@ -167,6 +194,7 @@ export class SeatMapRenderer {
         if (this.animatingSeats) this.animatingSeats.clear();
         
         this.seatsByKey = {};
+        this.seatsById = {};
         this.viewport = null;
         this.labelsLayer = null;
         this.uiContainer = null;
@@ -215,8 +243,8 @@ export class SeatMapRenderer {
     repositionUI() {
         if (this.resetButton) {
             // Bottom left with padding
-            this.resetButton.x = SeatMapRenderer.CONFIG.UI_PADDING;
-            this.resetButton.y = this.app.screen.height - SeatMapRenderer.CONFIG.UI_PADDING;
+            this.resetButton.x = this.options.uiPadding;
+            this.resetButton.y = this.app.screen.height - this.options.uiPadding;
         }
     }
 
@@ -241,11 +269,11 @@ export class SeatMapRenderer {
         if (!this.zoneContainers || this.zoneContainers.length === 0) return;
 
         const currentZoom = this.viewport.scale.x;
-        const startZoom = this.state.initialScale || SeatMapRenderer.CONFIG.MIN_ZOOM;
-        const maxZoom = SeatMapRenderer.CONFIG.MAX_ZOOM;
+        const startZoom = this.state.initialScale || this.options.minZoom;
+        const maxZoom = this.options.maxZoom;
         
         // Fade out completely by halfway to max zoom
-        const endZoom = startZoom + (maxZoom - startZoom) / SeatMapRenderer.CONFIG.ZONE_FADE_RATIO;
+        const endZoom = startZoom + (maxZoom - startZoom) / this.options.zoneFadeRatio;
 
         // Calculate opacity factor (1 at startZoom, 0 at endZoom)
         let opacityFactor = 1 - (currentZoom - startZoom) / (endZoom - startZoom);
@@ -346,9 +374,9 @@ export class SeatMapRenderer {
                     let newScale = this.viewport.scale.x * scale;
                     
                     // Apply limits
-                    const minScale = this.state.initialScale || SeatMapRenderer.CONFIG.MIN_ZOOM;
+                    const minScale = this.state.initialScale || this.options.minZoom;
                     if (newScale < minScale) newScale = minScale;
-                    if (newScale > SeatMapRenderer.CONFIG.MAX_ZOOM) newScale = SeatMapRenderer.CONFIG.MAX_ZOOM;
+                    if (newScale > this.options.maxZoom) newScale = this.options.maxZoom;
 
                     // Zoom towards center
                     // Local point under center
@@ -401,7 +429,7 @@ export class SeatMapRenderer {
      */
     wheelHandler(e) {
         e.preventDefault();
-        const direction = e.deltaY > 0 ? 1 / SeatMapRenderer.CONFIG.ZOOM_SPEED : SeatMapRenderer.CONFIG.ZOOM_SPEED;
+        const direction = e.deltaY > 0 ? 1 / this.options.zoomSpeed : this.options.zoomSpeed;
         
         // Calculate zoom center
         const rect = this.container.getBoundingClientRect();
@@ -414,7 +442,7 @@ export class SeatMapRenderer {
         };
 
         let newScale = this.viewport.scale.x * direction;
-        const minScale = this.state.initialScale || SeatMapRenderer.CONFIG.MIN_ZOOM;
+        const minScale = this.state.initialScale || this.options.minZoom;
 
         // Snap to min scale and recenter if zooming out too far
         if (newScale <= minScale) {
@@ -440,7 +468,7 @@ export class SeatMapRenderer {
             return;
         }
 
-        if (newScale <= SeatMapRenderer.CONFIG.MAX_ZOOM) {
+        if (newScale <= this.options.maxZoom) {
             // Calculate new position
             const newX = x - localPos.x * newScale;
             const newY = y - localPos.y * newScale;
@@ -523,6 +551,7 @@ export class SeatMapRenderer {
         
         // Reset state to prevent memory leaks and ghost interactions
         this.seatsByKey = {};
+        this.seatsById = {};
         this.animatingSeats.clear();
         this.selectedSeats.clear();
 
@@ -731,6 +760,7 @@ export class SeatMapRenderer {
             }
         });
         text.anchor.set(0.5);
+        text.eventMode = 'none'; // Ensure clicks pass through to seats/background
 
         if (this.labelsLayer) {
             // Position in global viewport coordinates
@@ -758,6 +788,7 @@ export class SeatMapRenderer {
                 }
             });
             capText.anchor.set(0.5);
+            capText.eventMode = 'none'; // Ensure clicks pass through
             
             if (this.labelsLayer) {
                 capText.x = 0;
@@ -797,6 +828,7 @@ export class SeatMapRenderer {
             }
         });
         text.anchor.set(0.5);
+        text.eventMode = 'none'; // Ensure clicks pass through to seats/background
 
         if (this.labelsLayer) {
             // Position in global viewport coordinates
@@ -882,7 +914,7 @@ export class SeatMapRenderer {
                 if (glow.enabled) {
                     const glowGraphics = new PIXI.Graphics();
                     // Scale glow radius relative to seat radius
-                    const radius = SeatMapRenderer.CONFIG.SEAT_RADIUS + ((glow.strength || 10) / 2);
+                    const radius = this.options.seatRadius + ((glow.strength || 10) / 2);
                     glowGraphics.circle(0, 0, radius);
                     glowGraphics.fill({ color: glow.color || 0xffffff, alpha: glow.opacity || 0.5 });
                     
@@ -900,7 +932,7 @@ export class SeatMapRenderer {
                 // Seat Sprite (Optimized)
                 const seatColor = isSpecial ? 0x2563eb : defaultSeatColor;
                 const texture = this.createSeatTexture(
-                    SeatMapRenderer.CONFIG.SEAT_RADIUS, 
+                    this.options.seatRadius, 
                     seatColor, 
                     seatStrokeWidth, 
                     seatStrokeColor
@@ -908,7 +940,7 @@ export class SeatMapRenderer {
                 
                 const seatSprite = new PIXI.Sprite(texture);
                 seatSprite.anchor.set(0.5);
-                const resolution = SeatMapRenderer.CONFIG.SEAT_TEXTURE_RESOLUTION || 4;
+                const resolution = this.options.seatTextureResolution || 4;
                 seatSprite.scale.set(1 / resolution);
                 seatContainer.addChild(seatSprite);
 
@@ -917,7 +949,7 @@ export class SeatMapRenderer {
                 
                 let fontStyle = {
                     fontFamily: 'system-ui, sans-serif',
-                    fontSize: SeatMapRenderer.CONFIG.SEAT_LABEL_SIZE,
+                    fontSize: this.options.seatLabelSize,
                     fontWeight: 'bold',
                     fill: defaultTextColor,
                     align: 'center'
@@ -964,6 +996,11 @@ export class SeatMapRenderer {
                 seatContainer.seatColor = isSpecial ? 0x2563eb : defaultSeatColor;
                 seatContainer.seatTextColor = isSpecial ? 0xffffff : defaultTextColor;
                 
+                // Store original styles for status updates
+                seatContainer.originalColor = seatContainer.seatColor;
+                seatContainer.originalStrokeColor = seatStrokeColor;
+                seatContainer.originalStrokeWidth = seatStrokeWidth;
+                
                 // Store section pricing for fallback
                 seatContainer.sectionPricing = data.pricing;
 
@@ -976,8 +1013,16 @@ export class SeatMapRenderer {
                 seatContainer.key = key;
                 this.seatsByKey[key] = seatContainer;
 
+                // Store by ID if available
+                if (seatData.id) {
+                    this.seatsById[seatData.id] = seatContainer;
+                }
+
                 // Animation state
-                seatContainer.targetScale = 1;
+                seatContainer.baseScale = isSpecial ? this.options.specialSeatScale : 1;
+                seatContainer.scale.set(seatContainer.baseScale);
+                seatContainer.targetScale = seatContainer.baseScale;
+                
                 // Default target state depends on special needs
                 seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
                 seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
@@ -1000,9 +1045,13 @@ export class SeatMapRenderer {
                     const zoom = this.viewport.scale.x;
                     text.resolution = Math.max(2, zoom * 2); // Ensure at least 2x for retina
 
+                    // Check status - only animate if available
+                    const status = seatContainer.seatData.status || 'available';
+                    if (status !== 'available') return;
+
                     // If selected, we are already in the "large" state, but we might want to ensure it
                     // For now, hover behavior is same as selected behavior regarding scale
-                    seatContainer.targetScale = SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER / SeatMapRenderer.CONFIG.SEAT_RADIUS;
+                    seatContainer.targetScale = this.options.seatRadiusHover / this.options.seatRadius;
                     seatContainer.targetTextAlpha = 1;
                     seatContainer.targetTextScale = 1;
                     // Bring to front
@@ -1016,7 +1065,7 @@ export class SeatMapRenderer {
 
                     // Only revert if not selected
                     if (!seatContainer.selected) {
-                        seatContainer.targetScale = 1;
+                        seatContainer.targetScale = seatContainer.baseScale;
                         // Revert to default state (visible for special needs, hidden for others)
                         seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
                         seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
@@ -1127,6 +1176,7 @@ export class SeatMapRenderer {
                 text.anchor.set(0.5);
                 text.x = firstX - 10 - spacing;
                 text.y = firstY;
+                text.eventMode = 'none'; // Ensure clicks pass through
                 if (config.hidden) text.alpha = 0.6;
                 container.addChild(text);
             }
@@ -1136,6 +1186,7 @@ export class SeatMapRenderer {
                 text.anchor.set(0.5);
                 text.x = lastX + 10 + spacing;
                 text.y = lastY;
+                text.eventMode = 'none'; // Ensure clicks pass through
                 if (config.hidden) text.alpha = 0.6;
                 container.addChild(text);
             }
@@ -1208,8 +1259,8 @@ export class SeatMapRenderer {
         }
 
         // Calculate scale to fit height with padding
-        const scaleX = (screenWidth - SeatMapRenderer.CONFIG.PADDING * 2) / targetBounds.width;
-        const scaleY = (screenHeight - SeatMapRenderer.CONFIG.PADDING * 2) / targetBounds.height;
+        const scaleX = (screenWidth - this.options.padding * 2) / targetBounds.width;
+        const scaleY = (screenHeight - this.options.padding * 2) / targetBounds.height;
         
         // Use the smaller scale to ensure everything fits, but don't zoom in beyond 1:1
         const scale = Math.min(scaleX, scaleY, 1);
@@ -1257,7 +1308,7 @@ export class SeatMapRenderer {
 
         const screenWidth = this.app.screen.width;
         const screenHeight = this.app.screen.height;
-        const padding = SeatMapRenderer.CONFIG.SECTION_ZOOM_PADDING;
+        const padding = this.options.sectionZoomPadding;
 
         // Calculate target scale
         // We need to account for rotation if we want to be perfect, but for now let's use the unrotated dimensions
@@ -1274,7 +1325,7 @@ export class SeatMapRenderer {
         
         // Limit max zoom
         let targetScale = Math.min(scaleX, scaleY);
-        targetScale = Math.min(targetScale, SeatMapRenderer.CONFIG.MAX_ZOOM);
+        targetScale = Math.min(targetScale, this.options.maxZoom);
 
         // Calculate target position to center the section
         // The section's position (x,y) is its center because we set pivot to center
@@ -1291,7 +1342,7 @@ export class SeatMapRenderer {
         const startScale = this.viewport.scale.x;
         
         const startTime = performance.now();
-        const duration = SeatMapRenderer.CONFIG.ANIMATION_DURATION;
+        const duration = this.options.animationDuration;
 
         const animate = (currentTime) => {
             const elapsed = currentTime - startTime;
@@ -1338,8 +1389,15 @@ export class SeatMapRenderer {
 
         // Price/Category (use defaults or data from inventory, fallback to section pricing)
         const priceValue = this.getSeatPrice(seatData, sectionPricing);
+        const status = seatData.status || 'available';
         
-        const price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : 'Not Available';
+        let price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : 'Not Available';
+        
+        if (status === 'booked' || status === 'sold') {
+            price = 'BOOKED';
+        } else if (status === 'reserved') {
+            price = 'RESERVED';
+        }
         
         // Generate category name from section name (remove trailing numbers)
         // e.g. "VIP 3" -> "VIP", "ORO 2" -> "ORO"
@@ -1386,6 +1444,23 @@ export class SeatMapRenderer {
      * @private
      */
     onSeatClick(seatContainer) {
+        // Check status
+        const status = seatContainer.seatData.status || 'available';
+        if (status !== 'available') {
+            console.log(`Seat ${seatContainer.seatData.id} is ${status}, ignoring click.`);
+            return;
+        }
+
+        // Check limit if trying to select
+        if (!seatContainer.selected && this.selectedSeats.size >= this.options.maxSelectedSeats) {
+            console.warn(`Selection limit reached (${this.options.maxSelectedSeats} seats).`);
+            const event = new CustomEvent('selection-limit-reached', { 
+                detail: { limit: this.options.maxSelectedSeats } 
+            });
+            this.container.dispatchEvent(event);
+            return;
+        }
+
         // Toggle selection
         seatContainer.selected = !seatContainer.selected;
         
@@ -1400,7 +1475,7 @@ export class SeatMapRenderer {
         // Update visual state
         if (seatContainer.selected) {
             // Selected state: Large, visible text, checkmark
-            seatContainer.targetScale = SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER / SeatMapRenderer.CONFIG.SEAT_RADIUS;
+            seatContainer.targetScale = this.options.seatRadiusHover / this.options.seatRadius;
             seatContainer.targetTextAlpha = 1;
             seatContainer.targetTextScale = 1;
             seatContainer.text.text = "✓"; // Checkmark
@@ -1415,7 +1490,7 @@ export class SeatMapRenderer {
             // But since the mouse IS over it (we just clicked), it should technically stay in hover state (Large, original text).
             
             // Let's assume we want to revert to the "hover" state (Large, original text)
-            seatContainer.targetScale = SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER / SeatMapRenderer.CONFIG.SEAT_RADIUS;
+            seatContainer.targetScale = this.options.seatRadiusHover / this.options.seatRadius;
             seatContainer.targetTextAlpha = 1;
             seatContainer.targetTextScale = 1;
             
@@ -1431,15 +1506,23 @@ export class SeatMapRenderer {
         seatContainer.parent.addChild(seatContainer);
         this.animatingSeats.add(seatContainer);
 
-        // Dispatch legacy event
-        const event = new CustomEvent('seat-click', { 
-            detail: { 
-                seat: seatContainer.seatData,
-                sectionId: seatContainer.sectionId,
-                selected: seatContainer.selected
-            } 
-        });
-        this.container.dispatchEvent(event);
+        // Dispatch specific select/deselect events
+        const interactionEventData = {
+            seat: seatContainer.seatData,
+            sectionId: seatContainer.sectionId
+        };
+
+        if (seatContainer.selected) {
+            this.container.dispatchEvent(new CustomEvent('seat-selected', { detail: interactionEventData }));
+            if (this.options.onSeatSelect) {
+                this.options.onSeatSelect(interactionEventData);
+            }
+        } else {
+            this.container.dispatchEvent(new CustomEvent('seat-deselected', { detail: interactionEventData }));
+            if (this.options.onSeatDeselect) {
+                this.options.onSeatDeselect(interactionEventData);
+            }
+        }
 
         // Trigger cart change
         this.handleCartChange();
@@ -1502,27 +1585,32 @@ export class SeatMapRenderer {
         this._unmatchedKeys = [];
 
         inventoryData.seats.forEach(item => {
-            if (!item.key || typeof item.key !== 'string') {
-                console.warn('Invalid seat item, missing key:', item);
+            if (!item.key && !item.id) {
+                console.warn('Invalid seat item, missing key or id:', item);
                 return;
             }
 
-            // Key format from inventory: "SectionName;;RowLabel;;SeatNumber"
-            // Note: The inventory key format must match our generated key format.
-            // Our generated key: `${data.name};;${rowLabel};;${seatData.number}`
-            
-            const key = item.key;
-            const seatContainer = this.seatsByKey[key];
+            let seatContainer;
+            let lookupKey;
+
+            if (item.id) {
+                seatContainer = this.seatsById[item.id];
+                lookupKey = item.id;
+            } else {
+                // Fallback to key
+                seatContainer = this.seatsByKey[item.key];
+                lookupKey = item.key;
+            }
 
             if (seatContainer) {
                 // Merge inventory data into seat data
                 seatContainer.seatData = { ...seatContainer.seatData, ...item };
                 
-                // Here you could also update visual state based on inventory
-                // e.g. if (item.status === 'sold') seatContainer.alpha = 0.5;
+                // Update visuals based on status
+                this.updateSeatVisuals(seatContainer);
             } else {
-                console.warn(`Seat not found for key: ${key}. Expected format: "Section;;Row;;SeatNum"`);
-                this._unmatchedKeys.push(key);
+                console.warn(`Seat not found for lookup: ${lookupKey}`);
+                this._unmatchedKeys.push(lookupKey);
             }
         });
 
@@ -1555,7 +1643,7 @@ export class SeatMapRenderer {
      * @private
      */
     createSeatTexture(radius, color, strokeWidth, strokeColor) {
-        const resolution = SeatMapRenderer.CONFIG.SEAT_TEXTURE_RESOLUTION || 4;
+        const resolution = this.options.seatTextureResolution || 4;
         const key = `seat-${radius}-${color}-${strokeWidth}-${strokeColor}-res${resolution}`;
         if (this.textureCache[key]) return this.textureCache[key];
 
@@ -1582,7 +1670,7 @@ export class SeatMapRenderer {
     updateSeatAnimations() {
         if (this.animatingSeats.size === 0) return;
 
-        const speed = SeatMapRenderer.CONFIG.SEAT_HOVER_SPEED;
+        const speed = this.options.seatHoverSpeed;
 
         for (const seat of this.animatingSeats) {
             const text = seat.text;
@@ -1599,8 +1687,8 @@ export class SeatMapRenderer {
             text.scale.y += (seat.targetTextScale - text.scale.y) * speed;
 
             // Check if animation is done (close enough)
-            if (Math.abs(seat.targetScale - seat.scale.x) < SeatMapRenderer.CONFIG.ANIMATION_THRESHOLD &&
-                Math.abs(seat.targetTextAlpha - text.alpha) < SeatMapRenderer.CONFIG.ANIMATION_THRESHOLD) {
+            if (Math.abs(seat.targetScale - seat.scale.x) < this.options.animationThreshold &&
+                Math.abs(seat.targetTextAlpha - text.alpha) < this.options.animationThreshold) {
                 
                 seat.scale.set(seat.targetScale);
                 text.alpha = seat.targetTextAlpha;
@@ -1608,6 +1696,80 @@ export class SeatMapRenderer {
                 this.animatingSeats.delete(seat);
             }
         }
+    }
+
+    /**
+     * Update visual state of a seat based on its status
+     * @param {PIXI.Container} seatContainer 
+     * @private
+     */
+    updateSeatVisuals(seatContainer) {
+        const status = seatContainer.seatData.status || 'available';
+        
+        let color = seatContainer.originalColor;
+        let strokeColor = seatContainer.originalStrokeColor;
+        let strokeWidth = seatContainer.originalStrokeWidth;
+        let cursor = 'pointer';
+
+        if (status === 'booked' || status === 'sold') {
+            color = this.options.bookedColor;
+            cursor = 'not-allowed';
+            strokeWidth = 0; // Remove outline
+        } else if (status === 'reserved') {
+            color = this.options.reservedColor;
+            cursor = 'not-allowed'; 
+            strokeWidth = 0; // Remove outline
+        }
+
+        // Update texture
+        const texture = this.createSeatTexture(
+            this.options.seatRadius,
+            color,
+            strokeWidth,
+            strokeColor
+        );
+        
+        // Update the sprite texture
+        const sprite = seatContainer.children.find(c => c instanceof PIXI.Sprite);
+        if (sprite) {
+            sprite.texture = texture;
+        } else {
+            console.warn("Sprite not found for seat", seatContainer);
+        }
+
+        // Handle Glow - hide if not available
+        const glowGraphics = seatContainer.children.find(c => c instanceof PIXI.Graphics);
+        if (glowGraphics) {
+            glowGraphics.visible = (status === 'available');
+        }
+
+        // Update interactivity
+        // Always allow interaction for tooltips, but change cursor to indicate status
+        seatContainer.eventMode = 'static';
+        seatContainer.cursor = cursor;
+
+        // Handle selection if status changed to non-interactive (booked/reserved)
+        if (status !== 'available' && seatContainer.selected) {
+            // Deselect without triggering click event logic if possible, 
+            // but onSeatClick handles visual toggle and cart update.
+            // We need to manually deselect here to avoid triggering the click handler logic which we will guard
+            seatContainer.selected = false;
+            this.selectedSeats.delete(seatContainer);
+            
+            // Reset visual state
+            seatContainer.targetScale = seatContainer.baseScale || 1;
+            if (seatContainer.seatData.sn || seatContainer.seatData.specialNeeds) {
+                seatContainer.text.text = 'accessible_forward';
+            } else {
+                seatContainer.text.text = seatContainer.originalLabel;
+            }
+            
+            // Trigger cart update to remove it
+            this.handleCartChange();
+        }
+        
+        // Update tooltip color reference so tooltip shows correct status color
+        seatContainer.seatColor = color;
     }
 
     /**
