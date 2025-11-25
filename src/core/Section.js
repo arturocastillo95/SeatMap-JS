@@ -3,6 +3,7 @@
 // ============================================
 
 import { VISUAL_CONFIG, COLORS } from './config.js';
+import { Utils } from './utils.js';
 
 /**
  * Section class that extends PIXI.Graphics with proper validation and type safety
@@ -79,6 +80,7 @@ export class Section extends PIXI.Graphics {
   initializeProperties(config) {
     // Core identification
     this._sectionId = config.sectionId || `Section ${Date.now()}`;
+    this._uniqueId = config.uniqueId || Utils.generateShortId();
     this._isGeneralAdmission = config.isGeneralAdmission || false;
     this._isZone = config.isZone || false;
     
@@ -94,6 +96,12 @@ export class Section extends PIXI.Graphics {
       this._showZone = config.showZone !== undefined ? config.showZone : true;
       this._fillOpacity = config.fillOpacity !== undefined ? config.fillOpacity : 0.5;
       this._points = config.points || null; // Array of [x, y, x, y...]
+
+      // Label customization
+      this._labelFontSize = config.labelFontSize || 14;
+      this._labelColor = config.labelColor !== undefined ? config.labelColor : 0xffffff;
+      this._labelOffsetX = config.labelOffsetX || 0;
+      this._labelOffsetY = config.labelOffsetY || 0;
     }
 
     // Seat colors
@@ -169,6 +177,8 @@ export class Section extends PIXI.Graphics {
   initializeGraphics() {
     this.clear();
     
+    this.createGlow();
+    
     if (this._isZone && !this._showZone) {
       // If zone is hidden, draw a transparent hit area so it can still be selected if needed
       // or maybe we don't want it selectable? The requirement says "Zone visibility (on/off)".
@@ -210,6 +220,44 @@ export class Section extends PIXI.Graphics {
   }
 
   /**
+   * Create glow effect behind the section
+   */
+  createGlow() {
+    // Remove existing glow if any
+    if (this._glowGraphics) {
+      this.removeChild(this._glowGraphics);
+      this._glowGraphics = null;
+    }
+
+    if (!this._glowEnabled) return;
+
+    const glow = new PIXI.Graphics();
+    
+    // Draw shape matching the section
+    if (this._points && this._points.length > 0) {
+      glow.poly(this._points);
+    } else {
+      glow.rect(0, 0, this._contentWidth, this._contentHeight);
+    }
+
+    // Apply stroke for glow
+    glow.stroke({ 
+      width: this._glowStrength, 
+      color: this._glowColor, 
+      alpha: this._glowOpacity 
+    });
+
+    // Apply blur filter
+    const blurFilter = new PIXI.BlurFilter();
+    blurFilter.strength = this._glowBlur;
+    glow.filters = [blurFilter];
+
+    this._glowGraphics = glow;
+    // Add at index 0 to ensure it's behind other children (like seats/labels)
+    this.addChildAt(glow, 0);
+  }
+
+  /**
    * Create center label for Zone sections
    */
   createZoneLabel() {
@@ -222,15 +270,15 @@ export class Section extends PIXI.Graphics {
       text: this._zoneLabel,
       style: {
         fontFamily: VISUAL_CONFIG.GA_LABEL.FONT_FAMILY,
-        fontSize: VISUAL_CONFIG.GA_LABEL.FONT_SIZE,
+        fontSize: this._labelFontSize,
         fontWeight: VISUAL_CONFIG.GA_LABEL.FONT_WEIGHT,
-        fill: VISUAL_CONFIG.GA_LABEL.COLOR,
+        fill: this._labelColor,
         align: 'center'
       }
     });
     label.anchor.set(0.5, 0.5);
-    label.x = this._contentWidth / 2;
-    label.y = this._contentHeight / 2;
+    label.x = (this._contentWidth / 2) + this._labelOffsetX;
+    label.y = (this._contentHeight / 2) + this._labelOffsetY;
     label.eventMode = 'none';
     this.addChild(label);
     this._gaLabel = label; // Reuse _gaLabel property for convenience
@@ -264,6 +312,14 @@ export class Section extends PIXI.Graphics {
 
   get sectionId() {
     return this._sectionId;
+  }
+
+  get uniqueId() {
+    return this._uniqueId;
+  }
+
+  set uniqueId(value) {
+    this._uniqueId = value;
   }
 
   set sectionId(value) {
@@ -683,6 +739,62 @@ export class Section extends PIXI.Graphics {
   set isZone(value) {
     this._isZone = value;
   }
+
+  get labelFontSize() {
+    return this._labelFontSize;
+  }
+
+  set labelFontSize(value) {
+    if (typeof value !== 'number' || value <= 0) {
+      throw new Error('Label font size must be a positive number');
+    }
+    this._labelFontSize = value;
+    if (this._isZone && this._showZoneLabel) {
+      this.createZoneLabel();
+    }
+  }
+
+  get labelColor() {
+    return this._labelColor;
+  }
+
+  set labelColor(value) {
+    if (typeof value !== 'number' || value < 0) {
+      throw new Error('Label color must be a valid hex color number');
+    }
+    this._labelColor = value;
+    if (this._isZone && this._showZoneLabel) {
+      this.createZoneLabel();
+    }
+  }
+
+  get labelOffsetX() {
+    return this._labelOffsetX;
+  }
+
+  set labelOffsetX(value) {
+    if (typeof value !== 'number') {
+      throw new Error('Label offset X must be a number');
+    }
+    this._labelOffsetX = value;
+    if (this._isZone && this._showZoneLabel) {
+      this.createZoneLabel();
+    }
+  }
+
+  get labelOffsetY() {
+    return this._labelOffsetY;
+  }
+
+  set labelOffsetY(value) {
+    if (typeof value !== 'number') {
+      throw new Error('Label offset Y must be a number');
+    }
+    this._labelOffsetY = value;
+    if (this._isZone && this._showZoneLabel) {
+      this.createZoneLabel();
+    }
+  }
   
   get zoneLabel() {
     return this._zoneLabel;
@@ -798,7 +910,8 @@ export class Section extends PIXI.Graphics {
    */
   toJSON() {
     const base = {
-      id: this._sectionId,
+      id: this._uniqueId, // Use unique ID
+      name: this._sectionId, // Store name separately
       type: this._isGeneralAdmission ? 'ga' : 'regular',
       x: this.x - this._contentWidth / 2, // Convert back from pivot
       y: this.y - this._contentHeight / 2,
@@ -839,6 +952,10 @@ export class Section extends PIXI.Graphics {
       base.showZoneLabel = this._showZoneLabel;
       base.showZone = this._showZone;
       base.fillOpacity = this._fillOpacity;
+      base.labelFontSize = this._labelFontSize;
+      base.labelColor = this._labelColor;
+      base.labelOffsetX = this._labelOffsetX;
+      base.labelOffsetY = this._labelOffsetY;
       if (this._points) {
         base.points = this._points;
       }

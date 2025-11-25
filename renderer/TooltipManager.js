@@ -105,7 +105,16 @@ export class TooltipManager {
         // Update DOM
         if (this.elements.section) this.elements.section.textContent = content.section || '--';
         if (this.elements.row) this.elements.row.textContent = content.row || '--';
-        if (this.elements.seat) this.elements.seat.textContent = content.seat || '--';
+        
+        if (this.elements.seat) {
+            if (content.seat === null) {
+                this.elements.seat.parentElement.style.display = 'none';
+            } else {
+                this.elements.seat.parentElement.style.display = 'flex';
+                this.elements.seat.textContent = content.seat || '--';
+            }
+        }
+        
         if (this.elements.price) this.elements.price.textContent = content.price || '';
         if (this.elements.category) this.elements.category.textContent = content.category || '';
 

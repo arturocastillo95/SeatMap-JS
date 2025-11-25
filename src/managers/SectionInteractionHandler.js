@@ -215,6 +215,41 @@ export const SectionInteractionHandler = {
       
       joinZonesOption.style.display = canJoin ? 'flex' : 'none';
     }
+
+    // Show/hide Zone Label Controls
+    const labelControls = document.getElementById('contextZoneLabelControls');
+    if (labelControls) {
+      if (section.isZone) {
+        labelControls.style.display = 'block';
+        
+        // Initialize inputs
+        const sizeInput = document.getElementById('contextLabelSize');
+        const colorInput = document.getElementById('contextLabelColor');
+        
+        if (sizeInput) {
+          sizeInput.value = section.labelFontSize || 14;
+          sizeInput.onchange = (e) => {
+            const val = parseInt(e.target.value);
+            if (!isNaN(val) && val > 0) {
+              section.labelFontSize = val;
+            }
+          };
+          // Prevent menu closing when clicking input
+          sizeInput.onclick = (e) => e.stopPropagation();
+        }
+        
+        if (colorInput) {
+          colorInput.value = Utils.numberToHex(section.labelColor || 0xffffff);
+          colorInput.oninput = (e) => {
+            section.labelColor = Utils.hexToNumber(e.target.value);
+          };
+          // Prevent menu closing when clicking input
+          colorInput.onclick = (e) => e.stopPropagation();
+        }
+      } else {
+        labelControls.style.display = 'none';
+      }
+    }
     
     // Store the section in State for the context menu actions to use
     State.contextMenuSection = section;

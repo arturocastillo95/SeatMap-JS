@@ -80,5 +80,22 @@ export const Utils = {
       }
       return result;
     }
+  },
+
+  /**
+   * Convert hex number to hex string (e.g. 0xff0000 -> "#ff0000")
+   */
+  numberToHex(num) {
+    let hex = num.toString(16);
+    while (hex.length < 6) hex = '0' + hex;
+    return '#' + hex;
+  },
+
+  /**
+   * Convert hex string to number (e.g. "#ff0000" -> 0xff0000)
+   */
+  hexToNumber(hex) {
+    if (hex.startsWith('#')) hex = hex.substring(1);
+    return parseInt(hex, 16);
   }
 };

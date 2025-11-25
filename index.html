@@ -1299,6 +1299,82 @@
               </div>
             </div>
           </div>
+
+          <!-- Zone Label Controls -->
+          <div id="zoneLabelControls" style="display: none; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+             <label class="sidebar-label" style="margin-bottom: 8px;">Zone Label</label>
+             
+             <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Size <span id="zoneLabelSizeValue" style="color: #3a9cff;">24px</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="zoneLabelSizeSlider"
+                    min="12"
+                    max="72"
+                    value="24"
+                    step="1"
+                  />
+                </div>
+             </div>
+
+             <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Offset X <span id="zoneLabelOffsetXValue" style="color: #3a9cff;">0</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="zoneLabelOffsetXSlider"
+                    min="-100"
+                    max="100"
+                    value="0"
+                    step="1"
+                  />
+                </div>
+             </div>
+
+             <div class="sidebar-input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="sidebar-label" style="font-size: 11px; margin: 0;">Offset Y <span id="zoneLabelOffsetYValue" style="color: #3a9cff;">0</span></label>
+                </div>
+                <div class="sidebar-slider">
+                  <input
+                    type="range"
+                    class="sidebar-slider-input"
+                    id="zoneLabelOffsetYSlider"
+                    min="-100"
+                    max="100"
+                    value="0"
+                    step="1"
+                  />
+                </div>
+             </div>
+
+            <div class="sidebar-input-group">
+              <label class="sidebar-label" style="font-size: 11px;">Color</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input
+                  type="color"
+                  id="zoneLabelColorPicker"
+                  value="#ffffff"
+                  style="width: 50px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: transparent; cursor: pointer;"
+                />
+                <input
+                  type="text"
+                  class="sidebar-input"
+                  id="zoneLabelColorInput"
+                  value="#ffffff"
+                  placeholder="#ffffff"
+                  style="flex: 1; text-transform: uppercase;"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2023,6 +2099,23 @@
       <span class="material-symbols">delete</span>
       <span>Delete Section</span>
     </button>
+    
+    <!-- Zone Label Controls -->
+    <div id="contextZoneLabelControls" style="display: none; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 4px;">
+      <div style="padding: 4px 12px; font-size: 11px; color: #9095a0; font-weight: 600;">LABEL SETTINGS</div>
+      
+      <div class="context-menu-item" style="cursor: default; hover: none;">
+        <span class="material-symbols" style="font-size: 18px;">format_size</span>
+        <input type="number" id="contextLabelSize" value="14" min="8" max="72" style="width: 50px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 4px; padding: 2px 4px;">
+        <span style="font-size: 11px; color: #9095a0;">px</span>
+      </div>
+      
+      <div class="context-menu-item" style="cursor: default; hover: none;">
+        <span class="material-symbols" style="font-size: 18px;">palette</span>
+        <input type="color" id="contextLabelColor" value="#ffffff" style="width: 24px; height: 24px; border: none; background: none; cursor: pointer;">
+        <span style="font-size: 11px; color: #9095a0;">Color</span>
+      </div>
+    </div>
   </div>
 
   <!-- PixiJS (UMD) -->

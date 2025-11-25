@@ -141,6 +141,17 @@ function initializeElements() {
   Elements.zoneOpacitySlider = document.getElementById('zoneOpacitySlider');
   Elements.zoneOpacityValue = document.getElementById('zoneOpacityValue');
   
+  // Zone Label Controls
+  Elements.zoneLabelControls = document.getElementById('zoneLabelControls');
+  Elements.zoneLabelSizeSlider = document.getElementById('zoneLabelSizeSlider');
+  Elements.zoneLabelSizeValue = document.getElementById('zoneLabelSizeValue');
+  Elements.zoneLabelOffsetXSlider = document.getElementById('zoneLabelOffsetXSlider');
+  Elements.zoneLabelOffsetXValue = document.getElementById('zoneLabelOffsetXValue');
+  Elements.zoneLabelOffsetYSlider = document.getElementById('zoneLabelOffsetYSlider');
+  Elements.zoneLabelOffsetYValue = document.getElementById('zoneLabelOffsetYValue');
+  Elements.zoneLabelColorPicker = document.getElementById('zoneLabelColorPicker');
+  Elements.zoneLabelColorInput = document.getElementById('zoneLabelColorInput');
+  
   // Glow elements
   Elements.glowEnabledToggle = document.getElementById('glowEnabledToggle');
   Elements.glowColorPicker = document.getElementById('glowColorPicker');

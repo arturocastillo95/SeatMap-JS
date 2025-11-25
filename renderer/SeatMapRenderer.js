@@ -9,7 +9,7 @@ export class SeatMapRenderer {
     static CONFIG = {
         PADDING: 0,               // Padding around the map when fitting to view
         MIN_ZOOM: 0.1,            // Minimum zoom level (not used for initial fit)
-        MAX_ZOOM: 3.5,              // Maximum zoom level
+        MAX_ZOOM: 3,              // Maximum zoom level
         ZOOM_SPEED: 1.1,          // Zoom speed multiplier
         BACKGROUND_COLOR: 0x0f0f13,
         SECTION_ZOOM_PADDING: 50, // Padding when zooming to a section
@@ -20,7 +20,7 @@ export class SeatMapRenderer {
         SEAT_LABEL_SIZE: 7,       // Font size for seat labels
         TOOLTIP_SPEED: 0.15,      // Tooltip fade animation speed in seconds
         UI_PADDING: 40,           // Padding for UI elements
-        ZONE_FADE_RATIO: 6,       // Ratio for zone fade out duration
+        ZONE_FADE_RATIO: 5,       // Ratio for zone fade out duration
         ANIMATION_THRESHOLD: 0.01, // Threshold for stopping animations
         SEAT_TEXTURE_RESOLUTION: 4 // Resolution multiplier for seat textures
     };
@@ -168,6 +168,7 @@ export class SeatMapRenderer {
         
         this.seatsByKey = {};
         this.viewport = null;
+        this.labelsLayer = null;
         this.uiContainer = null;
         this.resetButton = null;
     }
@@ -518,6 +519,7 @@ export class SeatMapRenderer {
         }
         
         this.zoneContainers = []; // Reset zone containers list
+        this.labelsLayer = new PIXI.Container(); // Create labels layer
         
         // Reset state to prevent memory leaks and ghost interactions
         this.seatsByKey = {};
@@ -558,6 +560,9 @@ export class SeatMapRenderer {
                 this.renderSection(sectionData);
             }
         }
+
+        // Add labels layer to viewport last so it is on top of everything
+        this.viewport.addChild(this.labelsLayer);
 
         // 3. Fit to view (ignoring saved canvas settings for consistent initial view)
         // Fit to underlay if present, otherwise fit to all sections
@@ -726,9 +731,19 @@ export class SeatMapRenderer {
             }
         });
         text.anchor.set(0.5);
-        text.x = width / 2;
-        text.y = height / 2;
-        container.addChild(text);
+
+        if (this.labelsLayer) {
+            // Position in global viewport coordinates
+            text.x = container.x;
+            text.y = container.y;
+            text.rotation = container.rotation;
+            this.labelsLayer.addChild(text);
+        } else {
+            text.x = width / 2;
+            text.y = height / 2;
+            container.addChild(text);
+        }
+
         container.zoneLabel = text;
 
         // Capacity
@@ -743,9 +758,16 @@ export class SeatMapRenderer {
                 }
             });
             capText.anchor.set(0.5);
-            capText.x = width / 2;
-            capText.y = height / 2 + 20;
-            container.addChild(capText);
+            
+            if (this.labelsLayer) {
+                capText.x = 0;
+                capText.y = 20;
+                text.addChild(capText);
+            } else {
+                capText.x = width / 2;
+                capText.y = height / 2 + 20;
+                container.addChild(capText);
+            }
         }
     }
 
@@ -759,20 +781,44 @@ export class SeatMapRenderer {
      */
     renderZoneContent(container, data, width, height) {
         // Zone Label
+        const fontSize = data.labelFontSize || 16;
+        const fontColor = data.labelColor !== undefined ? data.labelColor : 0x333333;
+        const offsetX = data.labelOffsetX || 0;
+        const offsetY = data.labelOffsetY || 0;
+
         const text = new PIXI.Text({
             text: data.zoneLabel || data.name || "Zone",
             style: {
                 fontFamily: 'system-ui, sans-serif',
-                fontSize: 16,
+                fontSize: fontSize,
                 fontWeight: 'bold',
-                fill: 0x333333, // Darker text for zones as they are usually lighter background
+                fill: fontColor,
                 align: 'center'
             }
         });
         text.anchor.set(0.5);
-        text.x = width / 2;
-        text.y = height / 2;
-        container.addChild(text);
+
+        if (this.labelsLayer) {
+            // Position in global viewport coordinates
+            // We need to rotate the offset to match the container's rotation
+            const rotation = container.rotation;
+            const cos = Math.cos(rotation);
+            const sin = Math.sin(rotation);
+            
+            // Rotate offset vector
+            const rotatedOffsetX = offsetX * cos - offsetY * sin;
+            const rotatedOffsetY = offsetX * sin + offsetY * cos;
+
+            text.x = container.x + rotatedOffsetX;
+            text.y = container.y + rotatedOffsetY;
+            text.rotation = rotation;
+            this.labelsLayer.addChild(text);
+        } else {
+            text.x = (width / 2) + offsetX;
+            text.y = (height / 2) + offsetY;
+            container.addChild(text);
+        }
+
         container.zoneLabel = text;
     }
 
@@ -1294,13 +1340,20 @@ export class SeatMapRenderer {
         const priceValue = this.getSeatPrice(seatData, sectionPricing);
         
         const price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : 'Not Available';
-        const category = seatData.category || 'STANDARD';
         
+        // Generate category name from section name (remove trailing numbers)
+        // e.g. "VIP 3" -> "VIP", "ORO 2" -> "ORO"
+        const sectionCategory = sectionName.replace(/\s*\d+$/, '').trim();
+        const category = seatData.category || sectionCategory || 'STANDARD';
+        
+        // Determine special needs status
+        const isSpecial = seatData.sn || seatData.specialNeeds;
+
         // Prepare content object
         const content = {
             section: sectionName,
             row: rowLabel,
-            seat: seatData.n ?? seatData.number,
+            seat: isSpecial ? null : (seatData.n ?? seatData.number),
             price: price,
             category: category
         };

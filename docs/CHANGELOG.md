@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Zone Label Positioning** - Fine-tune the position of zone labels
+  - X and Y offset sliders in the sidebar for Zone sections
+  - Real-time visual update in the editor
+  - Persists in file save/load format (`labelOffsetX`, `labelOffsetY`)
+  - Renderer support with correct rotation handling
+- **Context Menu Enhancements** - Improved context menu for Zones
+  - Added Zone Label controls (Size, Color) directly to the context menu
+- **Duplicate Section IDs** - Improved ID generation
+  - Duplicating a section now generates a new unique ID instead of reusing the name
+
+### Improved
+- **Tooltip Category Display** - Cleaner category names in tooltips
+  - Automatically removes trailing numbers from section names (e.g., "VIP 3" -> "VIP") when no specific category is set
+- **Tooltip Visibility** - Better handling of non-seat elements
+  - Hides the "Seat" row in tooltips for elements without seat numbers (like Zones/GA)
+
+### Fixed
+- **Renderer Label Rotation** - Fixed zone label offsets to rotate correctly with the zone
+- **Tooltip Layout** - Fixed empty rows appearing in tooltips when data is missing
+
 ### Optimized
 - **Sparse Map Format (SMF) Optimization** - Reduced JSON file size by ~50%
   - Implemented sparse object keys for seats (`r`, `c`, `n`, `x`, `y` instead of full names)

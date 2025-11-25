@@ -383,6 +383,69 @@ export const AlignmentManager = {
         }
       }
     });
+
+    // Zone Label Size
+    Elements.zoneLabelSizeSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isZone) {
+          const size = parseInt(e.target.value);
+          Elements.zoneLabelSizeValue.textContent = `${size}px`;
+          section.labelFontSize = size;
+        }
+      }
+    });
+
+    // Zone Label Offset X
+    Elements.zoneLabelOffsetXSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isZone) {
+          const offset = parseInt(e.target.value);
+          Elements.zoneLabelOffsetXValue.textContent = `${offset}`;
+          section.labelOffsetX = offset;
+        }
+      }
+    });
+
+    // Zone Label Offset Y
+    Elements.zoneLabelOffsetYSlider.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isZone) {
+          const offset = parseInt(e.target.value);
+          Elements.zoneLabelOffsetYValue.textContent = `${offset}`;
+          section.labelOffsetY = offset;
+        }
+      }
+    });
+
+    // Zone Label Color
+    Elements.zoneLabelColorPicker.addEventListener('input', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isZone) {
+          const colorHex = e.target.value;
+          Elements.zoneLabelColorInput.value = colorHex.toUpperCase();
+          section.labelColor = parseInt(colorHex.replace('#', ''), 16);
+        }
+      }
+    });
+
+    Elements.zoneLabelColorInput.addEventListener('change', (e) => {
+      if (State.selectedSections.length === 1) {
+        const section = State.selectedSections[0];
+        if (section.isZone) {
+          let colorHex = e.target.value.trim();
+          if (!colorHex.startsWith('#')) colorHex = '#' + colorHex;
+          if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+            Elements.zoneLabelColorPicker.value = colorHex;
+            Elements.zoneLabelColorInput.value = colorHex.toUpperCase();
+            section.labelColor = parseInt(colorHex.replace('#', ''), 16);
+          }
+        }
+      }
+    });
   },
 
   setRowLabelType(type) {
@@ -812,6 +875,28 @@ export const AlignmentManager = {
       Elements.zoneOpacitySlider.value = opacity;
       Elements.zoneOpacityValue.textContent = `${opacity}%`;
 
+      // Update Zone Label Controls
+      if (Elements.zoneLabelControls) {
+        Elements.zoneLabelControls.style.display = 'block';
+        
+        const labelSize = section.labelFontSize || 14;
+        Elements.zoneLabelSizeSlider.value = labelSize;
+        Elements.zoneLabelSizeValue.textContent = `${labelSize}px`;
+        
+        const labelOffsetX = section.labelOffsetX || 0;
+        Elements.zoneLabelOffsetXSlider.value = labelOffsetX;
+        Elements.zoneLabelOffsetXValue.textContent = `${labelOffsetX}`;
+
+        const labelOffsetY = section.labelOffsetY || 0;
+        Elements.zoneLabelOffsetYSlider.value = labelOffsetY;
+        Elements.zoneLabelOffsetYValue.textContent = `${labelOffsetY}`;
+        
+        const labelColor = section.labelColor !== undefined ? section.labelColor : 0xffffff;
+        const labelColorHex = '#' + labelColor.toString(16).padStart(6, '0');
+        Elements.zoneLabelColorPicker.value = labelColorHex;
+        Elements.zoneLabelColorInput.value = labelColorHex.toUpperCase();
+      }
+
       Elements.rowLabelsHeader.parentElement.style.display = 'none';
       Elements.seatNumberingSection.style.display = 'none';
       Elements.alignRowsSection.style.display = 'none';
@@ -839,6 +924,7 @@ export const AlignmentManager = {
       Elements.gaWidthInput.value = Math.round(section.contentWidth);
       Elements.gaHeightInput.value = Math.round(section.contentHeight);
       Elements.zoneOpacityControl.style.display = 'none';
+      if (Elements.zoneLabelControls) Elements.zoneLabelControls.style.display = 'none';
       Elements.rowLabelsHeader.parentElement.style.display = 'none';
       Elements.seatNumberingSection.style.display = 'none';
       Elements.alignRowsSection.style.display = 'none';
@@ -858,6 +944,7 @@ export const AlignmentManager = {
       Elements.capacityInput.style.display = 'none';
       Elements.gaSizeControls.style.display = 'none';
       Elements.zoneOpacityControl.style.display = 'none';
+      if (Elements.zoneLabelControls) Elements.zoneLabelControls.style.display = 'none';
       Elements.rowLabelsHeader.parentElement.style.display = 'block';
       Elements.seatNumberingSection.style.display = 'block';
       Elements.alignRowsSection.style.display = 'block';

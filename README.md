@@ -109,6 +109,7 @@ When a single section is selected, customize:
 - **Seat Numbering** (Regular sections): Custom starting number and left-to-right/right-to-left order
 - **Capacity** (GA sections): Set maximum occupancy for general admission areas
 - **Size** (GA sections): Width and height controls with interactive resize handles
+- **Zone Label Position** (Zone sections): Fine-tune the X/Y offset of zone labels relative to the center
 - **Align Rows** (Regular sections): Left/center/right alignment with gap preservation for deleted seats
 - **Rotation**: -180° to 180° with live preview (handles rotate for GA sections)
 - **Curve** (Regular sections): Stadium-style curved seating with auto-calculated safety limits

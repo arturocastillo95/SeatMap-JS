@@ -149,7 +149,8 @@ export const SectionFactory = {
       }
       
       sectionData.name = newName;
-      sectionData.id = newName;
+      // Generate new unique ID for the duplicate
+      sectionData.id = Utils.generateShortId();
 
       // Regenerate seat IDs to ensure uniqueness
       if (sectionData.seats) {

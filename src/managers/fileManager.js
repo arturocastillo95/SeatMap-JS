@@ -13,6 +13,16 @@ export const FileManager = {
   exportToJSON() {
     const timestamp = new Date().toISOString();
     
+    // Ensure all sections have unique IDs before exporting
+    const seenIds = new Set();
+    State.sections.forEach(section => {
+      // If ID is missing or duplicate, generate a new one
+      if (!section.uniqueId || seenIds.has(section.uniqueId)) {
+        section.uniqueId = Utils.generateShortId();
+      }
+      seenIds.add(section.uniqueId);
+    });
+
     const mapData = {
       // Format metadata
       format: "SMF",
@@ -78,7 +88,7 @@ export const FileManager = {
     if (section.isGeneralAdmission) {
       const serialized = {
         // Identity
-        id: section.sectionId,
+        id: section.uniqueId,
         name: section.sectionId,
         groupId: null,
         type: 'ga', // Mark as General Admission
@@ -173,6 +183,10 @@ export const FileManager = {
         serialized.showZoneLabel = section.showZoneLabel;
         serialized.showZone = section.showZone;
         serialized.fillOpacity = section.fillOpacity;
+        serialized.labelFontSize = section.labelFontSize;
+        serialized.labelColor = section.labelColor;
+        serialized.labelOffsetX = section.labelOffsetX;
+        serialized.labelOffsetY = section.labelOffsetY;
         if (section.points) {
           serialized.points = section.points;
         }
@@ -275,7 +289,7 @@ export const FileManager = {
     
     return {
       // Identity
-      id: section.sectionId,
+      id: section.uniqueId,
       name: section.sectionId,
       groupId: null,
       
@@ -528,6 +542,10 @@ export const FileManager = {
         if (data.showZoneLabel !== undefined) section.showZoneLabel = data.showZoneLabel;
         if (data.showZone !== undefined) section.showZone = data.showZone;
         if (data.fillOpacity !== undefined) section.fillOpacity = data.fillOpacity;
+        if (data.labelFontSize !== undefined) section.labelFontSize = data.labelFontSize;
+        if (data.labelColor !== undefined) section.labelColor = data.labelColor;
+        if (data.labelOffsetX !== undefined) section.labelOffsetX = data.labelOffsetX;
+        if (data.labelOffsetY !== undefined) section.labelOffsetY = data.labelOffsetY;
         if (data.points) section.points = data.points;
         
       } else {
@@ -551,7 +569,20 @@ export const FileManager = {
       }
       
       // Restore section name
-      section.sectionId = data.name;
+      section.sectionId = data.name || data.id; // Fallback to id if name missing
+      
+      if (data.id) {
+        // Check for duplicates in ALREADY loaded sections
+        // Note: section is already in State.sections because createSection calls registerSection
+        const duplicate = State.sections.find(s => s !== section && s.uniqueId === data.id);
+        
+        if (duplicate) {
+          console.warn(`Duplicate ID found: ${data.id}. Generating new ID.`);
+          section.uniqueId = Utils.generateShortId();
+        } else {
+          section.uniqueId = data.id;
+        }
+      }
       
       // Restore section color
       if (data.style && data.style.sectionColor !== undefined) {
@@ -600,7 +631,19 @@ export const FileManager = {
     );
     
     // Restore section name
-    section.sectionId = data.name;
+    section.sectionId = data.name || data.id; // Fallback to id if name missing
+    
+    if (data.id) {
+      // Check for duplicates in ALREADY loaded sections
+      const duplicate = State.sections.find(s => s !== section && s.uniqueId === data.id);
+      
+      if (duplicate) {
+        console.warn(`Duplicate ID found: ${data.id}. Generating new ID.`);
+        section.uniqueId = Utils.generateShortId();
+      } else {
+        section.uniqueId = data.id;
+      }
+    }
     
     // Restore padding (v2.1.0+)
     if (data.base.padding !== undefined) {
