@@ -149,12 +149,27 @@ export class SelectionManager {
     }
 
     /**
+     * Check if a seat is a special needs (SN) seat
+     * @param {PIXI.Container} seatContainer
+     * @returns {boolean}
+     */
+    isSpecialNeedsSeat(seatContainer) {
+        return seatContainer.seatData?.sn === true || seatContainer.seatData?.specialNeeds === true;
+    }
+
+    /**
      * Check if selecting/deselecting a seat would create an orphan
+     * Special needs (SN) seats are exempt from orphan rules
      * @param {PIXI.Container} seatContainer - The seat being clicked
      * @param {string} action - 'select' or 'deselect'
      * @returns {{ wouldCreateOrphan: boolean, orphanSeats: PIXI.Container[] }}
      */
     wouldCreateOrphan(seatContainer, action) {
+        // Special needs seats are exempt from orphan rules
+        if (this.isSpecialNeedsSeat(seatContainer)) {
+            return { wouldCreateOrphan: false, orphanSeats: [] };
+        }
+
         const sectionId = seatContainer.sectionId;
         const rowIndex = seatContainer.seatData.r ?? seatContainer.seatData.rowIndex;
         
@@ -170,8 +185,10 @@ export class SelectionManager {
         }
         
         // Simulate the state after the action
+        // Special needs seats are treated as "boundaries" (like unavailable seats)
         const simulatedSelection = rowSeats.map((seat, idx) => {
             if (!this.isSeatAvailable(seat)) return false;
+            if (this.isSpecialNeedsSeat(seat)) return false; // SN seats don't count for orphan detection
             if (idx === seatIndex) return action === 'select';
             return seat.selected;
         });
@@ -189,6 +206,7 @@ export class SelectionManager {
             for (let i = 0; i < simulatedSelection.length; i++) {
                 if (simulatedSelection[i]) continue;
                 if (!this.isSeatAvailable(rowSeats[i])) continue;
+                if (this.isSpecialNeedsSeat(rowSeats[i])) continue; // Skip SN seats
                 
                 let leftBoundary = false;
                 let leftSelected = false;
@@ -197,8 +215,8 @@ export class SelectionManager {
                     leftBoundary = true;
                 } else {
                     for (let j = i - 1; j >= 0; j--) {
-                        if (!this.isSeatAvailable(rowSeats[j])) {
-                            leftBoundary = true;
+                        if (!this.isSeatAvailable(rowSeats[j]) || this.isSpecialNeedsSeat(rowSeats[j])) {
+                            leftBoundary = true; // SN seats act as boundaries
                             break;
                         }
                         if (simulatedSelection[j]) {
@@ -216,8 +234,8 @@ export class SelectionManager {
                     rightBoundary = true;
                 } else {
                     for (let j = i + 1; j < simulatedSelection.length; j++) {
-                        if (!this.isSeatAvailable(rowSeats[j])) {
-                            rightBoundary = true;
+                        if (!this.isSeatAvailable(rowSeats[j]) || this.isSpecialNeedsSeat(rowSeats[j])) {
+                            rightBoundary = true; // SN seats act as boundaries
                             break;
                         }
                         if (simulatedSelection[j]) {
@@ -244,6 +262,7 @@ export class SelectionManager {
             for (let i = 0; i < simulatedSelection.length; i++) {
                 if (!simulatedSelection[i]) continue;
                 if (!this.isSeatAvailable(rowSeats[i])) continue;
+                if (this.isSpecialNeedsSeat(rowSeats[i])) continue; // SN seats can be isolated
                 
                 let hasSelectedNeighbor = false;
                 
