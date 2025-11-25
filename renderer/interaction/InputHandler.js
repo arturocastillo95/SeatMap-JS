@@ -23,9 +23,135 @@ export class InputHandler {
 
         this.activePointers = new Map();
         
+        // Gesture tracking - to distinguish taps from gestures
+        this.gestureState = {
+            isGesture: false,          // True if a pan/pinch gesture was detected
+            startTime: 0,              // Timestamp when touch started
+            startPos: null,            // Initial touch position
+            totalMovement: 0,          // Total distance moved
+            gestureCooldown: false     // Brief cooldown after gesture ends
+        };
+        
+        // Double-tap detection
+        this.doubleTapState = {
+            lastTapTime: 0,
+            lastTapPos: null,
+            pendingTapTimeout: null,
+            pendingTapCallback: null
+        };
+        
+        // Thresholds for gesture detection (from config)
+        this.TAP_MAX_DURATION = this.config.tapMaxDuration || 300;
+        this.TAP_MAX_MOVEMENT = this.config.tapMaxMovement || 10;
+        this.GESTURE_COOLDOWN_MS = this.config.gestureCooldownMs || 200;
+        this.DOUBLE_TAP_MAX_DELAY = this.config.doubleTapMaxDelay || 300;
+        this.DOUBLE_TAP_MAX_DISTANCE = this.config.doubleTapMaxDistance || 50;
+        
         // Bind methods
         this.wheelHandler = this.wheelHandler.bind(this);
         this.onPointerUp = this.onPointerUp.bind(this);
+    }
+
+    /**
+     * Check if the current interaction is a valid tap (not a gesture)
+     * @returns {boolean}
+     */
+    isValidTap() {
+        if (this.gestureState.gestureCooldown) return false;
+        if (this.gestureState.isGesture) return false;
+        
+        const duration = Date.now() - this.gestureState.startTime;
+        return duration < this.TAP_MAX_DURATION && 
+               this.gestureState.totalMovement < this.TAP_MAX_MOVEMENT;
+    }
+
+    /**
+     * Check if the current tap is a double-tap
+     * @param {Object} tapPos - Current tap position {x, y}
+     * @returns {boolean}
+     */
+    isDoubleTap(tapPos) {
+        const now = Date.now();
+        const timeSinceLastTap = now - this.doubleTapState.lastTapTime;
+        
+        if (timeSinceLastTap > this.DOUBLE_TAP_MAX_DELAY) {
+            return false;
+        }
+        
+        if (!this.doubleTapState.lastTapPos) {
+            return false;
+        }
+        
+        const dx = tapPos.x - this.doubleTapState.lastTapPos.x;
+        const dy = tapPos.y - this.doubleTapState.lastTapPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        return distance < this.DOUBLE_TAP_MAX_DISTANCE;
+    }
+
+    /**
+     * Record a tap for double-tap detection
+     * @param {Object} tapPos - Tap position {x, y}
+     */
+    recordTap(tapPos) {
+        this.doubleTapState.lastTapTime = Date.now();
+        this.doubleTapState.lastTapPos = { x: tapPos.x, y: tapPos.y };
+    }
+
+    /**
+     * Clear double-tap state (call after processing a double-tap)
+     */
+    clearDoubleTap() {
+        this.doubleTapState.lastTapTime = 0;
+        this.doubleTapState.lastTapPos = null;
+        if (this.doubleTapState.pendingTapTimeout) {
+            clearTimeout(this.doubleTapState.pendingTapTimeout);
+            this.doubleTapState.pendingTapTimeout = null;
+        }
+        this.doubleTapState.pendingTapCallback = null;
+    }
+
+    /**
+     * Handle a tap with double-tap detection
+     * Delays single-tap action to check for double-tap
+     * @param {Object} tapPos - Tap position {x, y}
+     * @param {Function} onSingleTap - Callback for single tap
+     * @param {Function} onDoubleTap - Callback for double tap
+     */
+    handleTapWithDoubleTapDetection(tapPos, onSingleTap, onDoubleTap) {
+        // Check if this is a double-tap (second tap within threshold)
+        if (this.isDoubleTap(tapPos)) {
+            // Cancel pending single-tap
+            if (this.doubleTapState.pendingTapTimeout) {
+                clearTimeout(this.doubleTapState.pendingTapTimeout);
+                this.doubleTapState.pendingTapTimeout = null;
+            }
+            // Clear state and execute double-tap
+            this.clearDoubleTap();
+            onDoubleTap(tapPos);
+            return;
+        }
+        
+        // Record this tap
+        this.recordTap(tapPos);
+        
+        // Set a timeout to execute single-tap if no second tap comes
+        this.doubleTapState.pendingTapCallback = onSingleTap;
+        this.doubleTapState.pendingTapTimeout = setTimeout(() => {
+            this.doubleTapState.pendingTapTimeout = null;
+            if (this.doubleTapState.pendingTapCallback) {
+                this.doubleTapState.pendingTapCallback(tapPos);
+                this.doubleTapState.pendingTapCallback = null;
+            }
+        }, this.DOUBLE_TAP_MAX_DELAY);
+    }
+
+    /**
+     * Check if a gesture is currently in progress or recently ended
+     * @returns {boolean}
+     */
+    isGestureActive() {
+        return this.gestureState.isGesture || this.gestureState.gestureCooldown;
     }
 
     /**
@@ -59,7 +185,15 @@ export class InputHandler {
         if (this.activePointers.size === 1) {
             this.state.isDragging = true;
             this.state.lastPos = { x: e.global.x, y: e.global.y };
+            
+            // Initialize gesture tracking for tap detection
+            this.gestureState.isGesture = false;
+            this.gestureState.startTime = Date.now();
+            this.gestureState.startPos = { x: e.global.x, y: e.global.y };
+            this.gestureState.totalMovement = 0;
         } else if (this.activePointers.size === 2) {
+            // Multi-touch = gesture, not a tap
+            this.gestureState.isGesture = true;
             this.state.isDragging = false;
             this.state.lastDist = this.getDist(this.activePointers);
             this.state.lastCenter = this.getCenter(this.activePointers);
@@ -74,6 +208,14 @@ export class InputHandler {
         this.activePointers.delete(e.pointerId);
         
         if (this.activePointers.size === 0) {
+            // If a gesture occurred, set a brief cooldown to prevent accidental taps
+            if (this.gestureState.isGesture) {
+                this.gestureState.gestureCooldown = true;
+                setTimeout(() => {
+                    this.gestureState.gestureCooldown = false;
+                }, this.GESTURE_COOLDOWN_MS);
+            }
+            
             this.state.isDragging = false;
             this.state.lastDist = null;
             this.state.lastCenter = null;
@@ -113,7 +255,22 @@ export class InputHandler {
      */
     onPointerMove(e) {
         if (this.activePointers.has(e.pointerId)) {
-            this.activePointers.set(e.pointerId, { x: e.global.x, y: e.global.y });
+            const oldPos = this.activePointers.get(e.pointerId);
+            const newPos = { x: e.global.x, y: e.global.y };
+            
+            // Track total movement for tap detection
+            if (this.gestureState.startPos && this.activePointers.size === 1) {
+                const dx = newPos.x - this.gestureState.startPos.x;
+                const dy = newPos.y - this.gestureState.startPos.y;
+                this.gestureState.totalMovement = Math.sqrt(dx * dx + dy * dy);
+                
+                // Mark as gesture if movement exceeds threshold
+                if (this.gestureState.totalMovement >= this.TAP_MAX_MOVEMENT) {
+                    this.gestureState.isGesture = true;
+                }
+            }
+            
+            this.activePointers.set(e.pointerId, newPos);
         }
 
         if (this.activePointers.size === 2) {
@@ -135,15 +292,29 @@ export class InputHandler {
             let newScale = this.viewport.scale.x * scale;
             
             const minScale = this.state.initialScale || this.config.minZoom || 0.1;
+            const maxZoom = this.config.maxZoom || 3;
+            
+            // Clamp scale
             if (newScale < minScale) newScale = minScale;
-            if (newScale > (this.config.maxZoom || 3)) newScale = this.config.maxZoom || 3;
+            if (newScale > maxZoom) newScale = maxZoom;
 
             const localX = (this.state.lastCenter.x - this.viewport.x) / this.viewport.scale.x;
             const localY = (this.state.lastCenter.y - this.viewport.y) / this.viewport.scale.y;
 
             this.viewport.scale.set(newScale);
-            this.viewport.position.x = newCenter.x - localX * newScale;
-            this.viewport.position.y = newCenter.y - localY * newScale;
+            
+            let newX = newCenter.x - localX * newScale;
+            let newY = newCenter.y - localY * newScale;
+
+            // Apply position constraints to prevent empty space at edges
+            if (this.getConstrainedPosition) {
+                const constrained = this.getConstrainedPosition(newX, newY, newScale);
+                this.viewport.position.x = constrained.x;
+                this.viewport.position.y = constrained.y;
+            } else {
+                this.viewport.position.x = newX;
+                this.viewport.position.y = newY;
+            }
             
             if (this.onZoomChange) this.onZoomChange();
         }

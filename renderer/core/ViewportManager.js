@@ -125,10 +125,23 @@ export class ViewportManager {
     }
 
     /**
-     * Zoom to fit a specific section
-     * @param {PIXI.Container} sectionContainer
+     * Check if viewport is zoomed in (beyond initial fit)
+     * @returns {boolean}
      */
-    zoomToSection(sectionContainer) {
+    isZoomedIn() {
+        const currentScale = this.viewport.scale.x;
+        const initialScale = this.state.initialPosition?.scale || 1;
+        // Consider zoomed in if scale is significantly larger than initial
+        return currentScale > initialScale * 1.3;
+    }
+
+    /**
+     * Zoom to fit a specific section, optionally centered on a tap point
+     * @param {PIXI.Container} sectionContainer
+     * @param {Object} [tapPoint] - Optional tap coordinates {x, y} in screen space
+     * @param {number} [zoomBoost=1.3] - Multiplier to zoom in beyond section fit (1.0 = fit exactly, 1.5 = 50% more zoom)
+     */
+    zoomToSection(sectionContainer, tapPoint = null, zoomBoost = 1.3) {
         const screenWidth = this.app.screen.width;
         const screenHeight = this.app.screen.height;
         const padding = this.config.sectionZoomPadding || 50;
@@ -139,11 +152,57 @@ export class ViewportManager {
         const scaleX = (screenWidth - padding * 2) / width;
         const scaleY = (screenHeight - padding * 2) / height;
         
-        let targetScale = Math.min(scaleX, scaleY);
+        // Calculate base scale to fit section, then apply zoom boost
+        let targetScale = Math.min(scaleX, scaleY) * zoomBoost;
         targetScale = Math.min(targetScale, this.config.maxZoom || 3);
 
-        const targetX = (screenWidth / 2) - (sectionContainer.x * targetScale);
-        const targetY = (screenHeight / 2) - (sectionContainer.y * targetScale);
+        let targetX, targetY;
+        
+        if (tapPoint) {
+            // Zoom centered on tap point
+            // Convert tap point from screen coords to world coords
+            const worldX = (tapPoint.x - this.viewport.position.x) / this.viewport.scale.x;
+            const worldY = (tapPoint.y - this.viewport.position.y) / this.viewport.scale.y;
+            
+            // Calculate position so that world point stays at tap screen position
+            targetX = tapPoint.x - (worldX * targetScale);
+            targetY = tapPoint.y - (worldY * targetScale);
+        } else {
+            // Default: center on section
+            targetX = (screenWidth / 2) - (sectionContainer.x * targetScale);
+            targetY = (screenHeight / 2) - (sectionContainer.y * targetScale);
+        }
+
+        // Apply constraints to prevent empty space at edges
+        const constrained = this.getConstrainedPosition(targetX, targetY, targetScale);
+        targetX = constrained.x;
+        targetY = constrained.y;
+
+        this.animateViewport(targetX, targetY, targetScale);
+    }
+
+    /**
+     * Zoom to a point (for double-tap zoom without a section)
+     * @param {Object} tapPoint - Tap coordinates {x, y} in screen space
+     * @param {number} [zoomLevel=2.0] - Target zoom multiplier relative to initial scale
+     */
+    zoomToPoint(tapPoint, zoomLevel = 2.0) {
+        const initialScale = this.state.initialPosition?.scale || 1;
+        let targetScale = initialScale * zoomLevel;
+        targetScale = Math.min(targetScale, this.config.maxZoom || 3);
+
+        // Convert tap point from screen coords to world coords
+        const worldX = (tapPoint.x - this.viewport.position.x) / this.viewport.scale.x;
+        const worldY = (tapPoint.y - this.viewport.position.y) / this.viewport.scale.y;
+        
+        // Calculate position so that world point stays at tap screen position
+        let targetX = tapPoint.x - (worldX * targetScale);
+        let targetY = tapPoint.y - (worldY * targetScale);
+
+        // Apply constraints to prevent empty space at edges
+        const constrained = this.getConstrainedPosition(targetX, targetY, targetScale);
+        targetX = constrained.x;
+        targetY = constrained.y;
 
         this.animateViewport(targetX, targetY, targetScale);
     }

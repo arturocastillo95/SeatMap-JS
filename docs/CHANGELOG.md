@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added - GA Section Enhancements (November 2025)
 
+- **Mobile-Optimized Touch UX** - Enhanced touch interactions for mobile devices
+  - **Tap-Centered Zoom**: Tapping a zone zooms centered on tap point, not zone center
+  - **Double-Tap Zoom**: Double-tap for deeper zoom (configurable boost levels)
+  - **Gesture Detection**: Distinguishes taps from gestures (pinch/pan) to prevent accidental actions
+  - **Gesture Cooldown**: Brief cooldown after gestures prevents accidental taps
+  - **Larger Seat Hit Areas**: Configurable hit area scale for easier tapping on mobile (default 2x)
+  - **Zoom-Required Selection**: On mobile, requires zooming in before seat selection to prevent accidental picks
+  - **Touch Tooltip Disabled**: Tooltips don't show on touch devices (hover not applicable)
+  - All behaviors configurable via options:
+    - `tapZoomBoost` (default: 1.3) - Single tap zoom multiplier
+    - `doubleTapZoomBoost` (default: 2.0) - Double tap zoom multiplier  
+    - `doubleTapMaxDelay` (default: 300ms) - Max time between taps for double-tap
+    - `mobileRequireZoomForSelection` (default: true) - Require zoom before selection
+    - `mobileMinZoomForSelection` (default: 1.5) - Min zoom ratio for selection
+    - `mobileSeatHitareaScale` (default: 2.0) - Hit area multiplier on touch devices
+
 - **GA Label Customization** - Full control over General Admission section labels (non-zone)
   - Font size slider (8-72px) in sidebar
   - Label color picker with hex input

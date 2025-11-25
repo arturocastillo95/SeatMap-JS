@@ -416,6 +416,18 @@ export class GASelectionManager {
         const price = pricing.basePrice || 0;
         priceEl.textContent = price > 0 ? `$${price.toLocaleString()} MXN` : '';
         
+        // Apply section color to name and price (like tooltip)
+        const style = sectionData.style || {};
+        if (style.sectionColor !== undefined) {
+            const colorHex = '#' + style.sectionColor.toString(16).padStart(6, '0');
+            nameEl.style.color = colorHex;
+            priceEl.style.color = colorHex;
+        } else {
+            // Default fallback color
+            nameEl.style.color = '#f59e0b';
+            priceEl.style.color = '#f59e0b';
+        }
+        
         valueEl.textContent = currentQty;
         
         this._maxQty = maxQty;

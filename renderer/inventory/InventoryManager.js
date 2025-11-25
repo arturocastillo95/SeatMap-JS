@@ -2,6 +2,8 @@
  * InventoryManager - Handles inventory data loading and seat status updates
  */
 
+import * as PIXI from 'pixi.js';
+
 export class InventoryManager {
     /**
      * @param {Object} options - Configuration

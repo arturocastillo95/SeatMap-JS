@@ -5,7 +5,10 @@ export default defineConfig({
     // Development server configuration
     server: {
         port: 3000,
-        open: '/dev.html'
+        open: '/dev.html',
+        // Allow all hosts (for ngrok, localtunnel, etc.)
+        host: '0.0.0.0',
+        allowedHosts: ['.ngrok-free.dev', '.ngrok.io', 'localhost']
     },
 
     // Build configuration for library mode

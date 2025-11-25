@@ -39,7 +39,19 @@ export class SeatMapRenderer {
         RESERVED_COLOR: 0xff6666,
         SPECIAL_SEAT_SCALE: 1.5,
         MAX_SELECTED_SEATS: 10,
-        PREVENT_ORPHAN_SEATS: true
+        PREVENT_ORPHAN_SEATS: true,
+        // Tap zoom behavior
+        TAP_ZOOM_BOOST: 1.8,
+        DOUBLE_TAP_ZOOM_BOOST: 2.5,
+        DOUBLE_TAP_MAX_DELAY: 300,
+        DOUBLE_TAP_MAX_DISTANCE: 50,
+        TAP_MAX_DURATION: 300,
+        TAP_MAX_MOVEMENT: 10,
+        GESTURE_COOLDOWN_MS: 200,
+        // Mobile selection behavior
+        MOBILE_REQUIRE_ZOOM_FOR_SELECTION: true,
+        MOBILE_MIN_ZOOM_FOR_SELECTION: 2.0,
+        MOBILE_SEAT_HITAREA_SCALE: 1.8
     };
 
     static async create(container, options = {}) {
@@ -72,6 +84,16 @@ export class SeatMapRenderer {
             specialSeatScale: SeatMapRenderer.CONFIG.SPECIAL_SEAT_SCALE,
             maxSelectedSeats: SeatMapRenderer.CONFIG.MAX_SELECTED_SEATS,
             preventOrphanSeats: SeatMapRenderer.CONFIG.PREVENT_ORPHAN_SEATS,
+            tapZoomBoost: SeatMapRenderer.CONFIG.TAP_ZOOM_BOOST,
+            doubleTapZoomBoost: SeatMapRenderer.CONFIG.DOUBLE_TAP_ZOOM_BOOST,
+            doubleTapMaxDelay: SeatMapRenderer.CONFIG.DOUBLE_TAP_MAX_DELAY,
+            doubleTapMaxDistance: SeatMapRenderer.CONFIG.DOUBLE_TAP_MAX_DISTANCE,
+            tapMaxDuration: SeatMapRenderer.CONFIG.TAP_MAX_DURATION,
+            tapMaxMovement: SeatMapRenderer.CONFIG.TAP_MAX_MOVEMENT,
+            gestureCooldownMs: SeatMapRenderer.CONFIG.GESTURE_COOLDOWN_MS,
+            mobileRequireZoomForSelection: SeatMapRenderer.CONFIG.MOBILE_REQUIRE_ZOOM_FOR_SELECTION,
+            mobileMinZoomForSelection: SeatMapRenderer.CONFIG.MOBILE_MIN_ZOOM_FOR_SELECTION,
+            mobileSeatHitareaScale: SeatMapRenderer.CONFIG.MOBILE_SEAT_HITAREA_SCALE,
             backgroundAlpha: 1,
             resizeTo: container,
             antialias: true,
@@ -95,7 +117,8 @@ export class SeatMapRenderer {
             lastDist: null,
             lastCenter: null,
             initialBounds: null,
-            initialPosition: null
+            initialPosition: null,
+            isTouchDevice: this.detectTouchDevice()
         };
 
         this.isInitialized = false;
@@ -104,6 +127,16 @@ export class SeatMapRenderer {
         // Bind methods
         this.updateSeatAnimations = this.updateSeatAnimations.bind(this);
         this.resizeHandler = this.resizeHandler.bind(this);
+    }
+
+    /**
+     * Detect if device supports touch
+     * @returns {boolean}
+     */
+    detectTouchDevice() {
+        return ('ontouchstart' in window) || 
+               (navigator.maxTouchPoints > 0) || 
+               (navigator.msMaxTouchPoints > 0);
     }
 
     async init() {
@@ -313,9 +346,31 @@ export class SeatMapRenderer {
             container.eventMode = 'static';
             
             graphics.on('pointertap', (e) => {
-                if (!this.state.isDragging) {
+                // Check for valid tap (not a gesture)
+                const isValidTap = this.inputHandler?.isValidTap?.() ?? !this.state.isDragging;
+                
+                if (isValidTap) {
                     e.stopPropagation();
-                    this.zoomToSection(container);
+                    const tapPoint = { x: e.global.x, y: e.global.y };
+                    
+                    // Check for double-tap (second tap within threshold)
+                    const isDoubleTap = this.inputHandler?.isDoubleTap?.(tapPoint) ?? false;
+                    
+                    if (isDoubleTap) {
+                        // Double-tap: zoom to max
+                        this.inputHandler.clearDoubleTap();
+                        this.zoomToSection(container, tapPoint, this.options.doubleTapZoomBoost);
+                    } else {
+                        // Single tap: only zoom if not already zoomed
+                        const isZoomed = this.viewportManager?.isZoomedIn?.() ?? false;
+                        if (!isZoomed) {
+                            this.inputHandler?.recordTap?.(tapPoint);
+                            this.zoomToSection(container, tapPoint, this.options.tapZoomBoost);
+                        } else {
+                            // Already zoomed, just record for potential double-tap
+                            this.inputHandler?.recordTap?.(tapPoint);
+                        }
+                    }
                 }
             });
         } else {
@@ -329,7 +384,8 @@ export class SeatMapRenderer {
             container.sectionData = data; // Store data for tooltip
             
             graphics.on('pointerover', () => {
-                if (!this.state.isDragging) {
+                // Don't show tooltip on touch devices
+                if (!this.state.isDragging && !this.state.isTouchDevice) {
                     this.showGATooltip(data);
                 }
             });
@@ -340,7 +396,10 @@ export class SeatMapRenderer {
             
             // Click to open GA selection dialog
             graphics.on('pointertap', (e) => {
-                if (!this.state.isDragging) {
+                // Check for valid tap (not a gesture)
+                const isValidTap = this.inputHandler?.isValidTap?.() ?? !this.state.isDragging;
+                
+                if (isValidTap) {
                     e.stopPropagation();
                     this.hideTooltip();
                     this.gaSelectionManager.show(data);
@@ -442,6 +501,13 @@ export class SeatMapRenderer {
                 // Interaction setup
                 seatContainer.eventMode = 'static';
                 seatContainer.cursor = 'pointer';
+                
+                // Larger hit area on touch devices for easier tapping
+                const hitRadius = this.state.isTouchDevice 
+                    ? this.options.seatRadius * this.options.mobileSeatHitareaScale 
+                    : this.options.seatRadius;
+                seatContainer.hitArea = new PIXI.Circle(0, 0, hitRadius);
+                
                 seatContainer.seatData = seatData;
                 seatContainer.sectionId = data.id || data.name;
                 seatContainer.selected = false;
@@ -495,14 +561,17 @@ export class SeatMapRenderer {
     onSeatHover(seatContainer, sectionData, rowLabel, isSpecial) {
         if (this.state.isDragging) return;
         
-        this.showTooltip(
-            seatContainer.seatData, 
-            sectionData.name, 
-            rowLabel, 
-            sectionData.pricing,
-            seatContainer.seatColor,
-            seatContainer.seatTextColor
-        );
+        // Don't show tooltip on touch devices
+        if (!this.state.isTouchDevice) {
+            this.showTooltip(
+                seatContainer.seatData, 
+                sectionData.name, 
+                rowLabel, 
+                sectionData.pricing,
+                seatContainer.seatColor,
+                seatContainer.seatTextColor
+            );
+        }
 
         const zoom = this.viewport.scale.x;
         seatContainer.text.resolution = Math.max(2, zoom * 2);
@@ -529,6 +598,24 @@ export class SeatMapRenderer {
     }
 
     onSeatClick(seatContainer) {
+        // Block selection during or right after gestures (pinch zoom, pan)
+        if (this.inputHandler?.isGestureActive?.()) {
+            console.log('Selection blocked: gesture in progress');
+            return;
+        }
+        
+        // On touch devices, require zoom before allowing selection
+        if (this.state.isTouchDevice && this.options.mobileRequireZoomForSelection) {
+            const currentZoom = this.viewport.scale.x;
+            const initialZoom = this.state.initialScale || 1;
+            const zoomRatio = currentZoom / initialZoom;
+            
+            if (zoomRatio < this.options.mobileMinZoomForSelection) {
+                console.log(`Selection blocked on mobile: zoom in more (current: ${zoomRatio.toFixed(2)}x, required: ${this.options.mobileMinZoomForSelection}x)`);
+                return;
+            }
+        }
+        
         const result = this.selectionManager.toggleSelection(seatContainer);
         
         if (!result.success) {
@@ -709,9 +796,9 @@ export class SeatMapRenderer {
         this.fitToView();
     }
 
-    zoomToSection(sectionContainer) {
+    zoomToSection(sectionContainer, tapPoint = null, zoomBoost = 1.3) {
         if (!this.isInitialized) return;
-        this.viewportManager.zoomToSection(sectionContainer);
+        this.viewportManager.zoomToSection(sectionContainer, tapPoint, zoomBoost);
     }
 
     // GA Selection handlers

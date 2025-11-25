@@ -35,6 +35,12 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 - ✅ **Vite Build System**: ES and UMD bundles for flexible deployment
 - ✅ **GA Quantity Selection**: Click GA sections to select ticket quantities with dialog UI
 - ✅ **Unified Cart**: Combined seat + GA ticket selection with shared max limit
+- ✅ **Mobile-Optimized Touch UX**: Enhanced touch interactions for mobile devices
+  - Tap-to-zoom centers on tap point (not zone center)
+  - Double-tap for deeper zoom
+  - Gesture detection prevents accidental taps during pinch/pan
+  - Larger seat hit areas for easier selection
+  - Zoom requirement before seat selection to prevent accidental picks
 
 ### Future Features (Phase 3+)
 - 🔄 Seat status updates (sold, reserved, available) visual styles
@@ -202,6 +208,13 @@ const renderer = await SeatMapRenderer.create(container, {
     maxSelectedSeats: 5,
     preventOrphanSeats: true,  // Prevent single-seat gaps
     enableSectionZoom: true,
+    
+    // Mobile/Touch Options
+    tapZoomBoost: 1.3,              // Zoom multiplier for single tap
+    doubleTapZoomBoost: 2.0,        // Zoom multiplier for double tap
+    mobileRequireZoomForSelection: true,  // Require zoom before selection on mobile
+    mobileMinZoomForSelection: 1.5,       // Min zoom ratio for selection
+    mobileSeatHitareaScale: 2.0,          // Larger tap targets on mobile
     
     // Callbacks
     onSeatSelect: (data) => console.log('Selected', data),
