@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Performance & Responsiveness (November 2025)
+
+- **Progressive Loading** - Optimized map loading for instant visual feedback
+  - **Two-Phase Rendering**: Zones/GA sections render first (instant), seated sections render progressively
+  - **Chunked Seat Rendering**: Seats render in configurable batches (default 200) using requestAnimationFrame
+  - **Deferred Seat Labels**: PIXI.Text objects created on hover instead of upfront (saves memory/CPU)
+  - **Loading Events**: New events for UI integration:
+    - `mapZonesLoaded` - Fired when zones are visible (Phase 1 complete)
+    - `seatLoadProgress` - Progress updates during seat loading
+    - `mapFullyLoaded` - Fired when all content is rendered
+  - **Abort Support**: Loading can be cancelled when new data is loaded
+  - Configurable via options:
+    - `seatChunkSize` (default: 200) - Seats per animation frame
+    - `deferSeatLabels` (default: true) - Defer label creation
+
+- **Responsive Viewport** - Automatically adapts to container size changes
+  - **ResizeObserver**: Watches container element directly (not just window resize)
+  - **Debounced Handling**: 100ms debounce prevents excessive recalculations
+  - **Smart Re-fitting**: 
+    - At overview level: Re-fits content to new viewport
+    - While zoomed in: Maintains relative zoom level and re-centers
+  - **Constraint Updates**: Recalculates bounds for proper panning limits
+  - **Proper Cleanup**: ResizeObserver disconnected on destroy()
+
 ### Added - GA Section Enhancements (November 2025)
 
 - **Mobile-Optimized Touch UX** - Enhanced touch interactions for mobile devices

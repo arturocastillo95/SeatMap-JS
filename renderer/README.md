@@ -41,6 +41,17 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
   - Gesture detection prevents accidental taps during pinch/pan
   - Larger seat hit areas for easier selection
   - Zoom requirement before seat selection to prevent accidental picks
+- ✅ **Progressive Loading**: Optimized map loading for instant visual feedback
+  - Zones/GA sections render first (instant visibility)
+  - Seated sections render progressively in background
+  - Chunked seat rendering prevents UI blocking
+  - Deferred seat label creation (labels created on hover)
+  - Loading progress events for UI integration
+- ✅ **Responsive Viewport**: Automatically adapts to container size changes
+  - ResizeObserver for container-based responsiveness
+  - Debounced resize handling for performance
+  - Maintains relative zoom level when resized while zoomed in
+  - Re-fits content when resized at overview level
 
 ### Future Features (Phase 3+)
 - 🔄 Seat status updates (sold, reserved, available) visual styles
@@ -216,6 +227,10 @@ const renderer = await SeatMapRenderer.create(container, {
     mobileMinZoomForSelection: 1.5,       // Min zoom ratio for selection
     mobileSeatHitareaScale: 2.0,          // Larger tap targets on mobile
     
+    // Progressive Loading Options
+    seatChunkSize: 200,             // Seats rendered per animation frame
+    deferSeatLabels: true,          // Create seat labels on hover (not upfront)
+    
     // Callbacks
     onSeatSelect: (data) => console.log('Selected', data),
     onSeatDeselect: (data) => console.log('Deselected', data)
@@ -371,6 +386,35 @@ Fired whenever GA selections change (confirm or clear).
 container.addEventListener('ga-selection-change', (event) => {
     const { sectionId, quantity, allSelections } = event.detail;
     console.log('All GA selections:', allSelections);
+});
+```
+
+#### `mapZonesLoaded`
+Fired when zones/GA sections are rendered (Phase 1 of progressive loading).
+
+```javascript
+container.addEventListener('mapZonesLoaded', (event) => {
+    console.log(`Zones loaded: ${event.detail.zoneCount} zones`);
+    // Map is now visible with zones, seats loading in background
+});
+```
+
+#### `seatLoadProgress`
+Fired during progressive seat loading with progress updates.
+
+```javascript
+container.addEventListener('seatLoadProgress', (event) => {
+    const { loaded, total, percent } = event.detail;
+    console.log(`Loading seats: ${percent}%`);
+});
+```
+
+#### `mapFullyLoaded`
+Fired when all sections (including all seats) are fully rendered.
+
+```javascript
+container.addEventListener('mapFullyLoaded', (event) => {
+    console.log(`Map fully loaded: ${event.detail.totalSections} sections`);
 });
 ```
 
