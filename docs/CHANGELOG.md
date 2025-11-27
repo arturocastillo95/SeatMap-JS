@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Visual Enhancements (November 2025)
+
+- **Background Grid** - Configurable grid pattern behind the map
+  - New configuration options: `showGrid`, `gridColor`, `gridSize`, `gridLineWidth`
+  - Grid rendered behind all content for subtle visual depth
+  - Runtime methods: `setGridColor(color)`, `setGridVisible(show)`
+  - Automatically re-renders on viewport resize
+
+- **Orphan Seat Highlight Animation** - Visual feedback when orphan prevention blocks an action
+  - Orphan seats flash with a coral/red warning color (`0xff6b6b`)
+  - Smooth pulse animation (2 pulses over 1.5 seconds)
+  - Gradually fades back to original color
+  - Fully configurable via options:
+    - `orphanHighlightEnabled` (default: true) - Enable/disable animation
+    - `orphanHighlightColor` (default: 0xff6b6b) - Warning highlight color
+    - `orphanHighlightDuration` (default: 1500ms) - Animation duration
+    - `orphanHighlightPulseScale` (default: 1.3) - Scale factor for pulse
+  - Animation runs automatically in renderer (no consumer code needed)
+
+- **Enhanced Demo Booking Page** (`demo-booking.html`)
+  - **Mobile Top Bar**: Compact event info header for mobile devices
+  - **Event Details Modal**: Full event info accessible via "Ver más" link
+  - **Sticky Event Header**: Desktop sidebar header with scroll shadow effect
+  - **Alert Notifications**: Map overlay alerts for selection limits and orphan blocks
+  - **Improved Sidebar**: Wider (420px), better shadow, cleaner visual hierarchy
+
+### Changed
+
+- **Section Zoom Behavior** - Desktop-optimized zoom targeting
+  - On desktop, section zoom centers on section (not tap point)
+  - On mobile/touch, zoom centers on tap point for intuitive UX
+  - Zone containers correctly use pivot for center calculations
+
+- **ViewportManager** - Improved section centering
+  - Section zoom now correctly uses container's center position (pivot-based)
+  - Clearer code comments explaining coordinate calculations
+
 ### Added - Booking Demo (November 2025)
 
 - **Complete Ticket Booking Demo** (`demo-booking.html`) - Production-ready reference implementation

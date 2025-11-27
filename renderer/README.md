@@ -234,10 +234,22 @@ const renderer = await SeatMapRenderer.create(container, {
     seatRadius: 8,
     bookedColor: 0x555555,
     
+    // Grid Background (visual enhancement behind the map)
+    showGrid: true,               // Show/hide grid background
+    gridColor: 0x333333,          // Grid line color
+    gridSize: 50,                 // Grid cell size in pixels
+    gridLineWidth: 1,             // Grid line thickness
+    
     // Interaction Options
     maxSelectedSeats: 5,
     preventOrphanSeats: true,  // Prevent single-seat gaps
     enableSectionZoom: true,
+    
+    // Orphan Seat Highlight Animation
+    orphanHighlightEnabled: true,       // Enable visual feedback when orphan blocked
+    orphanHighlightColor: 0xff6b6b,     // Warning highlight color (coral red)
+    orphanHighlightDuration: 1500,      // Animation duration in ms
+    orphanHighlightPulseScale: 1.3,     // Scale factor for pulse effect
     
     // Mobile/Touch Options
     tapZoomBoost: 1.3,              // Zoom multiplier for single tap
@@ -342,6 +354,21 @@ renderer.fitToView();
 - Never zooms in beyond 1:1 ratio
 - Sets minimum zoom limit to prevent zooming out further
 
+#### `setGridVisible(show)`
+Show or hide the background grid at runtime.
+
+```javascript
+renderer.setGridVisible(true);  // Show grid
+renderer.setGridVisible(false); // Hide grid
+```
+
+#### `setGridColor(color)`
+Change the grid color at runtime.
+
+```javascript
+renderer.setGridColor(0x444444); // Change to darker gray
+```
+
 #### `centerMap()`
 Legacy method that calls `fitToView()`.
 
@@ -379,12 +406,14 @@ container.addEventListener('selection-limit-reached', (event) => {
 ```
 
 #### `orphan-seat-blocked`
-Fired when a selection/deselection is blocked because it would leave a single seat isolated.
+Fired when a selection/deselection is blocked because it would leave a single seat isolated. Orphan seats automatically receive a visual highlight animation (configurable via `orphanHighlightEnabled`).
 
 ```javascript
 container.addEventListener('orphan-seat-blocked', (event) => {
-    const { action, seat, sectionId, orphanSeats, message, orphanCount } = event.detail;
+    const { action, seat, sectionId, orphanSeats, orphanSeatContainers, message, orphanCount } = event.detail;
     console.log(message); // e.g., "Cannot select this seat: it would leave a single seat isolated (Row A, Seat 5)"
+    // orphanSeatContainers: PIXI containers for orphan seats (for custom animations)
+    // Note: Default highlight animation runs automatically unless orphanHighlightEnabled: false
 });
 ```
 

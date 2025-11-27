@@ -9,11 +9,19 @@ export class SelectionManager {
      * @param {boolean} options.preventOrphanSeats - Enable orphan prevention
      * @param {HTMLElement} options.container - DOM container for events
      * @param {Function} options.getGASelectionCount - Function to get current GA selection count
+     * @param {boolean} options.orphanHighlightEnabled - Enable orphan seat highlight animation
+     * @param {number} options.orphanHighlightColor - Color for orphan highlight (hex)
+     * @param {number} options.orphanHighlightDuration - Duration of highlight animation (ms)
+     * @param {number} options.orphanHighlightPulseScale - Scale factor for pulse animation
      */
     constructor(options = {}) {
         this.options = {
             maxSelectedSeats: 10,
             preventOrphanSeats: true,
+            orphanHighlightEnabled: true,
+            orphanHighlightColor: 0xff6b6b,
+            orphanHighlightDuration: 1500,
+            orphanHighlightPulseScale: 1.3,
             ...options
         };
         
@@ -355,9 +363,13 @@ export class SelectionManager {
                     seat: seatContainer.seatData,
                     sectionId: seatContainer.sectionId,
                     orphanSeats: orphanCheck.orphanSeats.map(s => s.seatData),
+                    orphanSeatContainers: orphanCheck.orphanSeats,
                     message,
                     orphanCount: orphanCheck.orphanSeats.length
                 });
+                
+                // Visual feedback - highlight the orphan seats
+                this.highlightOrphanSeats(orphanCheck.orphanSeats);
                 
                 return { 
                     success: false, 
@@ -402,6 +414,96 @@ export class SelectionManager {
             const event = new CustomEvent(eventName, { detail });
             this.container.dispatchEvent(event);
         }
+    }
+
+    /**
+     * Highlight orphan seats with a warning color and pulse animation
+     * @param {PIXI.Container[]} seatContainers - Array of seat containers to highlight
+     */
+    highlightOrphanSeats(seatContainers) {
+        if (!this.options.orphanHighlightEnabled) return;
+        if (!seatContainers || seatContainers.length === 0) return;
+        
+        const WARNING_COLOR = this.options.orphanHighlightColor;
+        const ANIMATION_DURATION = this.options.orphanHighlightDuration;
+        const PULSE_SCALE = this.options.orphanHighlightPulseScale;
+        
+        seatContainers.forEach(container => {
+            if (!container || !container.children) return;
+            
+            // Find the seat graphic (usually the first child with a tint property)
+            const seatGraphic = container.children.find(child => 
+                child.tint !== undefined
+            ) || container.children[0];
+            
+            if (!seatGraphic) return;
+            
+            // Store original values
+            const originalTint = seatGraphic.tint ?? 0xffffff;
+            const originalScaleX = container.scale.x;
+            const originalScaleY = container.scale.y;
+            
+            // Apply warning color
+            seatGraphic.tint = WARNING_COLOR;
+            
+            // Pulse animation using requestAnimationFrame
+            const startTime = performance.now();
+            
+            const animate = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = elapsed / ANIMATION_DURATION;
+                
+                if (progress >= 1) {
+                    // Animation complete - restore original values
+                    seatGraphic.tint = originalTint;
+                    container.scale.set(originalScaleX, originalScaleY);
+                    return;
+                }
+                
+                // Pulse effect: scale up then down
+                // Use sine wave for smooth in-out pulse (2 pulses)
+                const pulseProgress = Math.sin(progress * Math.PI * 4) * 0.5 + 0.5;
+                const scaleMultiplier = 1 + (PULSE_SCALE - 1) * pulseProgress * (1 - progress);
+                
+                container.scale.set(
+                    originalScaleX * scaleMultiplier,
+                    originalScaleY * scaleMultiplier
+                );
+                
+                // Fade tint back to original over time
+                if (progress > 0.7) {
+                    const fadeProgress = (progress - 0.7) / 0.3;
+                    seatGraphic.tint = this.lerpColor(WARNING_COLOR, originalTint, fadeProgress);
+                }
+                
+                requestAnimationFrame(animate);
+            };
+            
+            requestAnimationFrame(animate);
+        });
+    }
+
+    /**
+     * Interpolate between two colors
+     * @param {number} color1 - Start color (hex)
+     * @param {number} color2 - End color (hex)
+     * @param {number} t - Interpolation factor (0-1)
+     * @returns {number} Interpolated color
+     */
+    lerpColor(color1, color2, t) {
+        const r1 = (color1 >> 16) & 0xff;
+        const g1 = (color1 >> 8) & 0xff;
+        const b1 = color1 & 0xff;
+        
+        const r2 = (color2 >> 16) & 0xff;
+        const g2 = (color2 >> 8) & 0xff;
+        const b2 = color2 & 0xff;
+        
+        const r = Math.round(r1 + (r2 - r1) * t);
+        const g = Math.round(g1 + (g2 - g1) * t);
+        const b = Math.round(b1 + (b2 - b1) * t);
+        
+        return (r << 16) | (g << 8) | b;
     }
 
     /**

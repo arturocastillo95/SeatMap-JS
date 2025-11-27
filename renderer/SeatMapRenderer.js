@@ -54,7 +54,17 @@ export class SeatMapRenderer {
         MOBILE_SEAT_HITAREA_SCALE: 1.8,
         // Progressive loading
         SEAT_CHUNK_SIZE: 200,
-        DEFER_SEAT_LABELS: true
+        DEFER_SEAT_LABELS: true,
+        // Grid background
+        SHOW_GRID: true,
+        GRID_COLOR: 0x1a1a22,
+        GRID_SIZE: 30,
+        GRID_LINE_WIDTH: 1,
+        // Orphan seat highlight animation
+        ORPHAN_HIGHLIGHT_ENABLED: true,
+        ORPHAN_HIGHLIGHT_COLOR: 0xff6b6b,
+        ORPHAN_HIGHLIGHT_DURATION: 1500,
+        ORPHAN_HIGHLIGHT_PULSE_SCALE: 1.3
     };
 
     static async create(container, options = {}) {
@@ -99,6 +109,14 @@ export class SeatMapRenderer {
             mobileSeatHitareaScale: SeatMapRenderer.CONFIG.MOBILE_SEAT_HITAREA_SCALE,
             seatChunkSize: SeatMapRenderer.CONFIG.SEAT_CHUNK_SIZE,
             deferSeatLabels: SeatMapRenderer.CONFIG.DEFER_SEAT_LABELS,
+            showGrid: SeatMapRenderer.CONFIG.SHOW_GRID,
+            gridColor: SeatMapRenderer.CONFIG.GRID_COLOR,
+            gridSize: SeatMapRenderer.CONFIG.GRID_SIZE,
+            gridLineWidth: SeatMapRenderer.CONFIG.GRID_LINE_WIDTH,
+            orphanHighlightEnabled: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_ENABLED,
+            orphanHighlightColor: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_COLOR,
+            orphanHighlightDuration: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_DURATION,
+            orphanHighlightPulseScale: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_PULSE_SCALE,
             fitToSectionsPadding: 40,
             showControls: true,
             backgroundAlpha: 1,
@@ -113,6 +131,7 @@ export class SeatMapRenderer {
 
         this.app = new PIXI.Application();
         this.viewport = new PIXI.Container();
+        this.gridContainer = null; // Background grid
         
         // Shared state
         this.state = {
@@ -158,6 +177,12 @@ export class SeatMapRenderer {
         try {
             await this.app.init(this.options);
             this.container.appendChild(this.app.canvas);
+            
+            // Render background grid first (behind everything)
+            if (this.options.showGrid) {
+                this.renderGrid();
+            }
+            
             this.app.stage.addChild(this.viewport);
 
             // Initialize modules
@@ -188,7 +213,11 @@ export class SeatMapRenderer {
             this.selectionManager = new SelectionManager({
                 maxSelectedSeats: this.options.maxSelectedSeats,
                 preventOrphanSeats: this.options.preventOrphanSeats,
-                container: this.container
+                container: this.container,
+                orphanHighlightEnabled: this.options.orphanHighlightEnabled,
+                orphanHighlightColor: this.options.orphanHighlightColor,
+                orphanHighlightDuration: this.options.orphanHighlightDuration,
+                orphanHighlightPulseScale: this.options.orphanHighlightPulseScale
             });
 
             this.cartManager = new CartManager({
@@ -297,6 +326,11 @@ export class SeatMapRenderer {
         // Resize PIXI application
         this.app.resize();
         
+        // Re-render grid to match new size
+        if (this.options.showGrid) {
+            this.renderGrid();
+        }
+        
         // Reposition UI elements
         this.uiManager.repositionUI();
 
@@ -365,6 +399,69 @@ export class SeatMapRenderer {
         this.handleContainerResize();
     }
 
+    /**
+     * Render a grid background pattern
+     * The grid is rendered on the stage behind the viewport
+     */
+    renderGrid() {
+        // Remove existing grid if any
+        if (this.gridContainer) {
+            this.gridContainer.destroy();
+        }
+
+        this.gridContainer = new PIXI.Container();
+        this.gridContainer.label = 'grid';
+
+        const graphics = new PIXI.Graphics();
+        const width = this.app.screen.width;
+        const height = this.app.screen.height;
+        const gridSize = this.options.gridSize;
+        const gridColor = this.options.gridColor;
+        const lineWidth = this.options.gridLineWidth;
+
+        // Draw vertical lines
+        for (let x = 0; x <= width; x += gridSize) {
+            graphics.moveTo(x, 0);
+            graphics.lineTo(x, height);
+        }
+
+        // Draw horizontal lines
+        for (let y = 0; y <= height; y += gridSize) {
+            graphics.moveTo(0, y);
+            graphics.lineTo(width, y);
+        }
+
+        graphics.stroke({ width: lineWidth, color: gridColor });
+
+        this.gridContainer.addChild(graphics);
+        this.app.stage.addChildAt(this.gridContainer, 0);
+    }
+
+    /**
+     * Update grid color dynamically
+     * @param {number} color - New grid color (hex)
+     */
+    setGridColor(color) {
+        this.options.gridColor = color;
+        if (this.options.showGrid) {
+            this.renderGrid();
+        }
+    }
+
+    /**
+     * Toggle grid visibility
+     * @param {boolean} show - Whether to show the grid
+     */
+    setGridVisible(show) {
+        this.options.showGrid = show;
+        if (show) {
+            this.renderGrid();
+        } else if (this.gridContainer) {
+            this.gridContainer.destroy();
+            this.gridContainer = null;
+        }
+    }
+
     updateUIVisibility() {
         const zoom = this.viewport.scale.x;
         this.uiManager.update(zoom, this.state.initialScale, this.options.maxZoom);
@@ -406,6 +503,7 @@ export class SeatMapRenderer {
         this.animatingSeats.clear();
         this.viewport = null;
         this.labelsLayer = null;
+        this.gridContainer = null;
     }
 
     async loadData(data) {
@@ -520,7 +618,10 @@ export class SeatMapRenderer {
             
             graphics.hitArea = new PIXI.Rectangle(0, 0, sectionData.width, sectionData.height);
             
-            const enableZoom = this.options.enableSectionZoom;
+            // On desktop (>= 768px), don't enable zoom on individual sections - zones handle zoom
+            // On mobile, individual sections can still be tapped to zoom
+            const isMobile = window.innerWidth < 768;
+            const enableZoom = this.options.enableSectionZoom && isMobile;
             if (enableZoom) {
                 graphics.eventMode = 'static';
                 graphics.cursor = 'zoom-in';
@@ -532,8 +633,8 @@ export class SeatMapRenderer {
                         e.stopPropagation();
                         const tapPoint = { x: e.global.x, y: e.global.y };
                         const isDoubleTap = this.inputHandler?.isDoubleTap?.(tapPoint) ?? false;
-                        // Only use tap-centered zoom on touch devices
-                        const zoomPoint = this.state.isTouchDevice ? tapPoint : null;
+                        // Mobile: use tap-centered zoom
+                        const zoomPoint = tapPoint;
                         
                         if (isDoubleTap) {
                             this.inputHandler.clearDoubleTap();
@@ -815,8 +916,10 @@ export class SeatMapRenderer {
                 if (isValidTap) {
                     e.stopPropagation();
                     const tapPoint = { x: e.global.x, y: e.global.y };
-                    // Only use tap-centered zoom on touch devices
-                    const zoomPoint = this.state.isTouchDevice ? tapPoint : null;
+                    // Only use tap-centered zoom on mobile (screen width < 768px) or touch interactions
+                    const isMobile = window.innerWidth < 768;
+                    const isTouchInteraction = e.nativeEvent?.pointerType === 'touch' || e.pointerType === 'touch';
+                    const zoomPoint = (isMobile || isTouchInteraction) ? tapPoint : null;
                     
                     // Check for double-tap (second tap within threshold)
                     const isDoubleTap = this.inputHandler?.isDoubleTap?.(tapPoint) ?? false;

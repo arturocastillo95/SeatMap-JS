@@ -259,9 +259,13 @@ export class ViewportManager {
             targetX = tapPoint.x - (worldX * targetScale);
             targetY = tapPoint.y - (worldY * targetScale);
         } else {
-            // Default: center on section
-            targetX = (screenWidth / 2) - (sectionContainer.x * targetScale);
-            targetY = (screenHeight / 2) - (sectionContainer.y * targetScale);
+            // Default: center on section's center point
+            // Section containers have pivot set to center, so x/y IS the center position
+            const sectionCenterX = sectionContainer.x;
+            const sectionCenterY = sectionContainer.y;
+            
+            targetX = (screenWidth / 2) - (sectionCenterX * targetScale);
+            targetY = (screenHeight / 2) - (sectionCenterY * targetScale);
         }
 
         // Apply constraints to prevent empty space at edges

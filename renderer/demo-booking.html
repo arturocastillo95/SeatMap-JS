@@ -63,13 +63,15 @@
 
         /* ==================== SIDEBAR ==================== */
         .sidebar {
-            width: 380px;
-            min-width: 380px;
+            width: 420px;
+            min-width: 420px;
             background: white;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid var(--gray-200);
             overflow: hidden;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+            z-index: 10;
+            position: relative;
         }
 
         .sidebar-scroll {
@@ -80,7 +82,16 @@
 
         /* Event Header */
         .event-header {
-            position: relative;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .event-header.scrolled {
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
         }
 
         .event-image {
@@ -117,11 +128,289 @@
             font-size: 18px;
         }
 
+        .event-more-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 500;
+            transition: color 0.15s ease;
+        }
+
+        .event-more-link:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        /* Mobile Top Bar */
+        .mobile-top-bar {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            background: white;
+            padding: 12px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-top-bar-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mobile-event-image {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .mobile-event-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mobile-event-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-900);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mobile-event-meta {
+            font-size: 12px;
+            color: var(--gray-500);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mobile-event-meta .material-symbols-outlined {
+            font-size: 14px;
+        }
+
+        .mobile-info-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--gray-200);
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+        }
+
+        .mobile-info-btn:hover {
+            background: var(--gray-100);
+        }
+
+        .mobile-info-btn .material-symbols-outlined {
+            font-size: 20px;
+            color: var(--gray-600);
+        }
+
+        /* Event Details Modal */
+        .event-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .event-modal-overlay.visible {
+            display: flex;
+        }
+
+        .event-modal {
+            background: white;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .event-modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+            transition: all 0.15s ease;
+        }
+
+        .event-modal-close:hover {
+            background: var(--gray-100);
+            transform: scale(1.05);
+        }
+
+        .event-modal-close .material-symbols-outlined {
+            font-size: 20px;
+            color: var(--gray-600);
+        }
+
+        .event-modal-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .event-modal-content {
+            padding: 20px;
+        }
+
+        .event-modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 16px;
+        }
+
+        .event-modal-section {
+            margin-bottom: 20px;
+        }
+
+        .event-modal-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+        }
+
+        .event-modal-description {
+            font-size: 14px;
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+
+        .event-modal-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .event-modal-meta-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .event-modal-meta-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gray-100);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .event-modal-meta-icon .material-symbols-outlined {
+            font-size: 20px;
+            color: var(--gray-600);
+        }
+
+        .event-modal-meta-info {
+            flex: 1;
+        }
+
+        .event-modal-meta-label {
+            font-size: 12px;
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .event-modal-meta-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .event-modal-meta-sub {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        .event-modal-map {
+            width: 100%;
+            height: 150px;
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-top: 8px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .event-modal-map iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .event-modal-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            color: var(--primary);
+            cursor: pointer;
+            margin-top: 4px;
+        }
+
+        .event-modal-link:hover {
+            text-decoration: underline;
+        }
+
         /* Promo Banner */
         .promo-banner {
             background: linear-gradient(135deg, #fce7f3 0%, #ddd6fe 100%);
             padding: 12px 20px;
-            margin: 0 16px 16px;
+            margin: 0 20px;
             border-radius: var(--radius);
         }
 
@@ -507,6 +796,53 @@
             font-size: 20px;
         }
 
+        /* Map Alert Notifications */
+        .map-alert {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            z-index: 150;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+            max-width: calc(100% - 40px);
+        }
+
+        .map-alert.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .map-alert .material-symbols-outlined {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .map-alert-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .map-alert-error {
+            background: var(--danger);
+            color: white;
+        }
+
+        .map-alert-info {
+            background: var(--primary);
+            color: white;
+        }
+
         #seatmap-container {
             width: 100%;
             height: 100%;
@@ -550,7 +886,7 @@
             position: fixed;
             bottom: 0;
             left: 0;
-            width: 380px;
+            width: 420px;
             background: white;
             border-top: 1px solid var(--gray-200);
             padding: 16px 20px;
@@ -687,29 +1023,34 @@
 
         /* ==================== MOBILE STYLES ==================== */
         @media (max-width: 768px) {
+            .mobile-top-bar {
+                display: block;
+            }
+
             .app-container {
                 flex-direction: column;
                 height: var(--real-vh);
+                padding-top: 68px; /* Height of mobile top bar */
             }
 
             .map-wrapper {
                 flex: none;
                 /* Extend 24px behind drawer for seamless look at rounded corners */
-                height: calc(var(--real-vh) - var(--drawer-collapsed-height) + 24px);
+                height: calc(var(--real-vh) - var(--drawer-collapsed-height) - 68px + 24px);
                 transition: height 0.3s ease;
             }
 
             .map-wrapper.drawer-expanded {
-                height: calc(var(--real-vh) - var(--drawer-expanded-height) + 24px);
+                height: calc(var(--real-vh) - var(--drawer-expanded-height) - 68px + 24px);
             }
 
             /* When footer is visible, adjust map height for raised drawer */
             .map-wrapper.has-footer {
-                height: calc(var(--real-vh) - var(--drawer-collapsed-height) - 70px + 24px);
+                height: calc(var(--real-vh) - var(--drawer-collapsed-height) - 70px - 68px + 24px);
             }
 
             .map-wrapper.has-footer.drawer-expanded {
-                height: calc(var(--real-vh) - var(--drawer-expanded-height) + 24px);
+                height: calc(var(--real-vh) - var(--drawer-expanded-height) - 68px + 24px);
             }
 
             .sidebar {
@@ -895,6 +1236,73 @@
     </style>
 </head>
 <body>
+    <!-- Mobile Top Bar -->
+    <div class="mobile-top-bar" id="mobile-top-bar">
+        <div class="mobile-top-bar-content">
+            <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=200&h=200&fit=crop" alt="Event" class="mobile-event-image">
+            <div class="mobile-event-info">
+                <div class="mobile-event-title">La Magia de Hogwarts</div>
+                <div class="mobile-event-meta">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <span>Sab, 14 Mar 2026 · 9:00 PM</span>
+                </div>
+            </div>
+            <button class="mobile-info-btn" id="mobile-info-btn" title="Ver información">
+                <span class="material-symbols-outlined">info</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div class="event-modal-overlay" id="event-modal">
+        <div class="event-modal">
+            <button class="event-modal-close" id="event-modal-close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&h=400&fit=crop" alt="Event" class="event-modal-image">
+            <div class="event-modal-content">
+                <h2 class="event-modal-title">La Magia de Hogwarts</h2>
+                
+                <div class="event-modal-section">
+                    <h3 class="event-modal-section-title">Acerca de</h3>
+                    <p class="event-modal-description">
+                        Vive la experiencia mágica más esperada del año. Un espectáculo inmersivo que te transportará al mundo de la magia con efectos especiales, música en vivo y actuaciones que te dejarán sin aliento.
+                    </p>
+                </div>
+
+                <div class="event-modal-section">
+                    <h3 class="event-modal-section-title">El lugar</h3>
+                    <div class="event-modal-meta">
+                        <div class="event-modal-meta-item">
+                            <div class="event-modal-meta-icon">
+                                <span class="material-symbols-outlined">calendar_today</span>
+                            </div>
+                            <div class="event-modal-meta-info">
+                                <div class="event-modal-meta-label">Fecha y hora</div>
+                                <div class="event-modal-meta-value">Sábado, 14 de Marzo 2026</div>
+                                <div class="event-modal-meta-sub">6:00 PM - Puertas abren 4:00 PM</div>
+                            </div>
+                        </div>
+                        <div class="event-modal-meta-item">
+                            <div class="event-modal-meta-icon">
+                                <span class="material-symbols-outlined">location_on</span>
+                            </div>
+                            <div class="event-modal-meta-info">
+                                <div class="event-modal-meta-label">Ubicación</div>
+                                <div class="event-modal-meta-value">Teatro de la Ciudad</div>
+                                <div class="event-modal-meta-sub">C. 16 de Septiembre 44-E, Centro Histórico, Centro, Santiago de Querétaro</div>
+                                <span class="event-modal-link" id="view-location-btn">
+                                    Ver ubicación
+                                    <span class="material-symbols-outlined" style="font-size: 14px;">open_in_new</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
@@ -907,7 +1315,7 @@
             </div>
 
             <div class="sidebar-scroll">
-                <!-- Event Header (Desktop) -->
+                <!-- Event Header (Desktop) - Sticky -->
                 <div class="event-header">
                     <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&h=400&fit=crop" alt="Event" class="event-image">
                     <div class="event-info">
@@ -915,32 +1323,33 @@
                         <div class="event-meta">
                             <div class="event-meta-item">
                                 <span class="material-symbols-outlined">calendar_today</span>
-                                <span>Sab, 14 Marzo 2026</span>
+                                <span>Sab, 14 Marzo 2026 · 6:00 PM</span>
                             </div>
                             <div class="event-meta-item">
                                 <span class="material-symbols-outlined">location_on</span>
-                                <span>Teatro Metropolitano</span>
+                                <span>Teatro de la Ciudad</span>
                             </div>
                         </div>
+                        <span class="event-more-link" id="event-more-link">Ver más</span>
                     </div>
-                </div>
 
-                <!-- Promo Banner (Desktop) -->
-                <div class="promo-banner">
-                    <h4>Paga tus boletos a meses fijos</h4>
-                    <p>Válido con tarjetas de crédito de bancos participantes.</p>
-                </div>
+                    <!-- Promo Banner -->
+                    <!-- <div class="promo-banner">
+                        <h4>Paga tus boletos a meses fijos</h4>
+                        <p>Válido con tarjetas de crédito de bancos participantes.</p>
+                    </div> -->
 
-                <!-- Section Controls -->
-                <div class="section-controls">
-                    <button class="clear-btn" id="clear-btn" disabled>
-                        <span class="material-symbols-outlined">delete_sweep</span>
-                        Limpiar boletos
-                    </button>
-                    <button class="sort-btn" id="sort-btn">
-                        <span class="material-symbols-outlined">swap_vert</span>
-                        <span class="sort-btn-text">Ordenar por precio</span>
-                    </button>
+                    <!-- Section Controls -->
+                    <div class="section-controls">
+                        <button class="clear-btn" id="clear-btn" disabled>
+                            <span class="material-symbols-outlined">delete_sweep</span>
+                            Limpiar boletos
+                        </button>
+                        <button class="sort-btn" id="sort-btn">
+                            <span class="material-symbols-outlined">swap_vert</span>
+                            <span class="sort-btn-text">Ordenar por precio</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Section List -->
@@ -979,6 +1388,12 @@
                     <span class="material-symbols-outlined">info</span>
                     <span>Interactúa desde mapa para ver más boletos.</span>
                 </div>
+            </div>
+
+            <!-- Alert Notifications -->
+            <div class="map-alert map-alert-warning" id="map-alert">
+                <span class="material-symbols-outlined" id="map-alert-icon">warning</span>
+                <span id="map-alert-text">Mensaje de alerta</span>
             </div>
 
             <div id="seatmap-container"></div>
@@ -1070,6 +1485,55 @@
         const selectionSectionMeta = document.getElementById('selection-section-meta');
         const selectionSectionType = document.getElementById('selection-section-type');
         const selectionSeats = document.getElementById('selection-seats');
+        const eventModal = document.getElementById('event-modal');
+        const eventModalClose = document.getElementById('event-modal-close');
+        const eventMoreLink = document.getElementById('event-more-link');
+        const mobileInfoBtn = document.getElementById('mobile-info-btn');
+        const viewLocationBtn = document.getElementById('view-location-btn');
+        const mapAlert = document.getElementById('map-alert');
+        const mapAlertIcon = document.getElementById('map-alert-icon');
+        const mapAlertText = document.getElementById('map-alert-text');
+
+        // Alert timeout reference
+        let alertTimeout = null;
+
+        // ==================== ALERT NOTIFICATIONS ====================
+        function showAlert(message, type = 'warning', duration = 3000) {
+            // Clear any existing timeout
+            if (alertTimeout) {
+                clearTimeout(alertTimeout);
+            }
+
+            // Set alert type class
+            mapAlert.className = 'map-alert map-alert-' + type;
+            
+            // Set icon based on type
+            const icons = {
+                warning: 'warning',
+                error: 'error',
+                info: 'info'
+            };
+            mapAlertIcon.textContent = icons[type] || 'info';
+            
+            // Set message
+            mapAlertText.textContent = message;
+            
+            // Show alert
+            mapAlert.classList.add('visible');
+            
+            // Auto-hide after duration
+            alertTimeout = setTimeout(() => {
+                hideAlert();
+            }, duration);
+        }
+
+        function hideAlert() {
+            mapAlert.classList.remove('visible');
+            if (alertTimeout) {
+                clearTimeout(alertTimeout);
+                alertTimeout = null;
+            }
+        }
 
         // ==================== INITIALIZATION ====================
         async function init() {
@@ -1079,7 +1543,9 @@
                     maxSelectedSeats: 10,
                     enableZoneZoom: true,
                     enableSectionZoom: true,
-                    showControls: false  // Hide default map controls (we have our own)
+                    showControls: false,  // Hide default map controls (we have our own)
+                    backgroundColor: 0xffffff,
+                    gridColor: 0xf4f4f4
                 });
 
                 // Load venue data
@@ -1423,6 +1889,17 @@
             scheduleDrawerResize();
         }
 
+        // ==================== EVENT MODAL ====================
+        function openEventModal() {
+            eventModal.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEventModal() {
+            eventModal.classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+
         function scheduleDrawerResize() {
             // Clear any pending resize
             if (drawerTransitionTimeout) {
@@ -1488,6 +1965,17 @@
                 updateCart(e.detail);
             });
 
+            // Selection limit reached alert
+            seatmapContainer.addEventListener('selection-limit-reached', (e) => {
+                const limit = e.detail?.limit || 10;
+                showAlert(`Has alcanzado el límite de ${limit} boletos`, 'warning', 3500);
+            });
+
+            // Orphan seat blocked alert (visual feedback is handled automatically by the renderer)
+            seatmapContainer.addEventListener('orphan-seat-blocked', (e) => {
+                showAlert('No puedes dejar asientos vacíos entre tus selecciones', 'warning', 3500);
+            });
+
             // Section zoom (auto-expand mobile drawer, but don't reset zoom)
             seatmapContainer.addEventListener('sectionZoom', (e) => {
                 const sectionId = e.detail?.sectionId;
@@ -1500,6 +1988,47 @@
                 if (sectionId && getSelectionCountForSection(sectionId) > 0) {
                     showSelectionView(sectionId);
                 }
+            });
+
+            // Sidebar scroll - add shadow to sticky header when scrolled
+            const sidebarScroll = document.querySelector('.sidebar-scroll');
+            const eventHeader = document.querySelector('.event-header');
+            if (sidebarScroll && eventHeader) {
+                sidebarScroll.addEventListener('scroll', () => {
+                    if (sidebarScroll.scrollTop > 10) {
+                        eventHeader.classList.add('scrolled');
+                    } else {
+                        eventHeader.classList.remove('scrolled');
+                    }
+                });
+            }
+
+            // Event modal - open from desktop "Ver más" link
+            eventMoreLink?.addEventListener('click', openEventModal);
+
+            // Event modal - open from mobile info button
+            mobileInfoBtn?.addEventListener('click', openEventModal);
+
+            // Event modal - close button
+            eventModalClose?.addEventListener('click', closeEventModal);
+
+            // Event modal - close on overlay click
+            eventModal?.addEventListener('click', (e) => {
+                if (e.target === eventModal) {
+                    closeEventModal();
+                }
+            });
+
+            // Event modal - close on escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && eventModal?.classList.contains('visible')) {
+                    closeEventModal();
+                }
+            });
+
+            // View location link in modal
+            viewLocationBtn?.addEventListener('click', () => {
+                window.open('https://maps.google.com/?q=Teatro+Metropolitano+CDMX', '_blank');
             });
 
             // Clear button
