@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Compra de Boletos - Demo</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #6366f1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            /* Mobile drawer heights */
+            --drawer-collapsed-height: 80px;
+            --drawer-expanded-height: 50vh;
+            /* Real viewport height (set by JS, fallback to dvh/vh) */
+            --real-vh: 100vh;
+        }
+
+        /* Use dvh where supported */
+        @supports (height: 100dvh) {
+            :root {
+                --real-vh: 100dvh;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-900);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* ==================== LAYOUT ==================== */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* ==================== SIDEBAR ==================== */
+        .sidebar {
+            width: 380px;
+            min-width: 380px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 100px; /* Space for fixed footer */
+        }
+
+        /* Event Header */
+        .event-header {
+            position: relative;
+        }
+
+        .event-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+
+        .event-info {
+            padding: 16px 20px;
+        }
+
+        .event-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+        }
+
+        .event-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        .event-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .event-meta-item .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        /* Promo Banner */
+        .promo-banner {
+            background: linear-gradient(135deg, #fce7f3 0%, #ddd6fe 100%);
+            padding: 12px 20px;
+            margin: 0 16px 16px;
+            border-radius: var(--radius);
+        }
+
+        .promo-banner h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 2px;
+        }
+
+        .promo-banner p {
+            font-size: 11px;
+            color: var(--gray-600);
+        }
+
+        /* Section Controls */
+        .section-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .clear-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .clear-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .clear-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .clear-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .sort-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            font-size: 13px;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .sort-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        /* Section List */
+        .section-list {
+            padding: 8px 16px;
+        }
+
+        .section-card {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .section-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .section-card.has-selection {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            position: relative;
+        }
+
+        .section-icon .material-symbols-outlined {
+            font-size: 20px;
+            color: var(--gray-500);
+        }
+
+        .section-badge {
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            width: 22px;
+            height: 22px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+
+        .section-details {
+            flex: 1;
+        }
+
+        .section-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 2px;
+        }
+
+        .section-type {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        .section-price {
+            text-align: right;
+        }
+
+        .section-price-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .section-price-fees {
+            font-size: 11px;
+            color: var(--gray-400);
+        }
+
+        .section-arrow {
+            margin-left: 8px;
+            color: var(--gray-400);
+        }
+
+        .section-arrow .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        /* ==================== SELECTION VIEW ==================== */
+        .selection-view {
+            display: none;
+        }
+
+        .selection-view.active {
+            display: block;
+        }
+
+        .selection-header {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200);
+            gap: 12px;
+        }
+
+        .selection-back-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .selection-back-btn:hover {
+            background: var(--gray-100);
+        }
+
+        .selection-back-btn .material-symbols-outlined {
+            font-size: 20px;
+            color: var(--gray-600);
+        }
+
+        .selection-section-info {
+            flex: 1;
+        }
+
+        .selection-section-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .selection-section-meta {
+            font-size: 13px;
+            color: var(--gray-500);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .selection-section-meta .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        .selection-section-type {
+            font-size: 12px;
+            color: var(--gray-400);
+            margin-top: 2px;
+        }
+
+        .selection-content {
+            padding: 16px 20px;
+        }
+
+        .selection-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+
+        .selection-subtitle {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-bottom: 16px;
+        }
+
+        .seat-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            gap: 14px;
+        }
+
+        .seat-item-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .seat-item-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .seat-item-section {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 2px;
+        }
+
+        .seat-item-location {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        .seat-item-price {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .seat-item-price span:first-child {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-900);
+            display: block;
+        }
+
+        .seat-item-price-fees {
+            font-size: 11px;
+            color: var(--gray-400);
+            display: block;
+        }
+
+        .seat-item-delete {
+            width: 38px;
+            height: 38px;
+            border: 1px solid var(--gray-200);
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .seat-item-delete:hover {
+            background: #fef2f2;
+            border-color: var(--danger);
+        }
+
+        .seat-item-delete .material-symbols-outlined {
+            font-size: 18px;
+            color: var(--gray-400);
+        }
+
+        .seat-item-delete:hover .material-symbols-outlined {
+            color: var(--danger);
+        }
+
+        .selection-hint {
+            font-size: 13px;
+            color: var(--gray-400);
+            margin-top: 16px;
+            font-style: italic;
+        }
+
+        /* ==================== MAP CONTAINER ==================== */
+        .map-wrapper {
+            flex: 1;
+            position: relative;
+            background: #0f0f13;
+            overflow: hidden;
+        }
+
+        .map-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 20px;
+            background: linear-gradient(to bottom, rgba(15, 15, 19, 0.9) 0%, rgba(15, 15, 19, 0) 100%);
+            transition: opacity 0.5s ease;
+        }
+
+        .map-header.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .map-notice {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            transition: opacity 0.5s ease;
+        }
+
+        .map-notice.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .map-notice .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        #seatmap-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Center button */
+        .map-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 150;
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-btn {
+            width: 44px;
+            height: 44px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .map-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .map-btn .material-symbols-outlined {
+            font-size: 22px;
+            color: var(--gray-700);
+        }
+
+        /* ==================== PURCHASE FOOTER ==================== */
+        .purchase-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 380px;
+            background: white;
+            border-top: 1px solid var(--gray-200);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 200;
+        }
+
+        .purchase-footer.visible {
+            transform: translateY(0);
+        }
+
+        .purchase-total {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .purchase-total-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-900);
+            letter-spacing: -0.3px;
+        }
+
+        .purchase-total-label {
+            font-size: 13px;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-weight: 500;
+        }
+
+        .purchase-total-label:hover {
+            text-decoration: underline;
+        }
+
+        .purchase-btn {
+            padding: 14px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 28px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .purchase-btn:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .purchase-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+        }
+
+        /* ==================== TOOLTIP ==================== */
+        .seat-tooltip {
+            position: fixed;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            font-family: system-ui, sans-serif;
+            pointer-events: none;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.15s ease-out;
+            overflow: hidden;
+            min-width: 220px;
+            transform: translate(-50%, -100%);
+            margin-top: -15px;
+        }
+
+        .seat-tooltip.bottom {
+            transform: translate(-50%, 0);
+            margin-top: 15px;
+        }
+
+        .tooltip-header {
+            display: flex;
+            padding: 12px 5px;
+            background: white;
+            justify-content: center;
+        }
+
+        .tooltip-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 15px;
+            min-width: 40px;
+        }
+
+        .tooltip-col.border-left {
+            border-left: 1px solid #eee;
+        }
+
+        .tooltip-label {
+            font-size: 9px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .tooltip-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111;
+        }
+
+        .tooltip-footer {
+            background: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        /* ==================== MOBILE STYLES ==================== */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+                height: var(--real-vh);
+            }
+
+            .map-wrapper {
+                flex: none;
+                /* Extend 24px behind drawer for seamless look at rounded corners */
+                height: calc(var(--real-vh) - var(--drawer-collapsed-height) + 24px);
+                transition: height 0.3s ease;
+            }
+
+            .map-wrapper.drawer-expanded {
+                height: calc(var(--real-vh) - var(--drawer-expanded-height) + 24px);
+            }
+
+            /* When footer is visible, adjust map height for raised drawer */
+            .map-wrapper.has-footer {
+                height: calc(var(--real-vh) - var(--drawer-collapsed-height) - 70px + 24px);
+            }
+
+            .map-wrapper.has-footer.drawer-expanded {
+                height: calc(var(--real-vh) - var(--drawer-expanded-height) + 24px);
+            }
+
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                min-width: unset;
+                height: var(--drawer-collapsed-height);
+                max-height: var(--drawer-expanded-height);
+                border-right: none;
+                border-top: 1px solid var(--gray-200);
+                border-radius: 20px 20px 0 0;
+                z-index: 300;
+                transition: height 0.3s ease;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+                overflow: hidden;
+            }
+
+            .sidebar.expanded {
+                height: var(--drawer-expanded-height);
+            }
+
+            .sidebar-handle {
+                display: flex;
+                justify-content: center;
+                padding: 12px;
+                cursor: pointer;
+            }
+
+            .sidebar-handle::before {
+                content: '';
+                width: 40px;
+                height: 4px;
+                background: var(--gray-300);
+                border-radius: 2px;
+            }
+
+            .mobile-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 20px 16px;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            .mobile-header-title {
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .mobile-selection-count {
+                background: var(--primary);
+                color: white;
+                padding: 6px 14px;
+                border-radius: 20px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            .event-header {
+                display: none;
+            }
+
+            .promo-banner {
+                display: none;
+            }
+
+            .section-controls {
+                border-bottom: none;
+                padding: 8px 16px;
+                justify-content: flex-end;
+            }
+
+            .section-controls .clear-btn {
+                display: none;
+            }
+
+            .sidebar-scroll {
+                padding-bottom: 80px;
+                overflow-y: auto;
+                height: calc(100% - 60px);
+            }
+
+            /* Selection view mobile styles */
+            .selection-header {
+                padding: 12px 16px;
+            }
+
+            .selection-section-name {
+                font-size: 16px;
+            }
+
+            .selection-content {
+                padding: 12px 16px;
+            }
+
+            .selection-title {
+                font-size: 14px;
+            }
+
+            .selection-subtitle {
+                font-size: 12px;
+                margin-bottom: 12px;
+            }
+
+            .selection-hint {
+                font-size: 12px;
+            }
+
+            .map-controls {
+                bottom: 36px;
+                left: 16px;
+            }
+
+            .purchase-footer {
+                width: 100%;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 400;
+                padding-bottom: calc(16px + env(safe-area-inset-bottom));
+            }
+
+            /* When footer is visible, raise the sidebar above it */
+            .sidebar.has-footer {
+                bottom: 70px; /* Height of footer */
+            }
+
+            .sidebar.has-footer.expanded {
+                bottom: 0; /* When expanded, go full height */
+            }
+        }
+
+        @media (min-width: 769px) {
+            .sidebar-handle {
+                display: none;
+            }
+
+            .mobile-header {
+                display: none;
+            }
+        }
+
+        /* Loading state */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 15, 19, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--gray-700);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            color: var(--gray-400);
+            margin-top: 16px;
+            font-size: 14px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-handle" id="sidebar-handle"></div>
+            
+            <!-- Mobile Header -->
+            <div class="mobile-header">
+                <span class="mobile-header-title">Selecciona tus boletos</span>
+                <span class="mobile-selection-count" id="mobile-count">0 boletos</span>
+            </div>
+
+            <div class="sidebar-scroll">
+                <!-- Event Header (Desktop) -->
+                <div class="event-header">
+                    <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&h=400&fit=crop" alt="Event" class="event-image">
+                    <div class="event-info">
+                        <h1 class="event-title">La Magia de Hogwarts</h1>
+                        <div class="event-meta">
+                            <div class="event-meta-item">
+                                <span class="material-symbols-outlined">calendar_today</span>
+                                <span>Sab, 14 Marzo 2026</span>
+                            </div>
+                            <div class="event-meta-item">
+                                <span class="material-symbols-outlined">location_on</span>
+                                <span>Teatro Metropolitano</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Promo Banner (Desktop) -->
+                <div class="promo-banner">
+                    <h4>Paga tus boletos a meses fijos</h4>
+                    <p>Válido con tarjetas de crédito de bancos participantes.</p>
+                </div>
+
+                <!-- Section Controls -->
+                <div class="section-controls">
+                    <button class="clear-btn" id="clear-btn" disabled>
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        Limpiar boletos
+                    </button>
+                    <button class="sort-btn" id="sort-btn">
+                        <span class="material-symbols-outlined">swap_vert</span>
+                        <span class="sort-btn-text">Ordenar por precio</span>
+                    </button>
+                </div>
+
+                <!-- Section List -->
+                <div class="section-list" id="section-list">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Selection View (shown when seats are selected) -->
+                <div class="selection-view" id="selection-view">
+                    <div class="selection-header">
+                        <button class="selection-back-btn" id="selection-back-btn">
+                            <span class="material-symbols-outlined">arrow_back</span>
+                        </button>
+                        <div class="selection-section-info">
+                            <div class="selection-section-name" id="selection-section-name">--</div>
+                            <div class="selection-section-meta" id="selection-section-meta">--</div>
+                            <div class="selection-section-type" id="selection-section-type"></div>
+                        </div>
+                    </div>
+                    <div class="selection-content">
+                        <div class="selection-title">Estos asientos te gustarán.</div>
+                        <div class="selection-subtitle">Si prefieres otros, selecciónalos en el mapa.</div>
+                        <div class="selection-seats" id="selection-seats">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <div class="selection-hint">Si deseas agregar más boletos puedes agregarlos desde el mapa.</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Map Container -->
+        <main class="map-wrapper">
+            <div class="map-header">
+                <div class="map-notice">
+                    <span class="material-symbols-outlined">info</span>
+                    <span>Interactúa desde mapa para ver más boletos.</span>
+                </div>
+            </div>
+
+            <div id="seatmap-container"></div>
+
+            <div class="map-controls">
+                <button class="map-btn" id="center-btn" title="Centrar mapa">
+                    <span class="material-symbols-outlined">center_focus_strong</span>
+                </button>
+            </div>
+
+            <div class="loading-overlay" id="loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Cargando mapa...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Purchase Footer -->
+    <div class="purchase-footer" id="purchase-footer">
+        <div class="purchase-total">
+            <span class="purchase-total-value" id="total-price">$0.00 MXN</span>
+            <span class="purchase-total-label">
+                Revisa tu compra
+                <span class="material-symbols-outlined" style="font-size: 14px;">keyboard_arrow_up</span>
+            </span>
+        </div>
+        <button class="purchase-btn" id="purchase-btn">Comprar 0 boletos</button>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="seat-tooltip" class="seat-tooltip">
+        <div class="tooltip-header">
+            <div class="tooltip-col">
+                <span class="tooltip-label">SECCIÓN</span>
+                <span class="tooltip-value" id="tt-section">--</span>
+            </div>
+            <div class="tooltip-col border-left">
+                <span class="tooltip-label">FILA</span>
+                <span class="tooltip-value" id="tt-row">--</span>
+            </div>
+            <div class="tooltip-col border-left">
+                <span class="tooltip-label">ASIENTO</span>
+                <span class="tooltip-value" id="tt-seat">--</span>
+            </div>
+        </div>
+        <div class="tooltip-footer" id="tt-footer">
+            <span id="tt-category">STANDARD</span>
+            <span id="tt-price">$0</span>
+        </div>
+    </div>
+
+    <script type="module">
+        import { SeatMapRenderer } from './index.js';
+
+        // ==================== STATE ====================
+        let renderer = null;
+        let venueData = null;
+        let sections = [];
+        let cart = { seats: [], ga: [], totalCount: 0 };
+        let isMobile = window.innerWidth <= 768;
+        let sortOrder = 'price'; // 'price' or 'name'
+        let currentSelectionSection = null; // Track which section's selection we're viewing
+
+        // ==================== VIEWPORT HEIGHT FIX ====================
+        // Fix for mobile browsers where 100vh includes the address bar
+        function setRealViewportHeight() {
+            const vh = window.innerHeight;
+            document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+        }
+        setRealViewportHeight();
+        window.addEventListener('resize', setRealViewportHeight);
+
+        // ==================== DOM ELEMENTS ====================
+        const seatmapContainer = document.getElementById('seatmap-container');
+        const sectionList = document.getElementById('section-list');
+        const clearBtn = document.getElementById('clear-btn');
+        const centerBtn = document.getElementById('center-btn');
+        const sortBtn = document.getElementById('sort-btn');
+        const purchaseFooter = document.getElementById('purchase-footer');
+        const purchaseBtn = document.getElementById('purchase-btn');
+        const totalPriceEl = document.getElementById('total-price');
+        const loadingOverlay = document.getElementById('loading');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarHandle = document.getElementById('sidebar-handle');
+        const mobileCount = document.getElementById('mobile-count');
+        const selectionView = document.getElementById('selection-view');
+        const selectionBackBtn = document.getElementById('selection-back-btn');
+        const selectionSectionName = document.getElementById('selection-section-name');
+        const selectionSectionMeta = document.getElementById('selection-section-meta');
+        const selectionSectionType = document.getElementById('selection-section-type');
+        const selectionSeats = document.getElementById('selection-seats');
+
+        // ==================== INITIALIZATION ====================
+        async function init() {
+            try {
+                // Initialize renderer
+                renderer = await SeatMapRenderer.create(seatmapContainer, {
+                    maxSelectedSeats: 10,
+                    enableZoneZoom: true,
+                    enableSectionZoom: true,
+                    showControls: false  // Hide default map controls (we have our own)
+                });
+
+                // Load venue data
+                const response = await fetch('./demo-venue.json');
+                venueData = await response.json();
+                await renderer.loadData(venueData);
+
+                // Get sections for the list
+                sections = renderer.getSections({ includeZones: false, includeGA: true });
+                renderSectionList();
+
+                // Hide loading
+                loadingOverlay.classList.add('hidden');
+
+                // Auto-hide map notice and header after 2 seconds
+                const mapNotice = document.querySelector('.map-notice');
+                const mapHeader = document.querySelector('.map-header');
+                if (mapNotice) {
+                    setTimeout(() => {
+                        mapNotice.classList.add('hidden');
+                        mapHeader?.classList.add('hidden');
+                    }, 2000);
+                }
+
+                // Setup event listeners
+                setupEventListeners();
+
+                // On mobile, fit to sections instead of full map
+                if (isMobile) {
+                    setTimeout(() => {
+                        renderer.app.resize();
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                renderer.fitToSections(false);
+                            });
+                        });
+                    }, 100);
+                }
+
+                console.log('Demo booking page initialized');
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                loadingOverlay.querySelector('.loading-text').textContent = 'Error al cargar el mapa';
+            }
+        }
+
+        // ==================== SECTION LIST ====================
+        function renderSectionList() {
+            // Sort sections based on current sort order
+            const sortedSections = [...sections].sort((a, b) => {
+                const priceA = a.pricing?.basePrice || 0;
+                const priceB = b.pricing?.basePrice || 0;
+                const nameA = a.name?.toLowerCase() || '';
+                const nameB = b.name?.toLowerCase() || '';
+                
+                if (sortOrder === 'price') {
+                    // Sort by price (highest first), then alphabetically
+                    if (priceB !== priceA) return priceB - priceA;
+                    return nameA.localeCompare(nameB);
+                } else {
+                    // Sort by price (lowest first), then alphabetically
+                    if (priceA !== priceB) return priceA - priceB;
+                    return nameA.localeCompare(nameB);
+                }
+            });
+
+            sectionList.innerHTML = sortedSections.map(section => {
+                const price = section.pricing?.basePrice || 0;
+                const count = getSelectionCountForSection(section.id);
+                const hasSelection = count > 0;
+                const isGA = section.type === 'ga';
+                const sectionColor = section.color || '#6b7280';
+
+                return `
+                    <div class="section-card ${hasSelection ? 'has-selection' : ''}" 
+                         data-section-id="${section.id}">
+                        <div class="section-icon" style="background: ${sectionColor}22;">
+                            <span class="material-symbols-outlined" style="color: ${sectionColor};">${isGA ? 'groups' : 'event_seat'}</span>
+                            ${hasSelection ? `<span class="section-badge">${count}</span>` : ''}
+                        </div>
+                        <div class="section-details">
+                            <div class="section-name">${section.name}</div>
+                        </div>
+                        <div class="section-price">
+                            <div class="section-price-value">$${price.toLocaleString()} MXN</div>
+                            <div class="section-price-fees">+ cargos</div>
+                        </div>
+                        <div class="section-arrow">
+                            <span class="material-symbols-outlined">chevron_right</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click handlers
+            sectionList.querySelectorAll('.section-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const sectionId = card.dataset.sectionId;
+                    const hasSelection = getSelectionCountForSection(sectionId) > 0;
+                    
+                    if (hasSelection) {
+                        // Show selection view for this section
+                        showSelectionView(sectionId);
+                    }
+                    
+                    // Always zoom to section
+                    renderer.zoomToSectionById(sectionId, 1.0);
+                });
+            });
+        }
+
+        function getSelectionCountForSection(sectionId) {
+            let count = 0;
+            
+            // Count seats
+            cart.seats.forEach(seat => {
+                if (seat.sectionId === sectionId) count++;
+            });
+            
+            // Count GA
+            cart.ga.forEach(ga => {
+                if (ga.sectionId === sectionId) count += ga.quantity;
+            });
+            
+            return count;
+        }
+
+        // ==================== CART & SELECTION ====================
+        function updateCart(newCart) {
+            cart = newCart;
+            
+            // Update section list badges
+            renderSectionList();
+            
+            // Update footer visibility and sidebar position
+            if (cart.totalCount > 0) {
+                purchaseFooter.classList.add('visible');
+                sidebar.classList.add('has-footer');
+                mapWrapper.classList.add('has-footer');
+            } else {
+                purchaseFooter.classList.remove('visible');
+                sidebar.classList.remove('has-footer');
+                mapWrapper.classList.remove('has-footer');
+            }
+            
+            // Update total price
+            const total = calculateTotal();
+            totalPriceEl.textContent = `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`;
+            
+            // Update purchase button
+            purchaseBtn.textContent = `Comprar ${cart.totalCount} boleto${cart.totalCount !== 1 ? 's' : ''}`;
+            
+            // Update mobile count
+            mobileCount.textContent = `${cart.totalCount} boleto${cart.totalCount !== 1 ? 's' : ''}`;
+            
+            // Update clear button state
+            clearBtn.disabled = cart.totalCount === 0;
+
+            // Show selection view when there are selections, hide when empty
+            if (cart.totalCount > 0) {
+                if (!currentSelectionSection) {
+                    showSelectionView('all');
+                } else {
+                    // Update header text when in "all" view
+                    if (currentSelectionSection === 'all') {
+                        selectionSectionMeta.innerHTML = `${cart.totalCount} boleto${cart.totalCount !== 1 ? 's' : ''} seleccionado${cart.totalCount !== 1 ? 's' : ''}`;
+                    }
+                    renderSelectionView(currentSelectionSection);
+                }
+            } else {
+                hideSelectionView();
+            }
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            
+            // Sum seat prices
+            cart.seats.forEach(seat => {
+                total += seat.price || 0;
+            });
+            
+            // Sum GA prices
+            cart.ga.forEach(ga => {
+                total += ga.totalPrice || 0;
+            });
+            
+            return total;
+        }
+
+        function clearAllSelections() {
+            renderer.clearSelections();
+            hideSelectionView();
+        }
+
+        // ==================== SELECTION VIEW ====================
+        function showSelectionView(sectionId = null) {
+            currentSelectionSection = sectionId || 'all';
+            
+            // If specific section, show its name
+            if (sectionId && sectionId !== 'all') {
+                const section = sections.find(s => s.id === sectionId);
+                if (section) {
+                    selectionSectionName.textContent = section.name;
+                    const price = section.pricing?.basePrice || 0;
+                    selectionSectionMeta.innerHTML = `<span class="material-symbols-outlined">credit_card</span> $${price.toLocaleString()} MXN + cargos`;
+                    // Show section type (e.g., "Gradas" for seated, "General" for GA)
+                    const isGA = section.type === 'ga' || section.isGA;
+                    selectionSectionType.textContent = isGA ? 'Admisión General' : 'Gradas';
+                }
+            } else {
+                // Show all selections
+                selectionSectionName.textContent = 'Tu selección';
+                selectionSectionMeta.innerHTML = `${cart.totalCount} boleto${cart.totalCount !== 1 ? 's' : ''} seleccionado${cart.totalCount !== 1 ? 's' : ''}`;
+                selectionSectionType.textContent = '';
+            }
+            
+            // Render seats
+            renderSelectionView(sectionId);
+            
+            // Show selection view, hide section list
+            selectionView.classList.add('active');
+            sectionList.style.display = 'none';
+            document.querySelector('.section-controls').style.display = 'none';
+            document.querySelector('.promo-banner')?.style.setProperty('display', 'none');
+        }
+
+        function hideSelectionView() {
+            currentSelectionSection = null;
+            selectionView.classList.remove('active');
+            sectionList.style.display = '';
+            document.querySelector('.section-controls').style.display = '';
+            document.querySelector('.promo-banner')?.style.setProperty('display', '');
+        }
+
+        function renderSelectionView(sectionId = null) {
+            // Get seats - filter by section if specified
+            const sectionSeatsData = sectionId && sectionId !== 'all' 
+                ? cart.seats.filter(seat => seat.sectionId === sectionId)
+                : cart.seats;
+            const sectionGAData = sectionId && sectionId !== 'all'
+                ? cart.ga.filter(ga => ga.sectionId === sectionId)
+                : cart.ga;
+            
+            let html = '';
+            
+            // Render regular seats
+            sectionSeatsData.forEach(seat => {
+                const seatColor = seat.color || '#3b82f6';
+                html += `
+                    <div class="seat-item" data-seat-id="${seat.id}" data-section-id="${seat.sectionId}">
+                        <div class="seat-item-color" style="background: ${seatColor}"></div>
+                        <div class="seat-item-details">
+                            <div class="seat-item-section">${seat.sectionName || seat.sectionId}</div>
+                            <div class="seat-item-location">Fila ${seat.row} | Asiento ${seat.seat}</div>
+                        </div>
+                        <div class="seat-item-price">
+                            <span>$${(seat.price || 0).toLocaleString()} MXN</span>
+                            <span class="seat-item-price-fees">+ cargos</span>
+                        </div>
+                        <button class="seat-item-delete" data-seat-id="${seat.id}">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </div>
+                `;
+            });
+            
+            // Render GA entries
+            sectionGAData.forEach(ga => {
+                const gaColor = ga.color || '#3b82f6';
+                for (let i = 0; i < ga.quantity; i++) {
+                    html += `
+                        <div class="seat-item" data-ga-section="${ga.sectionId}">
+                            <div class="seat-item-color" style="background: ${gaColor}"></div>
+                            <div class="seat-item-details">
+                                <div class="seat-item-section">${ga.sectionName || ga.sectionId}</div>
+                                <div class="seat-item-location">Admisión General</div>
+                            </div>
+                            <div class="seat-item-price">
+                                <span>$${(ga.pricePerTicket || 0).toLocaleString()} MXN</span>
+                                <span class="seat-item-price-fees">+ cargos</span>
+                            </div>
+                            <button class="seat-item-delete" data-ga-section="${ga.sectionId}">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+
+            // If no seats anymore, go back to list
+            if (!html) {
+                hideSelectionView();
+                return;
+            }
+            
+            selectionSeats.innerHTML = html;
+            
+            // Add delete handlers
+            selectionSeats.querySelectorAll('.seat-item-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const seatId = btn.dataset.seatId;
+                    const gaSection = btn.dataset.gaSection;
+                    
+                    if (seatId) {
+                        // Deselect specific seat
+                        renderer.deselectSeat(seatId);
+                    } else if (gaSection) {
+                        // Decrease GA quantity by 1
+                        renderer.decreaseGASelection(gaSection);
+                    }
+                });
+            });
+        }
+
+        // ==================== MOBILE DRAWER ====================
+        const mapWrapper = document.querySelector('.map-wrapper');
+        let drawerTransitionTimeout = null;
+        let skipFitToSections = false; // Flag to skip fitToSections after section zoom
+
+        function toggleSidebar() {
+            if (sidebar.classList.contains('expanded')) {
+                collapseSidebar();
+            } else {
+                expandSidebar();
+            }
+        }
+
+        function expandSidebar(skipFit = false) {
+            skipFitToSections = skipFit;
+            sidebar.classList.add('expanded');
+            mapWrapper.classList.add('drawer-expanded');
+            scheduleDrawerResize();
+        }
+
+        function collapseSidebar() {
+            skipFitToSections = false;
+            sidebar.classList.remove('expanded');
+            mapWrapper.classList.remove('drawer-expanded');
+            scheduleDrawerResize();
+        }
+
+        function scheduleDrawerResize() {
+            // Clear any pending resize
+            if (drawerTransitionTimeout) {
+                clearTimeout(drawerTransitionTimeout);
+            }
+            // Schedule resize after transition (300ms CSS transition + buffer)
+            drawerTransitionTimeout = setTimeout(() => {
+                if (renderer && renderer.app && isMobile) {
+                    renderer.app.resize();
+                    // Only fit to sections if we didn't just zoom to a specific section
+                    if (!skipFitToSections) {
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                renderer.fitToSections(true);
+                            });
+                        });
+                    }
+                    skipFitToSections = false;
+                }
+            }, 350);
+        }
+
+        function handleDrawerTransitionEnd(e) {
+            // Only handle height transitions on the sidebar itself
+            if (e.target !== sidebar || e.propertyName !== 'height') return;
+            
+            // Clear the timeout since transition completed naturally
+            if (drawerTransitionTimeout) {
+                clearTimeout(drawerTransitionTimeout);
+                drawerTransitionTimeout = null;
+            }
+            
+            // Resize the renderer after transition completes
+            if (renderer && renderer.app && isMobile) {
+                renderer.app.resize();
+                // Only fit to sections if we didn't just zoom to a specific section
+                if (!skipFitToSections) {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            renderer.fitToSections(true);
+                        });
+                    });
+                }
+                skipFitToSections = false;
+            }
+        }
+
+        function handleMapTransitionEnd(e) {
+            // Handle height transition on map wrapper
+            if (e.target !== mapWrapper || e.propertyName !== 'height') return;
+            
+            // Resize after map wrapper height changes
+            if (renderer && renderer.app && isMobile) {
+                renderer.app.resize();
+                // Don't call fitToSections here - let the drawer transition handler do it
+            }
+        }
+
+        // ==================== EVENT LISTENERS ====================
+        function setupEventListeners() {
+            // Cart changes
+            seatmapContainer.addEventListener('cartChange', (e) => {
+                updateCart(e.detail);
+            });
+
+            // Section zoom (auto-expand mobile drawer, but don't reset zoom)
+            seatmapContainer.addEventListener('sectionZoom', (e) => {
+                const sectionId = e.detail?.sectionId;
+                
+                if (isMobile) {
+                    expandSidebar(true); // Skip fitToSections since we just zoomed to a section
+                }
+                
+                // Show selection view if there are selections in this section
+                if (sectionId && getSelectionCountForSection(sectionId) > 0) {
+                    showSelectionView(sectionId);
+                }
+            });
+
+            // Clear button
+            clearBtn.addEventListener('click', clearAllSelections);
+
+            // Back button in selection view
+            selectionBackBtn.addEventListener('click', hideSelectionView);
+
+            // Sort button - toggles between price desc and price asc
+            sortBtn.addEventListener('click', () => {
+                sortOrder = sortOrder === 'price' ? 'price-asc' : 'price';
+                renderSectionList();
+            });
+
+            // Center map button
+            centerBtn.addEventListener('click', () => {
+                if (isMobile) {
+                    renderer.fitToSections(true);
+                } else {
+                    renderer.centerMap();
+                }
+            });
+
+            // Purchase button
+            purchaseBtn.addEventListener('click', () => {
+                alert(`¡Gracias! Vas a comprar ${cart.totalCount} boletos por $${calculateTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`);
+            });
+
+            // Mobile sidebar toggle
+            sidebarHandle.addEventListener('click', toggleSidebar);
+
+            // Drawer transition handlers for resize
+            sidebar.addEventListener('transitionend', handleDrawerTransitionEnd);
+            mapWrapper.addEventListener('transitionend', handleMapTransitionEnd);
+
+            // Resize handler
+            window.addEventListener('resize', () => {
+                const wasMobile = isMobile;
+                isMobile = window.innerWidth <= 768;
+                
+                // Reset sidebar state on breakpoint change
+                if (wasMobile !== isMobile) {
+                    sidebar.classList.remove('expanded');
+                    mapWrapper.classList.remove('drawer-expanded');
+                    
+                    // Re-fit view after breakpoint change
+                    setTimeout(() => {
+                        if (renderer) {
+                            renderer.app.resize();
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    if (isMobile) {
+                                        renderer.fitToSections(true);
+                                    } else {
+                                        renderer.fitToView(true);
+                                    }
+                                });
+                            });
+                        }
+                    }, 100);
+                }
+            });
+        }
+
+        // ==================== START ====================
+        init();
+    </script>
+</body>
+</html>

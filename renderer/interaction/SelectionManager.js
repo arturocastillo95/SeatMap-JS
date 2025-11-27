@@ -123,6 +123,14 @@ export class SelectionManager {
     }
 
     /**
+     * Deselect a specific seat (alias for deselect)
+     * @param {PIXI.Container} seatContainer
+     */
+    deselectSeat(seatContainer) {
+        this.deselect(seatContainer);
+    }
+
+    /**
      * Clear all selections
      */
     clearSelection() {

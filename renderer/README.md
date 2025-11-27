@@ -6,6 +6,25 @@ A lightweight, embeddable renderer for SeatMap JS files (SMF format).
 
 The SeatMap Renderer is designed to display venue maps created by the SeatMap Editor without any of the editing functionality. It's optimized for embedding in web pages and can be extended for seat selection and interaction with external systems.
 
+## Demo
+
+### Booking Demo
+
+A complete, production-ready ticket booking interface is available at `demo-booking.html`. This demonstrates:
+
+- **Responsive layout** - Desktop sidebar + mobile bottom sheet drawer
+- **Section list** with colors, pricing, and sorting
+- **Interactive map** with zoom-to-section
+- **Selection management** with individual ticket removal
+- **Purchase flow** UI with totals
+
+See [BOOKING_DEMO.md](./BOOKING_DEMO.md) for full documentation.
+
+```bash
+npm run dev
+# Open http://localhost:5173/demo-booking.html
+```
+
 ## Features
 
 ### Current Implementation (Phase 1 & 2)

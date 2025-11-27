@@ -25,7 +25,7 @@ export class SeatMapRenderer {
         ZOOM_SPEED: 1.1,
         BACKGROUND_COLOR: 0x0f0f13,
         SECTION_ZOOM_PADDING: 50,
-        ANIMATION_DURATION: 500,
+        ANIMATION_DURATION: 250,
         SEAT_RADIUS: 6,
         SEAT_RADIUS_HOVER: 12,
         SEAT_HOVER_SPEED: 0.35,
@@ -41,8 +41,8 @@ export class SeatMapRenderer {
         MAX_SELECTED_SEATS: 10,
         PREVENT_ORPHAN_SEATS: true,
         // Tap zoom behavior
-        TAP_ZOOM_BOOST: 1.8,
-        DOUBLE_TAP_ZOOM_BOOST: 2.5,
+        TAP_ZOOM_BOOST: 1,
+        DOUBLE_TAP_ZOOM_BOOST: 1.5,
         DOUBLE_TAP_MAX_DELAY: 300,
         DOUBLE_TAP_MAX_DISTANCE: 50,
         TAP_MAX_DURATION: 300,
@@ -99,6 +99,8 @@ export class SeatMapRenderer {
             mobileSeatHitareaScale: SeatMapRenderer.CONFIG.MOBILE_SEAT_HITAREA_SCALE,
             seatChunkSize: SeatMapRenderer.CONFIG.SEAT_CHUNK_SIZE,
             deferSeatLabels: SeatMapRenderer.CONFIG.DEFER_SEAT_LABELS,
+            fitToSectionsPadding: 40,
+            showControls: true,
             backgroundAlpha: 1,
             resizeTo: container,
             antialias: true,
@@ -131,6 +133,10 @@ export class SeatMapRenderer {
         this._resizeObserver = null;
         this._resizeTimeout = null;
         this._lastContainerSize = { width: 0, height: 0 };
+        
+        // Section tracking for external API
+        this.sectionContainers = new Map(); // Map<sectionId, PIXI.Container>
+        this.loadedData = null; // Store loaded map data for getSections()
 
         // Bind methods
         this.updateSeatAnimations = this.updateSeatAnimations.bind(this);
@@ -206,7 +212,8 @@ export class SeatMapRenderer {
             this.uiManager = new UIManager({
                 app: this.app,
                 config: this.options,
-                onResetClick: () => this.fitToView()
+                onResetClick: () => this.fitToView(),
+                showControls: this.options.showControls
             });
             this.uiManager.create();
 
@@ -421,6 +428,7 @@ export class SeatMapRenderer {
         this.selectionManager.clearSelection();
         this.inventoryManager.clearRegistrations();
         this.animatingSeats.clear();
+        this.sectionContainers.clear();
         
         // Cancel any pending seat rendering from previous load
         if (this._seatRenderingAbort) {
@@ -432,6 +440,9 @@ export class SeatMapRenderer {
             console.error("No data provided to loadData");
             return;
         }
+
+        // Store loaded data for getSections() API
+        this.loadedData = data;
 
         console.log("Loading map data...", data);
 
@@ -521,15 +532,17 @@ export class SeatMapRenderer {
                         e.stopPropagation();
                         const tapPoint = { x: e.global.x, y: e.global.y };
                         const isDoubleTap = this.inputHandler?.isDoubleTap?.(tapPoint) ?? false;
+                        // Only use tap-centered zoom on touch devices
+                        const zoomPoint = this.state.isTouchDevice ? tapPoint : null;
                         
                         if (isDoubleTap) {
                             this.inputHandler.clearDoubleTap();
-                            this.zoomToSection(container, tapPoint, this.options.doubleTapZoomBoost);
+                            this.zoomToSection(container, zoomPoint, this.options.doubleTapZoomBoost);
                         } else {
                             const isZoomed = this.viewportManager?.isZoomedIn?.() ?? false;
                             if (!isZoomed) {
                                 this.inputHandler?.recordTap?.(tapPoint);
-                                this.zoomToSection(container, tapPoint, this.options.tapZoomBoost);
+                                this.zoomToSection(container, zoomPoint, this.options.tapZoomBoost);
                             } else {
                                 this.inputHandler?.recordTap?.(tapPoint);
                             }
@@ -541,6 +554,10 @@ export class SeatMapRenderer {
             }
 
             this.viewport.addChild(container);
+            
+            // Store container reference for zoomToSectionById
+            const sectionId = sectionData.id || sectionData.name;
+            this.sectionContainers.set(sectionId, container);
             
             // Render seats in chunks (non-blocking)
             await this.renderSeatsChunked(container, sectionData, abortSignal);
@@ -688,6 +705,7 @@ export class SeatMapRenderer {
         
         seatContainer.seatData = seatData;
         seatContainer.sectionId = sectionData.id || sectionData.name;
+        seatContainer.sectionName = sectionData.name;
         seatContainer.selected = false;
         seatContainer.originalLabel = labelText;
         seatContainer.seatColor = seatColor;
@@ -768,6 +786,10 @@ export class SeatMapRenderer {
         const container = createSectionContainer(data);
         const { graphics, fillColor } = createSectionBackground(data);
         container.addChild(graphics);
+        
+        // Store container reference for zoomToSectionById
+        const sectionId = data.id || data.name;
+        this.sectionContainers.set(sectionId, container);
 
         const isZoneOrGA = !!data.isZone || data.type === 'ga';
         const enableZoom = isZoneOrGA ? this.options.enableZoneZoom : this.options.enableSectionZoom;
@@ -793,6 +815,8 @@ export class SeatMapRenderer {
                 if (isValidTap) {
                     e.stopPropagation();
                     const tapPoint = { x: e.global.x, y: e.global.y };
+                    // Only use tap-centered zoom on touch devices
+                    const zoomPoint = this.state.isTouchDevice ? tapPoint : null;
                     
                     // Check for double-tap (second tap within threshold)
                     const isDoubleTap = this.inputHandler?.isDoubleTap?.(tapPoint) ?? false;
@@ -800,13 +824,13 @@ export class SeatMapRenderer {
                     if (isDoubleTap) {
                         // Double-tap: zoom to max
                         this.inputHandler.clearDoubleTap();
-                        this.zoomToSection(container, tapPoint, this.options.doubleTapZoomBoost);
+                        this.zoomToSection(container, zoomPoint, this.options.doubleTapZoomBoost);
                     } else {
                         // Single tap: only zoom if not already zoomed
                         const isZoomed = this.viewportManager?.isZoomedIn?.() ?? false;
                         if (!isZoomed) {
                             this.inputHandler?.recordTap?.(tapPoint);
-                            this.zoomToSection(container, tapPoint, this.options.tapZoomBoost);
+                            this.zoomToSection(container, zoomPoint, this.options.tapZoomBoost);
                         } else {
                             // Already zoomed, just record for potential double-tap
                             this.inputHandler?.recordTap?.(tapPoint);
@@ -951,6 +975,7 @@ export class SeatMapRenderer {
                 
                 seatContainer.seatData = seatData;
                 seatContainer.sectionId = data.id || data.name;
+                seatContainer.sectionName = data.name;
                 seatContainer.selected = false;
                 seatContainer.originalLabel = labelText;
                 seatContainer.seatColor = seatColor;
@@ -1260,9 +1285,89 @@ export class SeatMapRenderer {
         this.fitToView();
     }
 
+    /**
+     * Fit viewport to show only sections (excluding underlay)
+     * Useful for mobile where focusing on interactive content is preferred
+     * @param {boolean} animate - Whether to animate the transition
+     * @param {number} padding - Padding around sections (uses config default if not specified)
+     */
+    fitToSections(animate = true, padding = null) {
+        if (!this.isInitialized) return;
+        const paddingValue = padding ?? this.options.fitToSectionsPadding;
+        this.viewportManager.fitToSections(animate, paddingValue);
+    }
+
     zoomToSection(sectionContainer, tapPoint = null, zoomBoost = 1.3) {
         if (!this.isInitialized) return;
         this.viewportManager.zoomToSection(sectionContainer, tapPoint, zoomBoost);
+    }
+
+    /**
+     * Zoom to a section by its ID
+     * @param {string} sectionId - The section ID to zoom to
+     * @param {number} zoomBoost - Optional zoom multiplier (default 1.8)
+     * @returns {boolean} - True if section was found and zoomed to
+     */
+    zoomToSectionById(sectionId, zoomBoost = 1.8) {
+        if (!this.isInitialized) return false;
+        
+        const container = this.sectionContainers.get(sectionId);
+        if (!container) {
+            console.warn(`Section with ID "${sectionId}" not found`);
+            return false;
+        }
+        
+        this.viewportManager.zoomToSection(container, null, zoomBoost);
+        
+        // Dispatch event for external listeners (e.g., to auto-expand mobile drawer)
+        this.container.dispatchEvent(new CustomEvent('sectionZoom', {
+            detail: { sectionId, container },
+            bubbles: true
+        }));
+        
+        return true;
+    }
+
+    /**
+     * Get list of sections from loaded map data
+     * @param {Object} options - Filter options
+     * @param {boolean} options.includeZones - Include zone overlays (default false)
+     * @param {boolean} options.includeGA - Include GA sections (default true)
+     * @returns {Array} - Array of section objects with id, name, type, pricing
+     */
+    getSections(options = {}) {
+        const { includeZones = false, includeGA = true } = options;
+        
+        if (!this.loadedData || !this.loadedData.sections) {
+            return [];
+        }
+        
+        return this.loadedData.sections
+            .filter(section => {
+                if (section.isZone && !includeZones) return false;
+                if (section.type === 'ga' && !section.isZone && !includeGA) return false;
+                return true;
+            })
+            .map(section => {
+                // For GA sections, use sectionColor; for seated sections, use seatColor
+                const isGA = section.type === 'ga';
+                const colorValue = isGA 
+                    ? section.style?.sectionColor 
+                    : section.style?.seatColor;
+                const colorHex = colorValue !== undefined 
+                    ? '#' + colorValue.toString(16).padStart(6, '0')
+                    : null;
+                
+                return {
+                    id: section.id || section.name,
+                    name: section.name,
+                    type: section.type || 'seated',
+                    isZone: !!section.isZone,
+                    pricing: section.pricing || {},
+                    capacity: section.ga?.capacity || section.seats?.length || 0,
+                    color: colorHex
+                };
+            });
     }
 
     // GA Selection handlers
@@ -1298,6 +1403,114 @@ export class SeatMapRenderer {
                 []
             );
         }
+    }
+
+    /**
+     * Deselect a specific seat by its ID
+     * @param {string} seatId - The seat ID to deselect
+     * @returns {boolean} - True if seat was found and deselected
+     */
+    deselectSeat(seatId) {
+        const seatContainer = this.inventoryManager.seatsById[seatId];
+        if (!seatContainer || !seatContainer.selected) {
+            return false;
+        }
+
+        // Reset visual state
+        seatContainer.selected = false;
+        const isSpecial = seatContainer.seatData?.sn || seatContainer.seatData?.specialNeeds;
+        
+        seatContainer.targetScale = seatContainer.baseScale;
+        seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
+        seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
+        
+        if (seatContainer.text) {
+            if (isSpecial) {
+                seatContainer.text.text = 'accessible_forward';
+            } else {
+                seatContainer.text.text = seatContainer.originalLabel || '';
+            }
+        }
+        
+        this.animatingSeats.add(seatContainer);
+        
+        // Remove from selection
+        this.selectionManager.deselectSeat(seatContainer);
+        
+        // Trigger cart update
+        this.cartManager.handleCartChange(
+            this.selectionManager.getSelectedSeats(),
+            this.gaSelectionManager.getSelectionsArray()
+        );
+        
+        return true;
+    }
+
+    /**
+     * Decrease GA selection quantity by 1 for a specific section
+     * @param {string} sectionId - The section ID
+     * @returns {boolean} - True if GA selection was decreased
+     */
+    decreaseGASelection(sectionId) {
+        if (!this.gaSelectionManager) return false;
+        
+        const decreased = this.gaSelectionManager.decreaseSelection(sectionId);
+        if (decreased) {
+            // Trigger cart update
+            this.cartManager.handleCartChange(
+                this.selectionManager.getSelectedSeats(),
+                this.gaSelectionManager.getSelectionsArray()
+            );
+        }
+        return decreased;
+    }
+
+    /**
+     * Clear all seat selections (both regular seats and GA)
+     * Updates visual state and triggers cart update event
+     */
+    clearSelections() {
+        // Get currently selected seats before clearing
+        const selectedSeats = this.selectionManager.getSelectedSeats();
+        
+        // Reset visual state for each selected seat
+        for (const seatContainer of selectedSeats) {
+            seatContainer.selected = false;
+            const isSpecial = seatContainer.seatData?.sn || seatContainer.seatData?.specialNeeds;
+            
+            // Reset to non-selected visual state
+            seatContainer.targetScale = seatContainer.baseScale;
+            seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
+            seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
+            
+            // Reset text content
+            if (seatContainer.text) {
+                if (isSpecial) {
+                    seatContainer.text.text = 'accessible_forward';
+                } else {
+                    seatContainer.text.text = seatContainer.originalLabel || '';
+                }
+            }
+            
+            this.animatingSeats.add(seatContainer);
+        }
+        
+        // Clear the selection set
+        this.selectionManager.clearSelection();
+        
+        // Clear GA selections
+        if (this.gaSelectionManager) {
+            this.gaSelectionManager.clearAll();
+        }
+        
+        // Trigger cart update with empty selections
+        this.cartManager.handleCartChange(new Set(), []);
+        
+        // Dispatch event
+        this.container.dispatchEvent(new CustomEvent('selections-cleared', {
+            detail: { clearedCount: selectedSeats.size },
+            bubbles: true
+        }));
     }
 
     // Legacy getters for backward compatibility

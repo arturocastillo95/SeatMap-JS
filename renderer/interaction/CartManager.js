@@ -33,12 +33,23 @@ export class CartManager {
         const seats = Array.from(selectedSeats).map(container => {
             const data = container.seatData;
             const price = this.getSeatPrice(data, container.sectionPricing);
+            
+            // Convert numeric seat color to hex string
+            const seatColorNum = container.seatColor;
+            const seatColorHex = seatColorNum !== undefined 
+                ? '#' + seatColorNum.toString(16).padStart(6, '0')
+                : '#3b82f6';
 
             return {
                 id: data.id,
                 key: container.key,
+                sectionId: container.sectionId,
+                sectionName: container.sectionName || container.sectionId,
+                row: data.rn || data.rowName || data.row || (data.r !== undefined ? String.fromCharCode(65 + data.r) : ''),
+                seat: data.sn || data.seatNumber || data.seat || data.c || '',
                 price: price,
-                special: data.sn || data.specialNeeds || data.special || null
+                special: data.sn || data.specialNeeds || data.special || null,
+                color: seatColorHex
             };
         });
 
@@ -47,8 +58,9 @@ export class CartManager {
             sectionId: selection.sectionId,
             sectionName: selection.sectionName,
             quantity: selection.quantity,
-            pricePerItem: selection.pricePerItem,
-            totalPrice: selection.totalPrice
+            pricePerTicket: selection.pricePerItem,
+            totalPrice: selection.totalPrice,
+            color: selection.color || '#3b82f6'
         }));
 
         // Calculate total item count (seats + GA tickets)

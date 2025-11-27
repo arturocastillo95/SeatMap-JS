@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Booking Demo (November 2025)
+
+- **Complete Ticket Booking Demo** (`demo-booking.html`) - Production-ready reference implementation
+  - **Responsive Layout**: Desktop sidebar (380px) + mobile bottom sheet drawer
+  - **Section List**: Displays all sections with colors, pricing, sorting (price high/low)
+  - **Selection View**: Shows selected tickets with individual removal via trash button
+  - **Purchase Footer**: Sticky footer with total price and purchase button
+  - **Mobile Drawer**: Collapsible/expandable with drag handle, raises above footer when active
+  - **Map Integration**: Zoom-to-section on click, auto-hide notice banner
+  - **Dynamic Viewport**: CSS `dvh` units + JavaScript `--real-vh` for mobile browser chrome handling
+
+- **New Renderer Methods**:
+  - `getSections(options)` - Returns sections with `color` property (hex string from seat/section color)
+  - `deselectSeat(seatId)` - Programmatically remove a specific seat from selection
+  - `decreaseGASelection(sectionId)` - Reduce GA quantity by 1 for a section
+  - `fitToSections(padding)` - Fit viewport to all sections with optional padding
+
+- **New Renderer Options**:
+  - `showControls` (default: true) - Show/hide default map controls (zoom, center buttons)
+  - `fitToSectionsPadding` (default: 50) - Padding for fitToSections calculations
+
+- **Cart Data Enhancements**:
+  - Seats now include: `sectionId`, `sectionName`, `row`, `seat`, `color` (hex string)
+  - GA selections now include: `color` (hex string from section color)
+
+- **Documentation**:
+  - New `BOOKING_DEMO.md` with complete integration guide
+  - Updated `README.md` with demo section
+
 ### Added - Performance & Responsiveness (November 2025)
 
 - **Progressive Loading** - Optimized map loading for instant visual feedback

@@ -44,6 +44,8 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 - **[User Guide](docs/USER_GUIDE.md)** - Complete guide to using SeatMap JS
 - **[File Format Specification](docs/FILE_FORMAT.md)** - SMF v2.0.0 format documentation
 - **[Changelog](docs/CHANGELOG.md)** - Version history and release notes
+- **[Renderer Documentation](renderer/README.md)** - Embeddable map viewer
+- **[Booking Demo Guide](renderer/BOOKING_DEMO.md)** - Production-ready ticket booking reference implementation
 
 ## 🏗️ Project Structure
 

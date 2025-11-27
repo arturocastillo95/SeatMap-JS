@@ -512,13 +512,22 @@ export class GASelectionManager {
      * @returns {Array}
      */
     getSelectionsArray() {
-        return Object.entries(this.gaSelections).map(([sectionId, sel]) => ({
-            sectionId,
-            sectionName: sel.data.name,
-            quantity: sel.quantity,
-            pricePerItem: sel.data.pricing?.basePrice || 0,
-            totalPrice: (sel.data.pricing?.basePrice || 0) * sel.quantity
-        }));
+        return Object.entries(this.gaSelections).map(([sectionId, sel]) => {
+            // Convert numeric section color to hex string
+            const sectionColorNum = sel.data.style?.sectionColor;
+            const colorHex = sectionColorNum !== undefined 
+                ? '#' + sectionColorNum.toString(16).padStart(6, '0')
+                : '#3b82f6';
+            
+            return {
+                sectionId,
+                sectionName: sel.data.name,
+                quantity: sel.quantity,
+                pricePerItem: sel.data.pricing?.basePrice || 0,
+                totalPrice: (sel.data.pricing?.basePrice || 0) * sel.quantity,
+                color: colorHex
+            };
+        });
     }
 
     /**
@@ -538,6 +547,32 @@ export class GASelectionManager {
      */
     clearAll() {
         this.clearSelections();
+    }
+
+    /**
+     * Decrease selection quantity by 1 for a section
+     * @param {string} sectionId 
+     * @returns {boolean} - True if selection was decreased
+     */
+    decreaseSelection(sectionId) {
+        const selection = this.gaSelections[sectionId];
+        if (!selection || selection.quantity <= 0) return false;
+        
+        selection.quantity--;
+        
+        if (selection.quantity <= 0) {
+            delete this.gaSelections[sectionId];
+        }
+        
+        // Dispatch event
+        this.dispatchEvent('ga-selection-change', {
+            sectionId,
+            quantity: selection?.quantity || 0,
+            sectionData: selection?.data,
+            allSelections: this.getSelectionsArray()
+        });
+        
+        return true;
     }
 
     /**

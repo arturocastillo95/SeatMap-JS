@@ -27,6 +27,9 @@ export async function renderUnderlay(viewport, underlayData) {
         const scale = underlayData.scale !== undefined ? underlayData.scale : 1;
         sprite.scale.set(scale);
 
+        // Mark as underlay for identification in viewport operations
+        sprite.isUnderlay = true;
+
         viewport.addChild(sprite);
         return sprite;
     } catch (e) {

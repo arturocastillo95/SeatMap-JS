@@ -125,6 +125,97 @@ export class ViewportManager {
     }
 
     /**
+     * Fit the view to show only sections/zones (excluding underlay)
+     * Useful for mobile where focusing on interactive content is preferred
+     * Pan boundaries are kept to the underlay/full content for exploration
+     * @param {boolean} animate - Whether to animate the transition
+     * @param {number} padding - Padding around sections (default 40)
+     */
+    fitToSections(animate = true, padding = 40) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let foundSections = false;
+
+        for (const child of this.viewport.children) {
+            // Skip underlay and labels layer
+            if (child.isUnderlay || child.isLabelsLayer) continue;
+            
+            // Include all section containers (both regular sections and zones)
+            // They all have sectionWidth/sectionHeight properties
+            if (child.sectionWidth !== undefined && child.sectionHeight !== undefined) {
+                // Note: child.x/y is the CENTER position (due to pivot), not top-left
+                // So we need to calculate the actual bounds
+                const halfWidth = child.sectionWidth / 2;
+                const halfHeight = child.sectionHeight / 2;
+                const left = child.x - halfWidth;
+                const top = child.y - halfHeight;
+                const right = child.x + halfWidth;
+                const bottom = child.y + halfHeight;
+                
+                minX = Math.min(minX, left);
+                minY = Math.min(minY, top);
+                maxX = Math.max(maxX, right);
+                maxY = Math.max(maxY, bottom);
+                foundSections = true;
+            }
+        }
+
+        if (!foundSections) {
+            // Fallback to regular fitToView if no sections found
+            this.fitToView(animate);
+            return;
+        }
+
+        const sectionsBounds = {
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        };
+
+        const screenWidth = this.app.screen.width;
+        const screenHeight = this.app.screen.height;
+
+        const scaleX = (screenWidth - padding * 2) / sectionsBounds.width;
+        const scaleY = (screenHeight - padding * 2) / sectionsBounds.height;
+        const scale = Math.min(scaleX, scaleY, this.config.maxZoom || 2.5);
+
+        const centerX = sectionsBounds.x + sectionsBounds.width / 2;
+        const centerY = sectionsBounds.y + sectionsBounds.height / 2;
+        
+        const targetX = (screenWidth / 2) - (centerX * scale);
+        const targetY = (screenHeight / 2) - (centerY * scale);
+
+        // Calculate underlay bounds for pan constraints (if underlay exists)
+        // This allows users to pan around the full map, not just the sections
+        let constraintBounds = sectionsBounds;
+        if (this.state.hasUnderlay) {
+            const underlayChild = this.viewport.children[0];
+            if (underlayChild && underlayChild.isUnderlay) {
+                const localBounds = underlayChild.getLocalBounds();
+                constraintBounds = {
+                    x: underlayChild.x + (localBounds.x * underlayChild.scale.x),
+                    y: underlayChild.y + (localBounds.y * underlayChild.scale.y),
+                    width: localBounds.width * underlayChild.scale.x,
+                    height: localBounds.height * underlayChild.scale.y
+                };
+            }
+        }
+
+        // Update state - use underlay bounds for constraints, but scale based on sections
+        this.state.initialScale = scale;
+        this.state.initialBounds = constraintBounds; // Pan limits based on underlay
+        this.state.initialPosition = { x: targetX, y: targetY };
+
+        if (animate) {
+            this.animateViewport(targetX, targetY, scale);
+        } else {
+            this.viewport.scale.set(scale);
+            this.viewport.position.set(targetX, targetY);
+            if (this.onUpdate) this.onUpdate();
+        }
+    }
+
+    /**
      * Check if viewport is zoomed in (beyond initial fit)
      * @returns {boolean}
      */

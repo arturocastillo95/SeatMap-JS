@@ -10,11 +10,13 @@ export class UIManager {
      * @param {PIXI.Application} options.app - PIXI application
      * @param {Object} options.config - UI configuration
      * @param {Function} options.onResetClick - Reset button callback
+     * @param {boolean} options.showControls - Whether to show UI controls (default: true)
      */
     constructor(options) {
         this.app = options.app;
         this.config = options.config || {};
         this.onResetClick = options.onResetClick;
+        this.showControls = options.showControls !== false; // Default to true
         
         this.uiContainer = null;
         this.resetButton = null;
@@ -28,30 +30,34 @@ export class UIManager {
         this.uiContainer = new PIXI.Container();
         this.app.stage.addChild(this.uiContainer);
 
-        // Reset Zoom Button
-        this.resetButton = new PIXI.Container();
+        // Only create reset button if showControls is enabled
+        if (this.showControls) {
+            // Reset Zoom Button
+            this.resetButton = new PIXI.Container();
+            
+            const bg = new PIXI.Graphics();
+            bg.circle(0, 0, 20);
+            bg.fill({ color: 0x333333, alpha: 0.8 });
+            bg.stroke({ width: 2, color: 0xffffff, alpha: 0.8 });
+            this.resetButton.addChild(bg);
+
+            const minus = new PIXI.Graphics();
+            minus.rect(-8, -1, 16, 2);
+            minus.fill({ color: 0xffffff });
+            this.resetButton.addChild(minus);
+
+            this.resetButton.eventMode = 'static';
+            this.resetButton.cursor = 'pointer';
+            this.resetButton.visible = false;
+
+            this.resetButton.on('pointertap', (e) => {
+                e.stopPropagation();
+                if (this.onResetClick) this.onResetClick();
+            });
+
+            this.uiContainer.addChild(this.resetButton);
+        }
         
-        const bg = new PIXI.Graphics();
-        bg.circle(0, 0, 20);
-        bg.fill({ color: 0x333333, alpha: 0.8 });
-        bg.stroke({ width: 2, color: 0xffffff, alpha: 0.8 });
-        this.resetButton.addChild(bg);
-
-        const minus = new PIXI.Graphics();
-        minus.rect(-8, -1, 16, 2);
-        minus.fill({ color: 0xffffff });
-        this.resetButton.addChild(minus);
-
-        this.resetButton.eventMode = 'static';
-        this.resetButton.cursor = 'pointer';
-        this.resetButton.visible = false;
-
-        this.resetButton.on('pointertap', (e) => {
-            e.stopPropagation();
-            if (this.onResetClick) this.onResetClick();
-        });
-
-        this.uiContainer.addChild(this.resetButton);
         this.repositionUI();
     }
 
