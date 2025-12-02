@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Demo & Visual Enhancements (December 2025)
+
+- **Bundled Demo Version** (`demo-booking-bundled.html`) - UMD build alternative to ES modules
+  - Uses `dist/seatmap-renderer.umd.js` bundle with CDN PixiJS
+  - Same functionality as `demo-booking.html` but without ES module imports
+  - Useful for simpler deployment or environments without module support
+
+### Fixed - Accessibility Icon Rendering
+
+- **Material Symbols Font Weight** - Fixed accessibility icons showing raw text instead of wheelchair icon
+  - Changed font weight from `wght=400` to `wght=300` in demo HTML files
+  - Matches renderer's `document.fonts.load("300 14px 'Material Symbols Outlined'")` call
+  - Ensures consistent icon rendering for special needs seats
+
+### Changed - File Format
+
+- **Underlay Dimensions in Save Data** - Now stores underlay image dimensions
+  - Added `width` and `height` fields to underlay save data in `fileManager.js`
+  - Enables pre-sizing containers before image loads (improves layout stability)
+  - Values sourced from `State.underlaySprite.originalWidth/Height`
+
+---
+
 ### Added - Visual Enhancements (November 2025)
 
 - **Background Grid** - Configurable grid pattern behind the map

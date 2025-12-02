@@ -10,7 +10,14 @@ The SeatMap Renderer is designed to display venue maps created by the SeatMap Ed
 
 ### Booking Demo
 
-A complete, production-ready ticket booking interface is available at `demo-booking.html`. This demonstrates:
+A complete, production-ready ticket booking interface is available in two versions:
+
+| File | Type | Description |
+|------|------|-------------|
+| `demo-booking.html` | ES Modules | Uses direct ES module imports (requires bundler/dev server) |
+| `demo-booking-bundled.html` | UMD Build | Uses pre-built UMD bundle + CDN PixiJS (simpler deployment) |
+
+Both demos demonstrate:
 
 - **Responsive layout** - Desktop sidebar + mobile bottom sheet drawer
 - **Section list** with colors, pricing, and sorting
@@ -23,6 +30,12 @@ See [BOOKING_DEMO.md](./BOOKING_DEMO.md) for full documentation.
 ```bash
 npm run dev
 # Open http://localhost:5173/demo-booking.html
+```
+
+For the bundled version (no dev server required after build):
+```bash
+npm run build
+# Open demo-booking-bundled.html directly or via any HTTP server
 ```
 
 ## Features

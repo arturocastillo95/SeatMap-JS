@@ -47,3 +47,8 @@ MIGRATION_CHECKLIST.md
 Thumbs.db
 .DS_Store
 renderer/*.json
+
+/assets
+/renderer/assets
+/renderer/FootstepAnimation.js
+/renderer/effects

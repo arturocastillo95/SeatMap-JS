@@ -54,6 +54,8 @@ export const FileManager = {
         sourceUrl: State.underlaySourceUrl || null,
         x: State.underlayX,
         y: State.underlayY,
+        width: State.underlaySprite?.originalWidth || null,
+        height: State.underlaySprite?.originalHeight || null,
         scale: State.underlayScale,
         opacity: State.underlayOpacity,
         visible: State.underlayVisible

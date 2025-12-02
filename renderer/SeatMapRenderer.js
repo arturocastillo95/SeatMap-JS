@@ -544,12 +544,44 @@ export class SeatMapRenderer {
 
         console.log("Loading map data...", data);
 
-        // Load underlay
+        // PHASE 0: Start underlay loading in parallel (non-blocking)
+        // Store underlay bounds from data for initial centering (before image loads)
+        let underlayPromise = null;
+        this.state.hasUnderlay = false; // Will be set true when underlay actually loads
+        this.state.underlayBounds = null; // Bounds from JSON data for initial fit
+        
         if (data.underlay && data.underlay.visible !== false) {
-            await renderUnderlay(this.viewport, data.underlay);
-            this.state.hasUnderlay = true;
-        } else {
-            this.state.hasUnderlay = false;
+            // Store expected bounds from JSON for initial fit calculation
+            // This allows proper centering before the image loads
+            if (data.underlay.sourceUrl || data.underlay.dataUrl) {
+                // Use stored dimensions if available, otherwise estimate from canvas
+                const underlayWidth = data.underlay.width || data.canvas?.width || 1000;
+                const underlayHeight = data.underlay.height || data.canvas?.height || 800;
+                const underlayScale = data.underlay.scale || 1;
+                
+                this.state.underlayBounds = {
+                    x: data.underlay.x || 0,
+                    y: data.underlay.y || 0,
+                    width: underlayWidth * underlayScale,
+                    height: underlayHeight * underlayScale
+                };
+            }
+            
+            underlayPromise = renderUnderlay(this.viewport, data.underlay).then(sprite => {
+                if (sprite && sprite.parent) {
+                    // Move underlay to back (index 0) once loaded
+                    this.viewport.setChildIndex(sprite, 0);
+                    // Now we have the real underlay, update state
+                    this.state.hasUnderlay = true;
+                    // Clear the estimated bounds, fitToView will use actual sprite
+                    this.state.underlayBounds = null;
+                }
+                return sprite;
+            }).catch(err => {
+                console.warn('Underlay failed to load (non-blocking):', err);
+                this.state.underlayBounds = null;
+                return null;
+            });
         }
 
         // PHASE 1: Render zones/GA sections first (instant visual feedback)
@@ -577,7 +609,8 @@ export class SeatMapRenderer {
 
         this.viewport.addChild(this.labelsLayer);
         
-        // Fit to view immediately so user sees zones/GA
+        // Fit to view using underlay bounds (accurate from JSON dimensions)
+        // Mobile will override this with fitToSections in the page code
         this.fitToView();
         
         // Dispatch event for initial content rendered

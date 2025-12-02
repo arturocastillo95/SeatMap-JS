@@ -1517,33 +1517,14 @@
         </div>
     </div>
 
-    <!-- ==================== DEFERRED MODULE LOADING ==================== -->
-    <!-- Module scripts are automatically deferred, but we wrap in requestIdleCallback for extra
-         guarantee that HTML/CSS has painted (skeleton UI visible) before PixiJS starts loading.
-         This prevents the heavy JS parsing from blocking first contentful paint. -->
-    <script type="module">
-        // Defer heavy initialization until browser is idle or DOM is ready
-        const startApp = async () => {
-            // Dynamically import the renderer - this starts the PixiJS download
-            const { SeatMapRenderer } = await import('./index.js');
-            
-            // Make it available to the init code
-            window.__SeatMapRenderer = SeatMapRenderer;
-            
-            // Dispatch event to signal renderer is ready
-            window.dispatchEvent(new CustomEvent('renderer-ready'));
-        };
-        
-        // Use requestIdleCallback if available, otherwise fallback to setTimeout
-        // This ensures skeleton UI is painted before heavy JS work begins
-        if ('requestIdleCallback' in window) {
-            requestIdleCallback(() => startApp(), { timeout: 100 });
-        } else {
-            setTimeout(startApp, 0);
-        }
-    </script>
-
-    <script type="module">
+    <!-- ==================== BUNDLED VERSION ==================== -->
+    <!-- PIXI.js (required peer dependency) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.6.6/pixi.min.js"></script>
+    
+    <!-- Bundled SeatMap Renderer (UMD build) -->
+    <script src="./dist/seatmap-renderer.umd.js"></script>
+    
+    <script>
         // ==================== CONFIGURATION ====================
         // These values would typically come from your backend/CMS in production.
         // The structure allows easy migration to API-driven data loading.
@@ -1575,8 +1556,8 @@
                 enableZoneZoom: true,
                 enableSectionZoom: true,
                 showControls: false,
-                backgroundColor: 0xE1E1E1,
-                gridColor: 0xD6D6D6
+                backgroundColor: 0xffffff,
+                gridColor: 0xf4f4f4
             }
         };
 
@@ -1688,14 +1669,8 @@
                 // Show skeleton UI immediately while loading
                 renderSectionSkeleton();
                 
-                // Wait for renderer module to be loaded (from deferred import)
-                const SeatMapRenderer = window.__SeatMapRenderer || await new Promise(resolve => {
-                    if (window.__SeatMapRenderer) {
-                        resolve(window.__SeatMapRenderer);
-                    } else {
-                        window.addEventListener('renderer-ready', () => resolve(window.__SeatMapRenderer), { once: true });
-                    }
-                });
+                // Get SeatMapRenderer from UMD global
+                const { SeatMapRenderer } = window.SeatMapRenderer;
                 
                 // Initialize renderer with config options
                 renderer = await SeatMapRenderer.create(seatmapContainer, CONFIG.renderer);
@@ -1733,30 +1708,6 @@
                         renderer.app.resize();
                         renderer.fitToSections(true);
                     }, 100);
-                }
-
-                // ==================== FOOTSTEP ANIMATION (Demo Effect) ====================
-                // Load footstep animation effect - purely decorative, does not affect core functionality
-                try {
-                    const { FootstepAnimation } = await import('./effects/FootstepAnimation.js');
-                    // Get underlay bounds from venue data or use defaults
-                    const underlayData = venueData.underlay || {};
-                    const underlayBounds = {
-                        x: underlayData.x || 0,
-                        y: underlayData.y || 0,
-                        width: underlayData.width || 1329,
-                        height: underlayData.height || 1329
-                    };
-                    window.footstepAnimation = new FootstepAnimation(
-                        renderer.app, 
-                        renderer.viewport, 
-                        underlayBounds
-                    );
-                    await window.footstepAnimation.init();
-                    window.footstepAnimation.start();
-                    console.log('Footstep animation started');
-                } catch (e) {
-                    console.warn('Could not load footstep animation:', e);
                 }
 
                 console.log('Demo booking page initialized');
@@ -2221,7 +2172,7 @@
 
             // View location link in modal
             viewLocationBtn?.addEventListener('click', () => {
-                window.open('https://maps.app.goo.gl/A73C5PZ1docCKPVW9', '_blank');
+                window.open('https://maps.google.com/?q=Teatro+Metropolitano+CDMX', '_blank');
             });
 
             // Clear button

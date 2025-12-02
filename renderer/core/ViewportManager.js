@@ -79,7 +79,8 @@ export class ViewportManager {
         let targetBounds;
         
         if (this.state.hasUnderlay) {
-            const underlayChild = this.viewport.children[0];
+            // Underlay has loaded - use actual sprite bounds
+            const underlayChild = this.viewport.children.find(c => c.isUnderlay);
             if (underlayChild) {
                 const localBounds = underlayChild.getLocalBounds();
                 targetBounds = {
@@ -91,7 +92,11 @@ export class ViewportManager {
             } else {
                 targetBounds = bounds;
             }
+        } else if (this.state.underlayBounds) {
+            // Underlay is loading - use estimated bounds from JSON data
+            targetBounds = this.state.underlayBounds;
         } else {
+            // No underlay - use content bounds
             targetBounds = bounds;
         }
 
@@ -189,8 +194,8 @@ export class ViewportManager {
         // This allows users to pan around the full map, not just the sections
         let constraintBounds = sectionsBounds;
         if (this.state.hasUnderlay) {
-            const underlayChild = this.viewport.children[0];
-            if (underlayChild && underlayChild.isUnderlay) {
+            const underlayChild = this.viewport.children.find(c => c.isUnderlay);
+            if (underlayChild) {
                 const localBounds = underlayChild.getLocalBounds();
                 constraintBounds = {
                     x: underlayChild.x + (localBounds.x * underlayChild.scale.x),
@@ -199,6 +204,9 @@ export class ViewportManager {
                     height: localBounds.height * underlayChild.scale.y
                 };
             }
+        } else if (this.state.underlayBounds) {
+            // Underlay is loading - use estimated bounds from JSON data
+            constraintBounds = this.state.underlayBounds;
         }
 
         // Update state - use underlay bounds for constraints, but scale based on sections
