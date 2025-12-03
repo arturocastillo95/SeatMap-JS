@@ -5,6 +5,38 @@ All notable changes to SeatMap JS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-12-03
+
+### Added
+
+- **SMF Validator Module** (`src/core/smfValidator.js`) - Comprehensive file format validation
+  - Validates all SMF file fields against schema defined in FILE_FORMAT.md
+  - Returns detailed errors and warnings for debugging
+  - Validates: root fields, venue, location, coordinates, canvas, underlay, sections, seats, styles
+  - Supports both sparse format (v2.1.0+) and legacy format (v2.0.0)
+  - Checks for duplicate section/seat IDs
+  - `validate(data)` - Full validation returning `{ valid, errors, warnings }`
+  - `isValid(data)` - Quick boolean check
+  - `formatResults(results)` - Human-readable output
+
+### Changed
+
+- **File Import Validation** - Enhanced `fileManager.js` import process
+  - Now uses SMFValidator for comprehensive validation on file load
+  - Shows detailed error messages when validation fails
+  - Logs warnings for non-critical issues
+  - Better error reporting to users via alert
+
+- **Venue Location Structure** - Updated venue object in saved files
+  - Changed from flat `location` string to structured object
+  - Now includes: `address`, `city`, `state`, `country`, `coordinates` (lat/lng)
+  - Matches FILE_FORMAT.md specification
+
+### Fixed
+
+- **FILE_FORMAT.md** - Updated documentation to match actual implementation
+  - Corrected venue.location structure (was string, now object)
+
 ## [Unreleased]
 
 ### Added - Demo & Visual Enhancements (December 2025)

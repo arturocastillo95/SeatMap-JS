@@ -32,9 +32,18 @@ export const FileManager = {
       
       // Venue information
       venue: {
-        name: "Untitled Venue",
-        location: "",
+        name: "Venue name",
         capacity: this.calculateTotalCapacity(),
+        location: {
+          address: "123 Main Street",
+          city: "Austin",
+          state: "TX",
+          country: "USA",
+          coordinates: {
+            lat: 30.2672,
+            lng: -97.7431
+          }
+        },
         metadata: {}
       },
       
@@ -487,9 +496,20 @@ export const FileManager = {
    */
   async importFromJSON(jsonData) {
     try {
-      // Validate format
-      if (jsonData.format !== 'SMF') {
-        throw new Error('Invalid file format. Expected SMF (Seat Map Format).');
+      // Validate format using SMF Validator
+      const { SMFValidator } = await import('../core/smfValidator.js');
+      const validation = SMFValidator.validate(jsonData);
+      
+      if (!validation.valid) {
+        console.error('SMF Validation failed:');
+        console.error(SMFValidator.formatResults(validation));
+        throw new Error(`Invalid SMF file: ${validation.errors[0]}`);
+      }
+      
+      // Log warnings if any
+      if (validation.warnings.length > 0) {
+        console.warn('SMF Validation warnings:');
+        validation.warnings.forEach(w => console.warn(`  ⚠ ${w}`));
       }
       
       console.log(`Loading SMF v${jsonData.version}...`);

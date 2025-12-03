@@ -17,8 +17,17 @@ SeatMap JS uses a JSON-based file format called SMF (Seat Map Format) for saving
   
   "venue": {
     "name": "Venue name",
-    "location": "Venue location",
     "capacity": 1000,
+    "location": {
+      "address": "123 Main Street",
+      "city": "Austin",
+      "state": "TX",
+      "country": "USA",
+      "coordinates": {
+        "lat": 30.2672,
+        "lng": -97.7431
+      }
+    },
     "metadata": {}
   },
   
@@ -443,6 +452,35 @@ A separate viewer application can use this format to:
 - Row labels with `hidden: true` should be rendered with reduced visibility (grayed out)
 - Underlay can be `null` or omitted if no background image is present
 - Underlay should render behind all sections but above the grid
+
+## Validation
+
+SeatMap JS includes a built-in SMF validator (`src/core/smfValidator.js`) that validates files on import:
+
+```javascript
+import { SMFValidator } from './src/core/smfValidator.js';
+
+// Full validation
+const results = SMFValidator.validate(jsonData);
+console.log(results.valid);    // boolean
+console.log(results.errors);   // string[]
+console.log(results.warnings); // string[]
+
+// Quick check
+if (SMFValidator.isValid(jsonData)) {
+  // File is valid
+}
+
+// Human-readable output
+console.log(SMFValidator.formatResults(results));
+```
+
+The validator checks:
+- Required fields (format, version, venue, sections)
+- Field types and value ranges
+- Duplicate section/seat IDs
+- Coordinate validity (lat: -90 to 90, lng: -180 to 180)
+- Both sparse (v2.1.0+) and legacy (v2.0.0) seat formats
 
 ## Extensibility
 
