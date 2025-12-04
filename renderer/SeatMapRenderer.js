@@ -222,7 +222,8 @@ export class SeatMapRenderer {
 
             this.cartManager = new CartManager({
                 container: this.container,
-                onCartChange: this.options.onCartChange
+                onCartChange: this.options.onCartChange,
+                getPromo: (sectionName) => this.getSectionPromo(sectionName)
             });
 
             this.gaSelectionManager = new GASelectionManager({
@@ -1317,10 +1318,13 @@ export class SeatMapRenderer {
     showTooltip(seatData, sectionName, rowLabel, sectionPricing, seatColor, seatTextColor) {
         if (!this.tooltipManager) return;
 
-        const priceValue = this.cartManager.getSeatPrice(seatData, sectionPricing);
         const status = seatData.status || 'available';
         
-        let price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : 'Not Available';
+        // Get price with promo discount applied
+        const priceInfo = this.cartManager.getSeatPrice(seatData, sectionPricing, sectionName);
+        const promo = this.getSectionPromo(sectionName);
+        
+        let price = priceInfo.price > 0 ? `$${priceInfo.price.toLocaleString()} MXN` : 'Not Available';
         if (status === 'booked' || status === 'sold') price = 'BOOKED';
         else if (status === 'reserved') price = 'RESERVED';
         
@@ -1333,7 +1337,13 @@ export class SeatMapRenderer {
             row: rowLabel,
             seat: isSpecial ? null : (seatData.n ?? seatData.number),
             price: price,
-            category: category
+            category: category,
+            originalPrice: priceInfo.originalPrice > 0 ? `$${priceInfo.originalPrice.toLocaleString()}` : null,
+            promo: promo ? {
+                text: promo.text,
+                color: promo.color,
+                textColor: promo.textColor
+            } : null
         };
 
         if (seatColor !== undefined) {
@@ -1350,17 +1360,46 @@ export class SeatMapRenderer {
         if (!this.tooltipManager) return;
 
         const pricing = data.pricing || {};
-        const priceValue = pricing.basePrice || 0;
-        let price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : '';
-        
+        const basePrice = pricing.basePrice || 0;
         const sectionName = data.name || 'GA';
+        
+        // Check for section promo
+        const promo = this.getSectionPromo(data.id || sectionName);
+        let priceValue = basePrice;
+        let originalPrice = null;
+        let isQuantityPromo = false;
+        
+        if (promo && basePrice > 0) {
+            // Quantity-based promos (2x1, 3x1) don't show per-item discount
+            if (promo.buyX !== undefined && promo.getY !== undefined) {
+                isQuantityPromo = true;
+                // Price stays at basePrice, no strikethrough
+            } else if (promo.discount !== undefined) {
+                // Percentage discount
+                priceValue = Math.round(basePrice * (1 - promo.discount));
+                originalPrice = basePrice;
+            } else if (promo.discountedPrice !== undefined) {
+                // Fixed discount
+                priceValue = promo.discountedPrice;
+                originalPrice = basePrice;
+            }
+        }
+        
+        let price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : '';
 
         const content = {
             section: sectionName,
             row: null,
             seat: null,
             price: price,
-            category: 'General Admission'
+            category: 'General Admission',
+            originalPrice: originalPrice > 0 ? `$${originalPrice.toLocaleString()}` : null,
+            promo: promo ? {
+                text: promo.text,
+                color: promo.color,
+                textColor: promo.textColor,
+                isQuantityPromo: isQuantityPromo
+            } : null
         };
 
         // Use section color for footer
@@ -1660,5 +1699,158 @@ export class SeatMapRenderer {
 
     get seatsById() {
         return this.inventoryManager.seatsById;
+    }
+
+    /**
+     * Set a promotion/discount for a section
+     * @param {string} sectionId - The section ID to apply promo to
+     * @param {Object} promo - Promo configuration
+     * @param {string} [promo.id] - Unique promo identifier for tracking
+     * @param {string} promo.text - Display text (e.g., "PROMO", "20% OFF", "2x1", "EARLY BIRD")
+     * @param {string} [promo.color] - Background color (default: "#dc2626" red)
+     * @param {string} [promo.textColor] - Text color (default: "#ffffff" white)
+     * @param {number} [promo.discount] - Discount as decimal (0.15 = 15% off)
+     * @param {number} [promo.discountedPrice] - Fixed discounted price (alternative to discount)
+     * @param {number} [promo.buyX] - Buy X items (for quantity-based promos like 2x1)
+     * @param {number} [promo.getY] - Get Y items free (used with buyX)
+     * @returns {boolean} - True if section was found
+     * 
+     * @example
+     * // Simple promo label with ID
+     * renderer.setSectionPromo('VIP 1', { id: 'promo-123', text: 'PROMO' });
+     * 
+     * // Percentage discount with custom color
+     * renderer.setSectionPromo('VIP 2', { 
+     *   id: 'summer-sale',
+     *   text: '20% OFF', 
+     *   color: '#16a34a',
+     *   discount: 0.20
+     * });
+     * 
+     * // Fixed discounted price
+     * renderer.setSectionPromo('GA Floor', { 
+     *   id: 'early-bird-2024',
+     *   text: 'EARLY BIRD', 
+     *   discountedPrice: 500 
+     * });
+     * 
+     * // 2x1 promo (buy 2, get 1 free)
+     * renderer.setSectionPromo('ORO 1', {
+     *   id: '2x1-holiday',
+     *   text: '2x1',
+     *   color: '#7c3aed',
+     *   buyX: 2,
+     *   getY: 1
+     * });
+     * 
+     * // 3x1 promo (buy 3, get 1 free)
+     * renderer.setSectionPromo('ORO 2', {
+     *   id: '3x1-special',
+     *   text: '3x1',
+     *   buyX: 3,
+     *   getY: 1
+     * });
+     */
+    setSectionPromo(sectionId, promo) {
+        if (!this.sectionPromos) {
+            this.sectionPromos = new Map();
+        }
+
+        // Find section in loaded data
+        const section = this.loadedData?.sections?.find(s => s.id === sectionId || s.name === sectionId);
+        if (!section) {
+            console.warn(`Section "${sectionId}" not found for promo`);
+            return false;
+        }
+
+        // Normalize promo object with defaults
+        const normalizedPromo = {
+            id: promo.id || null,
+            text: promo.text || 'PROMO',
+            color: promo.color || '#dc2626',
+            textColor: promo.textColor || '#ffffff',
+            discount: promo.discount,           // decimal (0.15 = 15% off)
+            discountedPrice: promo.discountedPrice,
+            buyX: promo.buyX,                   // quantity-based: buy X
+            getY: promo.getY                    // quantity-based: get Y free
+        };
+
+        // Store promo by section ID
+        this.sectionPromos.set(section.id || section.name, normalizedPromo);
+        
+        console.log(`Promo set for section "${sectionId}":`, normalizedPromo);
+        return true;
+    }
+
+    /**
+     * Set promotions for multiple sections at once
+     * Accepts either an object mapping section IDs to promo configs,
+     * or an array of promo objects with sectionId included
+     * @param {Object|Array} promos - Promos object or array
+     * 
+     * @example
+     * // Object format (section ID as key)
+     * renderer.setSectionPromos({
+     *   'VIP 1': { id: 'promo-vip', text: 'PROMO', discount: 0.10 },
+     *   'VIP 2': { id: 'promo-2x1', text: '2x1', buyX: 2, getY: 1, color: '#7c3aed' },
+     *   'GA Floor': { id: 'early-bird', text: 'EARLY BIRD', discountedPrice: 500 }
+     * });
+     * 
+     * // Array format (sectionId included in each promo)
+     * renderer.setSectionPromos([
+     *   { sectionId: 'VIP 1', id: 'promo-vip', text: 'PROMO', discount: 0.10 },
+     *   { sectionId: 'VIP 2', id: 'promo-2x1', text: '2x1', buyX: 2, getY: 1, color: '#7c3aed' },
+     *   { sectionId: 'GA Floor', id: 'early-bird', text: 'EARLY BIRD', discountedPrice: 500 }
+     * ]);
+     */
+    setSectionPromos(promos) {
+        if (!promos) return;
+        
+        // Handle array format
+        if (Array.isArray(promos)) {
+            for (const promo of promos) {
+                if (promo.sectionId) {
+                    this.setSectionPromo(promo.sectionId, promo);
+                } else {
+                    console.warn('Promo missing sectionId:', promo);
+                }
+            }
+            return;
+        }
+        
+        // Handle object format
+        if (typeof promos === 'object') {
+            for (const [sectionId, promo] of Object.entries(promos)) {
+                this.setSectionPromo(sectionId, promo);
+            }
+        }
+    }
+
+    /**
+     * Remove promo from a section
+     * @param {string} sectionId - The section ID
+     */
+    clearSectionPromo(sectionId) {
+        if (this.sectionPromos) {
+            this.sectionPromos.delete(sectionId);
+        }
+    }
+
+    /**
+     * Remove all section promos
+     */
+    clearAllPromos() {
+        if (this.sectionPromos) {
+            this.sectionPromos.clear();
+        }
+    }
+
+    /**
+     * Get promo for a section (internal use)
+     * @param {string} sectionId
+     * @returns {Object|null}
+     */
+    getSectionPromo(sectionId) {
+        return this.sectionPromos?.get(sectionId) || null;
     }
 }

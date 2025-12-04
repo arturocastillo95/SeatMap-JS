@@ -82,6 +82,24 @@
             font-weight: 700;
             font-size: 16px;
         }
+        .tooltip-original-price {
+            font-size: 12px;
+            text-decoration: line-through;
+            opacity: 0.7;
+            margin-right: 6px;
+            font-weight: 400;
+        }
+        .tooltip-promo {
+            display: none;
+            background: #dc2626;
+            color: white;
+            padding: 8px 20px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
@@ -109,7 +127,13 @@
         </div>
         <div class="tooltip-footer" id="tt-footer">
             <span id="tt-category">STANDARD</span>
-            <span id="tt-price">$0</span>
+            <span>
+                <span class="tooltip-original-price" id="tt-original-price"></span>
+                <span id="tt-price">$0</span>
+            </span>
+        </div>
+        <div class="tooltip-promo" id="tt-promo">
+            <span id="tt-promo-text">PROMO</span>
         </div>
     </div>
 

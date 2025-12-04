@@ -3,6 +3,9 @@
  * Barrel export for all renderer modules
  */
 
+// Import tooltip styles (will be bundled by Vite)
+import './assets/tooltip.css';
+
 // Main renderer
 export { SeatMapRenderer } from './SeatMapRenderer.js';
 

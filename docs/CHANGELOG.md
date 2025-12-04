@@ -5,6 +5,51 @@ All notable changes to SeatMap JS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2025-12-03
+
+### Added
+
+- **Promotions API** - New section promotion/discount system for the renderer
+  - `setSectionPromo(sectionId, promo)` - Apply promo to a section
+  - `setSectionPromos(promos)` - Apply multiple promos at once (object or array format)
+  - `getSectionPromo(sectionId)` - Get promo config for a section
+  - `clearSectionPromo(sectionId)` - Remove promo from a section
+  - `clearAllPromos()` - Remove all promos
+  
+- **Promo Types Supported**:
+  - **Percentage discount** (`discount: 0.20` = 20% off)
+  - **Fixed price** (`discountedPrice: 500`)
+  - **Quantity-based** (`buyX: 2, getY: 1` = 2x1 promo)
+  
+- **Tooltip Promo Display** - Shows promo banner and struck-through original price
+  - New CSS classes: `.tooltip-original-price`, `.tooltip-promo`
+  - Promo banner with customizable colors (`color`, `textColor`)
+  
+- **Cart Promo Integration** - `cartChange` event includes promo details
+  - Per-seat: `promoId`, `originalPrice`, `hasDiscount`, `isQuantityPromo`
+  - Section summaries: `paidItems`, `freeItems`, `totalPrice`, `originalTotal`
+  - Grand totals: `grandTotal`, `grandOriginalTotal`, `totalSavings`
+
+- **Consolidated Tooltip CSS** - `renderer/assets/tooltip.css`
+  - Bundled into `dist/renderer.css` via Vite build
+  - ES module automatically imports the CSS
+
+### Changed
+
+- **CartManager** - Refactored for promo support
+  - New `calculateQuantityPromo()` method for 2x1, 3x1 calculations
+  - `getSeatPrice()` now returns object with discount info
+  - `buildCartData()` includes `sectionSummaries` for quantity promos
+
+- **TooltipManager** - Enhanced for promo display
+  - Handles `originalPrice`, `promo.text`, `promo.color`, `promo.textColor`
+  - New DOM elements: `#tt-original-price`, `#tt-promo`, `#tt-promo-text`
+
+- **Demo HTML files** - Updated tooltip structure
+  - `demo-booking.html`, `demo-booking-bundled.html`, `demo-bundled.html`, `dev.html`, `index.html`
+  - Added promo banner elements and original price display
+  - Exposed `window.renderer` for console debugging
+
 ## [0.1.1] - 2025-12-03
 
 ### Added

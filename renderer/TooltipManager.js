@@ -17,7 +17,10 @@ export class TooltipManager {
             seat: document.getElementById('tt-seat'),
             category: document.getElementById('tt-category'),
             price: document.getElementById('tt-price'),
-            footer: document.getElementById('tt-footer')
+            originalPrice: document.getElementById('tt-original-price'),
+            footer: document.getElementById('tt-footer'),
+            promo: document.getElementById('tt-promo'),
+            promoText: document.getElementById('tt-promo-text')
         };
 
         this.lastMouseX = 0;
@@ -98,6 +101,11 @@ export class TooltipManager {
      * @param {string} content.category
      * @param {string} [content.color] - Hex color for background
      * @param {string} [content.textColor] - Hex color for text
+     * @param {string} [content.originalPrice] - Original price before discount (shown struck through)
+     * @param {Object} [content.promo] - Promotion/discount info
+     * @param {string} [content.promo.text] - Promo label text (e.g., "PROMO", "20% OFF", "2x1")
+     * @param {string} [content.promo.color] - Promo banner background color
+     * @param {string} [content.promo.textColor] - Promo banner text color
      */
     show(content) {
         if (!this.tooltip) return;
@@ -126,9 +134,37 @@ export class TooltipManager {
         if (this.elements.price) this.elements.price.textContent = content.price || '';
         if (this.elements.category) this.elements.category.textContent = content.category || '';
 
+        // Handle original price (struck through for discounts)
+        if (this.elements.originalPrice) {
+            if (content.originalPrice) {
+                this.elements.originalPrice.textContent = content.originalPrice;
+                this.elements.originalPrice.style.display = 'inline';
+            } else {
+                this.elements.originalPrice.style.display = 'none';
+            }
+        }
+
         if (this.elements.footer) {
             if (content.color) this.elements.footer.style.backgroundColor = content.color;
             if (content.textColor) this.elements.footer.style.color = content.textColor;
+        }
+
+        // Handle promo banner
+        if (this.elements.promo) {
+            if (content.promo && content.promo.text) {
+                this.elements.promo.style.display = 'block';
+                if (this.elements.promoText) {
+                    this.elements.promoText.textContent = content.promo.text;
+                }
+                if (content.promo.color) {
+                    this.elements.promo.style.backgroundColor = content.promo.color;
+                }
+                if (content.promo.textColor) {
+                    this.elements.promo.style.color = content.promo.textColor;
+                }
+            } else {
+                this.elements.promo.style.display = 'none';
+            }
         }
 
         this.tooltip.style.opacity = '1';

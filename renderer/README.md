@@ -105,8 +105,9 @@ npm run build
 ```
 
 This generates:
-- `dist/seatmap-renderer.es.js` - ES Module (~53KB, ~14KB gzipped)
-- `dist/seatmap-renderer.umd.js` - UMD for browsers (~35KB, ~11KB gzipped)
+- `dist/seatmap-renderer.es.js` - ES Module (~107KB, ~26KB gzipped)
+- `dist/seatmap-renderer.umd.js` - UMD for browsers (~71KB, ~19KB gzipped)
+- `dist/renderer.css` - Tooltip styles (~1.25KB, ~0.6KB gzipped)
 
 ### Development Server
 
@@ -124,11 +125,42 @@ Opens `http://localhost:5173/dev.html` with hot module replacement.
 <!DOCTYPE html>
 <html>
 <head>
+    <!-- Tooltip styles (required for tooltips) -->
+    <link rel="stylesheet" href="dist/renderer.css" />
+    <!-- PIXI.js peer dependency -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
     <script src="dist/seatmap-renderer.umd.js"></script>
 </head>
 <body>
     <div id="map-container" style="width: 100%; height: 600px;"></div>
+    
+    <!-- Tooltip HTML (required for tooltips) -->
+    <div id="seat-tooltip" class="seat-tooltip">
+        <div class="tooltip-header">
+            <div class="tooltip-col">
+                <span class="tooltip-label">SECTION</span>
+                <span class="tooltip-value" id="tt-section">--</span>
+            </div>
+            <div class="tooltip-col border-left">
+                <span class="tooltip-label">ROW</span>
+                <span class="tooltip-value" id="tt-row">--</span>
+            </div>
+            <div class="tooltip-col border-left">
+                <span class="tooltip-label">SEAT</span>
+                <span class="tooltip-value" id="tt-seat">--</span>
+            </div>
+        </div>
+        <div class="tooltip-footer" id="tt-footer">
+            <span id="tt-category">STANDARD</span>
+            <span>
+                <span class="tooltip-original-price" id="tt-original-price"></span>
+                <span id="tt-price">$0</span>
+            </span>
+        </div>
+        <div class="tooltip-promo" id="tt-promo">
+            <span id="tt-promo-text">PROMO</span>
+        </div>
+    </div>
     
     <script>
         (async () => {
@@ -148,6 +180,7 @@ Opens `http://localhost:5173/dev.html` with hot module replacement.
 ### Using ES Modules (with bundler)
 
 ```javascript
+// CSS is automatically imported when using the ES module
 import { SeatMapRenderer } from '@seatmap-js/renderer';
 
 const container = document.getElementById('map-container');
@@ -158,6 +191,8 @@ const response = await fetch('venue-map.json');
 const data = await response.json();
 await renderer.loadData(data);
 ```
+
+> **Note:** The ES module automatically imports the tooltip CSS. Make sure your bundler (Vite, Webpack, etc.) is configured to handle CSS imports. You still need to add the tooltip HTML structure to your page - see the React example below or the UMD example above.
 
 ### Development Import (Direct)
 
@@ -236,6 +271,128 @@ const gaSelections = renderer.getGASelections();
 
 // Clear all GA selections
 renderer.clearGASelections();
+```
+
+### Promotions API
+
+Display discounts, promotions, or special offers on sections. Promos appear in the tooltip with a customizable banner. Supports percentage discounts, fixed prices, and quantity-based promos (2x1, 3x1).
+
+```javascript
+// Percentage discount (20% off)
+renderer.setSectionPromo('VIP 1', {
+    id: 'summer-sale',           // Unique ID for tracking
+    text: '20% OFF',             // Banner text
+    discount: 0.20,              // 20% discount (decimal)
+    color: '#16a34a'             // Green banner
+});
+
+// Fixed discounted price
+renderer.setSectionPromo('VIP 2', {
+    id: 'early-bird',
+    text: 'EARLY BIRD',
+    discountedPrice: 500         // Fixed price regardless of base price
+});
+
+// 2x1 promo (buy 2, get 1 free)
+renderer.setSectionPromo('ORO 1', {
+    id: '2x1-holiday',
+    text: '2x1',
+    color: '#7c3aed',            // Purple banner
+    buyX: 2,                     // Buy this many
+    getY: 1                      // Get this many free
+});
+
+// 3x1 promo (buy 3, get 1 free)
+renderer.setSectionPromo('ORO 2', {
+    id: '3x1-special',
+    text: '3x1',
+    buyX: 3,
+    getY: 1
+});
+
+// Set promos for multiple sections at once (object format)
+renderer.setSectionPromos({
+    'VIP 1': { id: 'promo-vip', text: '25% OFF', discount: 0.25 },
+    'VIP 2': { id: 'promo-2x1', text: '2x1', buyX: 2, getY: 1 },
+    'GA Floor': { id: 'early-bird', text: 'EARLY BIRD', discountedPrice: 500 }
+});
+
+// Set promos using array format (sectionId in each promo object)
+renderer.setSectionPromos([
+    { sectionId: 'VIP 1', id: 'promo-vip', text: '25% OFF', discount: 0.25 },
+    { sectionId: 'VIP 2', id: 'promo-2x1', text: '2x1', buyX: 2, getY: 1 },
+    { sectionId: 'GA Floor', id: 'early-bird', text: 'EARLY BIRD', discountedPrice: 500 }
+]);
+
+// Clear a single section's promo
+renderer.clearSectionPromo('section-id');
+
+// Clear all promos
+renderer.clearAllPromos();
+
+// Get promo for a section (returns undefined if none)
+const promo = renderer.getSectionPromo('section-id');
+```
+
+**Promo Object Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `sectionId` | string | Section ID (required when using array format) |
+| `id` | string | Unique promo identifier for tracking (returned in cart data) |
+| `text` | string | Text shown in the promo banner |
+| `color` | string | Banner background color (default: `#dc2626` red) |
+| `textColor` | string | Banner text color (default: `#ffffff` white) |
+| `discount` | number | Percentage discount as decimal (0.20 = 20% off) |
+| `discountedPrice` | number | Fixed discounted price (alternative to `discount`) |
+| `buyX` | number | Buy X items (for quantity-based promos) |
+| `getY` | number | Get Y items free (used with `buyX`) |
+
+**Promo Types:**
+
+1. **Percentage Discount** (`discount`): Each item is discounted by the percentage. Tooltip shows original price struck through.
+
+2. **Fixed Price** (`discountedPrice`): Each item costs the fixed price. Tooltip shows original price struck through.
+
+3. **Quantity-Based** (`buyX` + `getY`): Buy X items, get Y free. Examples:
+   - `buyX: 2, getY: 1` → 2x1 (buy 2 get 1 free, pay for 2 of every 3)
+   - `buyX: 3, getY: 1` → 3x1 (buy 3 get 1 free, pay for 3 of every 4)
+   - `buyX: 1, getY: 1` → Buy one get one free (pay for 1 of every 2)
+
+**Cart Data with Promos:**
+
+When promos are active, the `cartChange` event includes promo details:
+
+```javascript
+container.addEventListener('cartChange', (e) => {
+    const cart = e.detail;
+    
+    // Individual seats include promo info
+    cart.seats.forEach(seat => {
+        console.log(seat.price);           // Discounted price (or base for quantity promos)
+        console.log(seat.originalPrice);   // Original price (null for quantity promos)
+        console.log(seat.promoId);         // Your promo ID
+        console.log(seat.isQuantityPromo); // true for 2x1, 3x1, etc.
+    });
+    
+    // Section summaries show quantity-based calculations
+    console.log(cart.sectionSummaries);
+    // {
+    //   'VIP 1': {
+    //     quantity: 6,
+    //     paidItems: 4,      // Only pay for 4 with 2x1
+    //     freeItems: 2,      // 2 free items
+    //     totalPrice: 4000,  // 4 × $1000
+    //     originalTotal: 6000,
+    //     promoId: '2x1-holiday'
+    //   }
+    // }
+    
+    // Grand totals
+    console.log(cart.grandTotal);        // Total after all discounts
+    console.log(cart.grandOriginalTotal); // Total before discounts
+    console.log(cart.totalSavings);       // Amount saved
+});
 ```
 
 ### Configuration Options

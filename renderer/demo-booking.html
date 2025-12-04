@@ -1041,6 +1041,27 @@
             font-size: 16px;
         }
 
+        .tooltip-original-price {
+            font-size: 11px;
+            text-decoration: line-through;
+            opacity: 0.6;
+            margin-right: 8px;
+            font-weight: 400;
+            vertical-align: middle;
+        }
+
+        .tooltip-promo {
+            display: none;
+            background: #dc2626;
+            color: white;
+            padding: 8px 20px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
         /* ==================== MOBILE STYLES ==================== */
         @media (max-width: 768px) {
             .mobile-top-bar {
@@ -1513,7 +1534,13 @@
         </div>
         <div class="tooltip-footer" id="tt-footer">
             <span id="tt-category">STANDARD</span>
-            <span id="tt-price">$0</span>
+            <span>
+                <span class="tooltip-original-price" id="tt-original-price"></span>
+                <span id="tt-price">$0</span>
+            </span>
+        </div>
+        <div class="tooltip-promo" id="tt-promo">
+            <span id="tt-promo-text">PROMO</span>
         </div>
     </div>
 
@@ -1699,6 +1726,9 @@
                 
                 // Initialize renderer with config options
                 renderer = await SeatMapRenderer.create(seatmapContainer, CONFIG.renderer);
+                
+                // Expose renderer globally for debugging/console access
+                window.renderer = renderer;
 
                 // Load venue data from configured URL
                 // In production, this could be an API endpoint or CDN URL
