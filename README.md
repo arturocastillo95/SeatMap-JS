@@ -1,6 +1,8 @@
 # SeatMap JS
 
 > **Version 0.1.2** | [Changelog](docs/CHANGELOG.md) | [License](LICENSE.md)
+>
+> **Live Demo:** [arturocastillo95.github.io/SeatMap-JS](https://arturocastillo95.github.io/SeatMap-JS/)
 
 A modular, interactive venue seating map editor built with PixiJS 8.x. Create, edit, and export professional venue seating layouts with advanced alignment tools, smart collision detection, and customizable seat numbering.
 
