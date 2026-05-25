@@ -13,18 +13,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://images.unsplash.com">
     
-    <!-- ==================== ASYNC FONT LOADING ==================== -->
-    <!-- Load icon font asynchronously to avoid render-blocking -->
-    <!-- Uses media="print" trick: browser fetches but doesn't apply until onload swaps to media="all" -->
-    <!-- Note: wght=300 is required for the seat map accessibility icons -->
-    <link rel="stylesheet" 
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap"
-          media="print" 
-          onload="this.media='all'" />
-    <!-- Fallback for users with JavaScript disabled -->
-    <noscript>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap" />
-    </noscript>
+        <!-- ==================== ICON FONT ==================== -->
+        <!-- Load synchronously so canvas-rendered ligature icons are available on first paint -->
+        <!-- Note: wght=300 is required for the seat map accessibility icons -->
+        <link rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=block" />
     <style>
         :root {
             --primary: #3b82f6;
@@ -1334,7 +1327,7 @@
         <div class="mobile-top-bar-content">
             <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=200&h=200&fit=crop" alt="Event" class="mobile-event-image" loading="lazy">
             <div class="mobile-event-info">
-                <div class="mobile-event-title">La Magia de Hogwarts</div>
+                <div class="mobile-event-title">Evento de Demostracion</div>
                 <div class="mobile-event-meta">
                     <span class="material-symbols-outlined">calendar_today</span>
                     <span>Sab, 14 Mar 2026 · 9:00 PM</span>
@@ -1354,12 +1347,12 @@
             </button>
             <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&h=400&fit=crop" alt="Event" class="event-modal-image" loading="lazy">
             <div class="event-modal-content">
-                <h2 class="event-modal-title">La Magia de Hogwarts</h2>
+                <h2 class="event-modal-title">Evento de Demostracion</h2>
                 
                 <div class="event-modal-section">
                     <h3 class="event-modal-section-title">Acerca de</h3>
                     <p class="event-modal-description">
-                        Vive la experiencia mágica más esperada del año. Un espectáculo inmersivo que te transportará al mundo de la magia con efectos especiales, música en vivo y actuaciones que te dejarán sin aliento.
+                        Esta pagina demuestra una experiencia generica de compra de boletos con mapa interactivo, seleccion de asientos y un flujo de compra para integraciones de ejemplo.
                     </p>
                 </div>
 
@@ -1382,8 +1375,8 @@
                             </div>
                             <div class="event-modal-meta-info">
                                 <div class="event-modal-meta-label">Ubicación</div>
-                                <div class="event-modal-meta-value">Teatro de la Ciudad</div>
-                                <div class="event-modal-meta-sub">C. 16 de Septiembre 44-E, Centro Histórico, Centro, Santiago de Querétaro</div>
+                                <div class="event-modal-meta-value">Recinto Demo</div>
+                                <div class="event-modal-meta-sub">Av. Ejemplo 123, Centro, Ciudad Demo</div>
                                 <span class="event-modal-link" id="view-location-btn">
                                     Ver ubicación
                                     <span class="material-symbols-outlined" style="font-size: 14px;">open_in_new</span>
@@ -1412,7 +1405,7 @@
                 <div class="event-header">
                     <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&h=400&fit=crop" alt="Event" class="event-image" loading="lazy">
                     <div class="event-info">
-                        <h1 class="event-title">La Magia de Hogwarts</h1>
+                        <h1 class="event-title">Evento de Demostracion</h1>
                         <div class="event-meta">
                             <div class="event-meta-item">
                                 <span class="material-symbols-outlined">calendar_today</span>
@@ -1420,7 +1413,7 @@
                             </div>
                             <div class="event-meta-item">
                                 <span class="material-symbols-outlined">location_on</span>
-                                <span>Teatro de la Ciudad</span>
+                                <span>Recinto Demo</span>
                             </div>
                         </div>
                         <span class="event-more-link" id="event-more-link">Ver más</span>
@@ -2251,7 +2244,7 @@
 
             // View location link in modal
             viewLocationBtn?.addEventListener('click', () => {
-                window.open('https://maps.app.goo.gl/A73C5PZ1docCKPVW9', '_blank');
+                window.open('https://www.google.com/maps/search/?api=1&query=Recinto+Demo', '_blank');
             });
 
             // Clear button
