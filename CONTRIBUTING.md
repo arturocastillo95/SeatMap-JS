@@ -8,13 +8,12 @@ Thanks for helping improve SeatMap JS. This repo contains two related pieces:
 ## Requirements
 
 - Node.js 18 or newer
-- npm
-- Python 3, used only for the simple editor dev server
+- pnpm 10 or newer
 
 ## Setup
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Development
@@ -22,7 +21,7 @@ npm install
 Run the editor:
 
 ```bash
-npm run dev:editor
+pnpm dev:editor
 ```
 
 Open `http://localhost:8000`.
@@ -30,7 +29,7 @@ Open `http://localhost:8000`.
 Run the renderer demo server:
 
 ```bash
-npm run dev:renderer
+pnpm dev:renderer
 ```
 
 Open the URL printed by Vite. The booking demo is available at `/demo-booking.html`.
@@ -40,10 +39,10 @@ Open the URL printed by Vite. The booking demo is available at `/demo-booking.ht
 Run the full smoke test before opening a pull request:
 
 ```bash
-npm test
+pnpm test
 ```
 
-The root `npm test` script runs the editor build, renderer build, and renderer package dry-run.
+The root `pnpm test` script runs the editor build, renderer build, and renderer publish dry-run.
 
 ## Pull Requests
 

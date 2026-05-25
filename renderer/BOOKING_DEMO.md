@@ -71,14 +71,15 @@ renderer/
 
 ```bash
 cd renderer
-npm run dev
+pnpm dev
 # Open http://localhost:5173/demo-booking.html
 ```
 
 Or serve statically after building:
 
 ```bash
-npm run build
+cd renderer
+pnpm build
 python -m http.server 8000
 # Open http://localhost:8000/demo-booking.html
 ```

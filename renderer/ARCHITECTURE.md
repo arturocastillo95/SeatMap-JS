@@ -189,17 +189,18 @@ The renderer uses Vite for development and production builds.
 ### Development
 
 ```bash
+pnpm install
 cd renderer
-npm install
-npm run dev
+pnpm dev
 ```
 
-Opens a dev server at `http://localhost:3000` with hot module replacement.
+Opens a dev server at `http://localhost:5173` with hot module replacement.
 
 ### Production Build
 
 ```bash
-npm run build
+cd renderer
+pnpm build
 ```
 
 Generates optimized bundles in `dist/`:
@@ -233,7 +234,7 @@ PIXI.js v8+ is a peer dependency and must be provided by the consuming applicati
 
 | File | Purpose |
 |------|---------|
-| `package.json` | NPM configuration |
+| `package.json` | Package manifest |
 | `vite.config.js` | Vite build configuration |
 | `index.js` | Barrel export (entry point) |
 | `index.html` | Development demo page |

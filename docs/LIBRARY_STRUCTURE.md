@@ -152,7 +152,7 @@ venue-map-js/
 │   ├── CHANGELOG.md             # Version history
 │   └── EXAMPLES.md              # Code examples
 │
-├── package.json                 # NPM package config
+├── package.json                 # Package manifest
 ├── rollup.config.js             # Build configuration
 ├── tsconfig.json                # TypeScript config
 └── README.md                    # Library documentation

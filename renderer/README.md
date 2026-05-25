@@ -28,13 +28,13 @@ Both demos demonstrate:
 See [BOOKING_DEMO.md](./BOOKING_DEMO.md) for full documentation.
 
 ```bash
-npm run dev
+pnpm dev
 # Open http://localhost:5173/demo-booking.html
 ```
 
 For the bundled version (no dev server required after build):
 ```bash
-npm run build
+pnpm build
 # Open demo-booking-bundled.html directly or via any HTTP server
 ```
 
@@ -91,17 +91,16 @@ npm run build
 
 ## Installation
 
-### NPM (Recommended)
+### Workspace Setup
 
 ```bash
-cd renderer
-npm install
+pnpm install
 ```
 
 ### Build for Production
 
 ```bash
-npm run build
+pnpm build
 ```
 
 This generates:
@@ -112,7 +111,7 @@ This generates:
 ### Development Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Opens `http://localhost:5173/dev.html` with hot module replacement.
@@ -713,8 +712,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed documentation.
 
 ```bash
 cd renderer
-npm install
-npm run dev
+pnpm dev
 ```
 
 Opens `http://localhost:5173/dev.html` with hot module replacement.
@@ -723,16 +721,16 @@ Opens `http://localhost:5173/dev.html` with hot module replacement.
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server with HMR |
-| `npm run build` | Build production bundles (ES + UMD) |
-| `npm run preview` | Preview production build locally |
+| `pnpm dev` | Start development server with HMR |
+| `pnpm build` | Build production bundles (ES + UMD) |
+| `pnpm preview` | Preview production build locally |
 
 ### Testing Standalone HTML
 
 For testing without Vite, use the UMD build:
 
 ```bash
-npm run build
+pnpm build
 # Then open index.html in browser (requires a local server for CORS)
 python -m http.server 8000
 ```

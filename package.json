@@ -4,18 +4,16 @@
   "description": "A modular venue seating map editor and embeddable PixiJS renderer.",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.0.0",
   "scripts": {
     "dev:editor": "vite --host 0.0.0.0 --port 8000",
     "build:editor": "vite build",
-    "dev:renderer": "npm --prefix renderer run dev",
-    "build:renderer": "npm --prefix renderer run build",
-    "preview:renderer": "npm --prefix renderer run preview",
-    "pack:renderer": "npm pack --workspace @seatmap-js/renderer --dry-run --cache /tmp/seatmap-npm-cache",
-    "test": "npm run build:editor && npm run build:renderer && npm run pack:renderer"
+    "dev:renderer": "pnpm --filter @seatmap-js/renderer dev",
+    "build:renderer": "pnpm --filter @seatmap-js/renderer build",
+    "preview:renderer": "pnpm --filter @seatmap-js/renderer preview",
+    "pack:renderer": "pnpm --filter @seatmap-js/renderer publish --dry-run --no-git-checks",
+    "test": "pnpm build:editor && pnpm build:renderer && pnpm pack:renderer"
   },
-  "workspaces": [
-    "renderer"
-  ],
   "keywords": [
     "seatmap",
     "venue",

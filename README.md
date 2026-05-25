@@ -29,8 +29,8 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 
 1. **Run a local server** (required for ES modules):
    ```bash
-   npm install
-   npm run dev:editor
+   pnpm install
+   pnpm dev:editor
    ```
 
 2. **Open in browser**: Navigate to `http://localhost:8000`
@@ -44,12 +44,12 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 
 ### Renderer Package
 
-The embeddable renderer lives in `renderer/` and has its own npm package metadata.
+The embeddable renderer lives in `renderer/` and has its own package metadata.
 
 ```bash
-npm install
-npm run dev:renderer
-npm run build:renderer
+pnpm install
+pnpm dev:renderer
+pnpm build:renderer
 ```
 
 See the [Renderer Documentation](renderer/README.md) for package usage and booking demo examples.
@@ -153,12 +153,12 @@ See [Refactoring Guide](docs/REFACTORING_GUIDE.md) for architectural details.
 ## 🧰 Development Scripts
 
 ```bash
-npm run dev:editor       # Serve the editor at http://localhost:8000
-npm run build:editor     # Build the editor with Vite
-npm run dev:renderer     # Start the renderer Vite dev server
-npm run build:renderer   # Build @seatmap-js/renderer
-npm run pack:renderer    # Dry-run the renderer package contents
-npm test                 # Run editor build, renderer build, and package dry-run
+pnpm dev:editor       # Serve the editor at http://localhost:8000
+pnpm build:editor     # Build the editor with Vite
+pnpm dev:renderer     # Start the renderer Vite dev server
+pnpm build:renderer   # Build @seatmap-js/renderer
+pnpm pack:renderer    # Dry-run the renderer package publish contents
+pnpm test             # Run editor build, renderer build, and package dry-run
 ```
 
 ## 🎨 Customization
