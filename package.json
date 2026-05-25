@@ -1,0 +1,38 @@
+{
+  "name": "seatmap-js",
+  "version": "0.1.2",
+  "description": "A modular venue seating map editor and embeddable PixiJS renderer.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:editor": "python3 -m http.server 8000",
+    "dev:renderer": "npm --prefix renderer run dev",
+    "build:renderer": "npm --prefix renderer run build",
+    "preview:renderer": "npm --prefix renderer run preview",
+    "test": "npm run build:renderer"
+  },
+  "workspaces": [
+    "renderer"
+  ],
+  "keywords": [
+    "seatmap",
+    "venue",
+    "seating",
+    "pixi",
+    "canvas",
+    "renderer"
+  ],
+  "author": "Arturo Castillo",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arturocastillo95/SeatMap-JS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arturocastillo95/SeatMap-JS/issues"
+  },
+  "homepage": "https://github.com/arturocastillo95/SeatMap-JS#readme",
+  "engines": {
+    "node": ">=18"
+  }
+}

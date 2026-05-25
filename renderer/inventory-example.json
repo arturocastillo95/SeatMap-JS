@@ -1,0 +1,276 @@
+{
+  "seats": [
+    {
+      "id": "0DUb0Deg",
+      "status": "booked",
+      "price": 700
+    },
+    {
+      "id": "UHDW24me",
+      "status": "reserved",
+      "price": 700
+    },
+    {
+      "id": "NNjFVmxb",
+      "status": "booked",
+      "price": 1500
+    },
+    {
+      "id": "8lZjSdzB",
+      "status": "available",
+      "price": 1500
+    },
+    {
+      "id": "yFzB26SB",
+      "key": "ORO 1;;O;;30",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "u1GUICjC",
+      "key": "ORO 1;;O;;29",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "3dndb9QG",
+      "key": "ORO 1;;O;;28",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "Vvm52Q51",
+      "key": "VIP 5;;N;;14",
+      "price": 1000,
+      "status": "reserved",
+      "special": null
+    },
+    {
+      "id": "rcBJzClM",
+      "key": "VIP 5;;M;;17",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "24yyr5C6",
+      "key": "VIP 6;;M;;7",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "V7ueAUR7",
+      "key": "VIP 5;;M;;20",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "3Y25056j",
+      "key": "VIP 5;;M;;21",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "phwwWMHq",
+      "key": "VIP 5;;M;;22",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "opVWSTtx",
+      "key": "ORO 1;;AD;;11",
+      "price": 700,
+      "status": "reserved",
+      "special": null
+    },
+    {
+      "id": "NmaEcME0",
+      "key": "ORO 1;;AD;;12",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "ifeMcJ6W",
+      "key": "ORO 1;;AD;;13",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "aXQDYPV6",
+      "key": "ORO 1;;AD;;14",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "Jl7LtjQ9",
+      "key": "ORO 1;;AD;;15",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "weIJX1g9",
+      "key": "VIP 1;;C;;26",
+      "price": 1000,
+      "status": "reserved",
+      "special": null
+    },
+    {
+      "id": "oA7LGcBf",
+      "key": "VIP 1;;C;;25",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "uU9Docss",
+      "key": "VIP 1;;C;;24",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "3xrIaRkH",
+      "key": "VIP 1;;C;;23",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "IFBQYz41",
+      "key": "VIP 3;;I;;7",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "jy2CL0CB",
+      "key": "VIP 3;;H;;7",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "l17qRgXD",
+      "key": "VIP 3;;H;;8",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "NbUWLwZo",
+      "key": "VIP 3;;H;;10",
+      "price": 1000,
+      "status": "reserved",
+      "special": null
+    },
+    {
+      "id": "W2Mb6cpR",
+      "key": "VIP 3;;H;;9",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "h0HrZfCp",
+      "key": "VIP 2;;E;;14",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "Ho8pjUdX",
+      "key": "VIP 2;;E;;17",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "DB568D7n",
+      "key": "VIP 2;;E;;19",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "f11jyaC3",
+      "key": "VIP 2;;E;;18",
+      "price": 1000,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "C3fyvK5q",
+      "key": "ORO 3;;T;;4",
+      "price": 700,
+      "status": "reserved",
+      "special": null
+    },
+    {
+      "id": "bYxXhDzp",
+      "key": "ORO 3;;U;;3",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "hZSHNPV4",
+      "key": "ORO 3;;X;;1",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "EhYzFAhP",
+      "key": "ORO 3;;X;;2",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "450eDuOG",
+      "key": "ORO 3;;X;;4",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "fJUjgzAL",
+      "key": "ORO 3;;X;;12",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "uow8U5g3",
+      "key": "ORO 3;;X;;11",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    },
+    {
+      "id": "Gj8vLRdR",
+      "key": "ORO 1;;V;;29",
+      "price": 700,
+      "status": "reserved",
+      "special": null
+    },
+    {
+      "id": "S5kpe7Ue",
+      "key": "ORO 1;;V;;28",
+      "price": 700,
+      "status": "booked",
+      "special": null
+    }
+  ]
+}

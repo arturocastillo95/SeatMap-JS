@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Environment variables
@@ -38,6 +37,7 @@ temp/
 backups/
 *.old.js
 *.backup
+*backup*.json
 
 # Migration/refactoring tools (temporary)
 migrate-refactor.sh
@@ -46,9 +46,6 @@ MIGRATION_CHECKLIST.md
 # OS generated files
 Thumbs.db
 .DS_Store
-renderer/*.json
 
 /assets
-/renderer/assets
 /renderer/FootstepAnimation.js
-/renderer/effects

@@ -25,11 +25,11 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 
 ## 🚀 Quick Start
 
-1. **Run a local server** (required for ES6 modules):
+### Editor App
+
+1. **Run a local server** (required for ES modules):
    ```bash
-   python -m http.server 8000
-   # or
-   npx http-server
+   npm run dev:editor
    ```
 
 2. **Open in browser**: Navigate to `http://localhost:8000`
@@ -40,6 +40,18 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
    - Select the section to customize labels, numbering, and transformations
 
 4. **Learn more**: See the [User Guide](docs/USER_GUIDE.md) for detailed instructions
+
+### Renderer Package
+
+The embeddable renderer lives in `renderer/` and has its own npm package metadata.
+
+```bash
+npm --prefix renderer install
+npm run dev:renderer
+npm run build:renderer
+```
+
+See the [Renderer Documentation](renderer/README.md) for package usage and booking demo examples.
 
 ## 📚 Documentation
 
@@ -53,31 +65,20 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 
 ```
 venue-map-js/
-├── index.html              # Main application
+├── package.json            # Root scripts for editor and renderer workflows
+├── index.html              # Main editor application
 ├── js/
-│   ├── main.js            # Entry point
-│   ├── config.js          # Configuration and colors
-│   ├── state.js           # Global state management
-│   ├── Section.js         # Type-safe Section class with validation
-│   ├── sectionManager.js  # Unified section coordinator (delegates to managers)
-│   ├── managers/          # Focused, single-responsibility modules
-│   │   ├── SectionFactory.js           # Section creation & deletion
-│   │   ├── SeatManager.js              # Seat operations
-│   │   ├── SectionInteractionHandler.js # User interactions
-│   │   ├── ResizeHandleManager.js      # GA resize handles
-│   │   └── SectionTransformations.js   # Stretch, curve, alignment
-│   ├── alignmentManager.js # Multi-section alignment & transforms
-│   ├── modeManager.js     # App mode switching
-│   ├── interactionManager.js # Mouse/touch interactions
-│   ├── toolManager.js     # Tool handling
-│   ├── fileManager.js     # Save/load (SMF format)
-│   ├── utils.js           # Helper functions
-│   └── sceneSetup.js      # Grid and examples
-└── docs/                   # Documentation
-    ├── USER_GUIDE.md      # How to use the app
-    ├── FILE_FORMAT.md     # SMF specification
-    ├── CHANGELOG.md       # Version history
-    └── REFACTORING_GUIDE.md # Architecture & refactoring details
+│   └── main.js             # Editor bootstrapper
+├── src/
+│   ├── core/               # Core editor state, config, section model, utilities
+│   └── managers/           # Editor feature managers
+├── renderer/               # Embeddable renderer package and demos
+│   ├── package.json        # @seatmap-js/renderer package metadata
+│   ├── index.js            # Renderer public exports
+│   ├── SeatMapRenderer.js  # Main renderer class
+│   ├── assets/             # Renderer CSS and demo assets
+│   └── dist/               # Generated build output
+└── docs/                   # User, file format, and architecture docs
 ```
 
 ## 🎯 Core Concepts
@@ -148,9 +149,18 @@ See [Refactoring Guide](docs/REFACTORING_GUIDE.md) for architectural details.
 - [PixiJS v8](https://pixijs.com/) - 2D WebGL rendering
 - [Material Symbols Light](https://fonts.google.com/icons) - Icon font
 
+## 🧰 Development Scripts
+
+```bash
+npm run dev:editor       # Serve the editor at http://localhost:8000
+npm run dev:renderer     # Start the renderer Vite dev server
+npm run build:renderer   # Build @seatmap-js/renderer
+npm test                 # Run the current smoke test (renderer build)
+```
+
 ## 🎨 Customization
 
-Edit `js/config.js` to customize:
+Edit `src/core/config.js` to customize:
 - Seat size and spacing
 - Color scheme (dark theme by default)
 - Grid configuration

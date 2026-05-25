@@ -1,0 +1,121 @@
+/**
+ * SeatMapRenderer Tooltip Styles
+ * 
+ * Include this CSS file or copy these styles to your application
+ * to properly display the seat/section tooltips.
+ * 
+ * Required HTML structure:
+ * <div id="seat-tooltip" class="seat-tooltip">
+ *   <div class="tooltip-header">
+ *     <div class="tooltip-col">
+ *       <span class="tooltip-label">SECTION</span>
+ *       <span class="tooltip-value" id="tt-section">--</span>
+ *     </div>
+ *     <div class="tooltip-col border-left">
+ *       <span class="tooltip-label">ROW</span>
+ *       <span class="tooltip-value" id="tt-row">--</span>
+ *     </div>
+ *     <div class="tooltip-col border-left">
+ *       <span class="tooltip-label">SEAT</span>
+ *       <span class="tooltip-value" id="tt-seat">--</span>
+ *     </div>
+ *   </div>
+ *   <div class="tooltip-footer" id="tt-footer">
+ *     <span id="tt-category">STANDARD</span>
+ *     <span>
+ *       <span class="tooltip-original-price" id="tt-original-price"></span>
+ *       <span id="tt-price">$0</span>
+ *     </span>
+ *   </div>
+ *   <div class="tooltip-promo" id="tt-promo">
+ *     <span id="tt-promo-text">PROMO</span>
+ *   </div>
+ * </div>
+ */
+
+.seat-tooltip {
+    position: fixed;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    pointer-events: none;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+    overflow: hidden;
+    min-width: 220px;
+    transform: translate(-50%, -100%);
+    margin-top: -15px;
+}
+
+.seat-tooltip.bottom {
+    transform: translate(-50%, 0);
+    margin-top: 15px;
+}
+
+.tooltip-header {
+    display: flex;
+    padding: 12px 5px;
+    background: white;
+    justify-content: center;
+}
+
+.tooltip-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 15px;
+    min-width: 40px;
+}
+
+.tooltip-col.border-left {
+    border-left: 1px solid #eee;
+}
+
+.tooltip-label {
+    font-size: 9px;
+    color: #999;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.tooltip-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: #111;
+}
+
+.tooltip-footer {
+    background: #e67e22;
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.tooltip-original-price {
+    font-size: 11px;
+    text-decoration: line-through;
+    opacity: 0.6;
+    margin-right: 8px;
+    font-weight: 400;
+    vertical-align: middle;
+}
+
+.tooltip-promo {
+    display: none;
+    background: #dc2626;
+    color: white;
+    padding: 8px 20px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}

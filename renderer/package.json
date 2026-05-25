@@ -1,0 +1,50 @@
+{
+  "name": "@seatmap-js/renderer",
+  "version": "1.0.0",
+  "description": "A lightweight, embeddable renderer for SeatMap JS files (SMF format).",
+  "type": "module",
+  "main": "dist/seatmap-renderer.umd.js",
+  "module": "dist/seatmap-renderer.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/seatmap-renderer.es.js",
+      "require": "./dist/seatmap-renderer.umd.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "seatmap",
+    "venue",
+    "renderer",
+    "pixi",
+    "canvas"
+  ],
+  "author": "Arturo Castillo",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arturocastillo95/SeatMap-JS.git",
+    "directory": "renderer"
+  },
+  "bugs": {
+    "url": "https://github.com/arturocastillo95/SeatMap-JS/issues"
+  },
+  "homepage": "https://github.com/arturocastillo95/SeatMap-JS/tree/main/renderer#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "pixi.js": "^8.14.3",
+    "vite": "^7.2.4"
+  },
+  "peerDependencies": {
+    "pixi.js": "^8.0.0"
+  }
+}
