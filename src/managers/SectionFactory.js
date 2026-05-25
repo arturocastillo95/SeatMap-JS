@@ -6,6 +6,7 @@ import { State } from '../core/state.js';
 import { Section } from '../core/Section.js';
 import { SectionInteractionHandler } from './SectionInteractionHandler.js';
 import { Utils } from '../core/utils.js';
+import { Logger } from '../core/logger.js';
 
 /**
  * Factory for creating sections
@@ -116,7 +117,7 @@ export const SectionFactory = {
    * @returns {Section} The duplicated section
    */
   async duplicateSection(originalSection) {
-    console.log('Duplicate Section called for:', originalSection.sectionId);
+    Logger.debug('Duplicate Section called for:', originalSection.sectionId);
     try {
       // Import FileManager to use serialization logic
       const { FileManager } = await import('./fileManager.js');
@@ -124,7 +125,7 @@ export const SectionFactory = {
       
       // Serialize the original section
       const sectionData = FileManager.serializeSection(originalSection);
-      console.log('Serialized data:', sectionData);
+      Logger.debug('Serialized data:', sectionData);
       
       // Modify data for the new section
       // Offset position slightly so it's visible
@@ -160,7 +161,7 @@ export const SectionFactory = {
         });
       }
       
-      console.log('Deserializing new section with name:', newName);
+      Logger.debug('Deserializing new section with name:', newName);
       
       // CRITICAL FIX: Deep clone the section data to prevent reference sharing
       // This ensures the duplicated section has completely independent seat objects
@@ -174,7 +175,7 @@ export const SectionFactory = {
         return;
       }
 
-      console.log('New section created:', newSection);
+      Logger.debug('New section created:', newSection);
       
       // NOTE: Section is already registered by deserializeSection -> createSection
       // So we don't call registerSection() again to avoid duplicate registration
@@ -188,7 +189,7 @@ export const SectionFactory = {
         detail: { selectedSections: [newSection] } 
       }));
       
-      console.log(`✓ Duplicated section: ${originalSection.sectionId} -> ${newSection.sectionId}`);
+      Logger.debug(`✓ Duplicated section: ${originalSection.sectionId} -> ${newSection.sectionId}`);
       return newSection;
     } catch (error) {
       console.error('Failed to duplicate section:', error);
@@ -259,6 +260,6 @@ export const SectionFactory = {
     }
     section.destroy({ children: true });
     
-    console.log(`Deleted section: ${section.sectionId}`);
+    Logger.debug(`Deleted section: ${section.sectionId}`);
   }
 };

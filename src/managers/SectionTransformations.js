@@ -3,6 +3,7 @@
 // ============================================
 
 import { COLORS, VISUAL_CONFIG } from '../core/config.js';
+import { Logger } from '../core/logger.js';
 
 /**
  * Manager for section transformations
@@ -650,7 +651,7 @@ export const SectionTransformations = {
    * @param {Section} section - The section
    */
   rebuildBasePositions(section) {
-    console.log(`Rebuilding base positions for ${section.sectionId || 'undefined'}`);
+    Logger.debug(`Rebuilding base positions for ${section.sectionId || 'undefined'}`);
     
     // Get unique row indices to find the top row
     const rowIndices = [...new Set(section.seats.map(s => s.rowIndex))].sort((a, b) => a - b);
@@ -675,7 +676,7 @@ export const SectionTransformations = {
     const anchorCol = anchorSeat.colIndex;
     const anchorRow = anchorSeat.rowIndex;
     
-    console.log(`  Anchor: [${anchorRow},${anchorCol}] at (${anchorX}, ${anchorY})`);
+    Logger.debug(`  Anchor: [${anchorRow},${anchorCol}] at (${anchorX}, ${anchorY})`);
     
     // Calculate actual spacing from the data instead of hardcoding
     let spacingX = 24; // Default fallback
@@ -735,7 +736,7 @@ export const SectionTransformations = {
       spacingY = totalSpacingY / countY;
     }
 
-    console.log(`  Detected spacing: X=${spacingX.toFixed(2)}, Y=${spacingY.toFixed(2)}`);
+    Logger.debug(`  Detected spacing: X=${spacingX.toFixed(2)}, Y=${spacingY.toFixed(2)}`);
     
     // VALIDATION: Ensure spacing is reasonable (prevent extreme values)
     if (spacingX < 10 || spacingX > 100) {
@@ -768,6 +769,6 @@ export const SectionTransformations = {
       }
     });
     
-    console.log(`  Rebuilt ${rebuiltCount}/${section.seats.length} seats with clean grid`);
+    Logger.debug(`  Rebuilt ${rebuiltCount}/${section.seats.length} seats with clean grid`);
   }
 };

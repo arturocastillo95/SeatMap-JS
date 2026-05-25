@@ -5,6 +5,7 @@
 import { State } from '../core/state.js';
 import { COLORS } from '../core/config.js';
 import { Utils } from '../core/utils.js';
+import { Logger } from '../core/logger.js';
 
 export const FileManager = {
   /**
@@ -483,7 +484,7 @@ export const FileManager = {
       
       this.downloadJSON(mapData, filename);
       
-      console.log('✓ Venue map exported successfully');
+      Logger.debug('✓ Venue map exported successfully');
       return true;
     } catch (error) {
       console.error('✗ Failed to export venue map:', error);
@@ -512,7 +513,7 @@ export const FileManager = {
         validation.warnings.forEach(w => console.warn(`  ⚠ ${w}`));
       }
       
-      console.log(`Loading SMF v${jsonData.version}...`);
+      Logger.debug(`Loading SMF v${jsonData.version}...`);
       
       // Clear existing sections
       await this.clearAllSections();
@@ -536,11 +537,11 @@ export const FileManager = {
         await this.deserializeSection(sectionData, SectionManager);
       }
       
-      console.log(`✓ Loaded ${jsonData.sections.length} sections with ${jsonData.venue.capacity} total seats`);
+      Logger.debug(`✓ Loaded ${jsonData.sections.length} sections with ${jsonData.venue.capacity} total seats`);
       return true;
     } catch (error) {
       console.error('✗ Failed to import venue map:', error);
-      alert(`Failed to load file: ${error.message}`);
+      Utils.reportError(`Failed to load file: ${error.message}`, error);
       return false;
     }
   },
@@ -1000,7 +1001,7 @@ export const FileManager = {
     State.sections = [];
     State.selectedSections = [];
     
-    console.log('✓ Cleared all existing sections');
+    Logger.debug('✓ Cleared all existing sections');
   },
   
   /**

@@ -11,6 +11,7 @@ import { AlignmentManager } from '../src/managers/alignmentManager.js';
 import { FileManager } from '../src/managers/fileManager.js';
 import { ModeManager } from '../src/managers/modeManager.js';
 import { UnderlayManager } from '../src/managers/UnderlayManager.js';
+import { Logger } from '../src/core/logger.js';
 
 async function initializeApp() {
   State.app = new PIXI.Application();
@@ -557,7 +558,7 @@ function setupSeatHandlers() {
         const { SeatManager } = await import('../src/managers/SeatManager.js');
         
         SeatManager.updateSeatNumber(seat, newNumber);
-        console.log(`Updated seat number to: ${newNumber}`);
+        Logger.debug(`Updated seat number to: ${newNumber}`);
       }
     });
   }
@@ -574,7 +575,7 @@ function setupSeatHandlers() {
         SeatManager.setSpecialNeeds(seat, isChecked);
       });
       
-      console.log(`Set ${State.selectedSeats.length} seats to special needs: ${isChecked}`);
+      Logger.debug(`Set ${State.selectedSeats.length} seats to special needs: ${isChecked}`);
     });
   }
 }
@@ -600,10 +601,18 @@ function setupRowLabelSpacingHandler() {
   });
 }
 
+function setupAppErrorHandler() {
+  document.addEventListener('seatmap:error', (event) => {
+    const message = event.detail?.message || 'Something went wrong.';
+    alert(message);
+  });
+}
+
 // Start the application
 (async () => {
   await initializeApp();
   initializeElements();
+  setupAppErrorHandler();
   setupGrid();
   // setupExampleSection();
   ToolManager.init();

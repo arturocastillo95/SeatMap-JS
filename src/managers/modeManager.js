@@ -4,6 +4,8 @@
 
 import { State } from '../core/state.js';
 import { COLORS, VISUAL_CONFIG } from '../core/config.js';
+import { Utils } from '../core/utils.js';
+import { Logger } from '../core/logger.js';
 
 export const ModeManager = {
   init() {
@@ -67,7 +69,7 @@ export const ModeManager = {
     if (mode === 'seats' || mode === 'pricing') {
       // Require exactly one selected section
       if (State.selectedSections.length !== 1) {
-        alert(`Please select a single section to ${mode === 'seats' ? 'edit its seats' : 'set pricing'}.`);
+        Utils.reportError(`Please select a single section to ${mode === 'seats' ? 'edit its seats' : 'set pricing'}.`);
         return;
       }
     }
@@ -142,7 +144,7 @@ export const ModeManager = {
       this.updateToolVisibility('schema');
     }
     
-    console.log(`Switched to mode: ${mode}`);
+    Logger.debug(`Switched to mode: ${mode}`);
   },
   
   enterEditZonesMode() {
@@ -180,7 +182,7 @@ export const ModeManager = {
     });
     
     this.updateToolVisibility('zones');
-    console.log('✓ Entered Edit Zones mode');
+    Logger.debug('✓ Entered Edit Zones mode');
   },
 
   exitEditZonesMode() {
@@ -206,7 +208,7 @@ export const ModeManager = {
       section.eventMode = 'static';
     });
     
-    console.log('✓ Exited Edit Zones mode');
+    Logger.debug('✓ Exited Edit Zones mode');
   },
 
   updateToolVisibility(mode) {
@@ -258,7 +260,7 @@ export const ModeManager = {
       seat.eventMode = 'static';
     });
     
-    console.log(`✓ Entered Edit Seats mode for: ${State.activeSectionForSeats.sectionId}`);
+    Logger.debug(`✓ Entered Edit Seats mode for: ${State.activeSectionForSeats.sectionId}`);
   },
   
   exitEditSeatsMode() {
@@ -285,7 +287,7 @@ export const ModeManager = {
     // Clear active section reference
     State.activeSectionForSeats = null;
     
-    console.log('✓ Exited Edit Seats mode');
+    Logger.debug('✓ Exited Edit Seats mode');
   },
   
   selectSeat(seat) {
@@ -369,7 +371,7 @@ export const ModeManager = {
     // Clear selection
     State.selectedSeats = [];
     
-    console.log(`✓ Deleted ${count} seat(s)`);
+    Logger.debug(`✓ Deleted ${count} seat(s)`);
   },
 
   showPricingSidebar() {
@@ -452,7 +454,7 @@ export const ModeManager = {
     section.pricing.serviceFeeEnabled = serviceFeeToggle.checked;
     section.pricing.serviceFeeType = serviceFeeFixed.classList.contains('active') ? 'fixed' : 'percent';
 
-    console.log(`✓ Saved pricing for ${section.sectionId}:`, section.pricing);
+    Logger.debug(`✓ Saved pricing for ${section.sectionId}:`, section.pricing);
   },
 
   updateTotalPrice() {

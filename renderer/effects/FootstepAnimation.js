@@ -91,7 +91,6 @@ export class FootstepAnimation {
             this.leftFootTexture = await PIXI.Assets.load('./assets/foot-l.svg');
             this.rightFootTexture = await PIXI.Assets.load('./assets/foot-r.svg');
             this.texturesLoaded = true;
-            console.log('FootstepAnimation: Loaded SVG foot textures');
         } catch (e) {
             console.warn('FootstepAnimation: Could not load foot textures, using procedural fallback');
             this.createProceduralTextures();

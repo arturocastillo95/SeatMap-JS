@@ -5,6 +5,7 @@
 import { State } from '../core/state.js';
 import { Utils } from '../core/utils.js';
 import { VISUAL_CONFIG } from '../core/config.js';
+import { Logger } from '../core/logger.js';
 
 /**
  * Manager for background underlay images (PNG/SVG)
@@ -16,7 +17,7 @@ export const UnderlayManager = {
    */
   init() {
     // Underlay layer already created in state initialization
-    console.log('✓ UnderlayManager initialized');
+    Logger.debug('✓ UnderlayManager initialized');
   },
 
   /**
@@ -109,7 +110,7 @@ export const UnderlayManager = {
         opacity: State.underlayOpacity,
         visible: State.underlayVisible
       };
-      console.log('Preserving underlay settings:', currentSettings);
+      Logger.debug('Preserving underlay settings:', currentSettings);
     }
     
     // Clear existing underlay
@@ -160,7 +161,7 @@ export const UnderlayManager = {
       this.addResizeHandles();
     }
     
-    console.log(`✓ Loaded underlay: ${fileName} (${texture.width}x${texture.height})`);
+    Logger.debug(`✓ Loaded underlay: ${fileName} (${texture.width}x${texture.height})`);
     
     // Dispatch event for UI updates
     document.dispatchEvent(new CustomEvent('underlayLoaded', {
@@ -269,7 +270,7 @@ export const UnderlayManager = {
     State.underlayData = null;
     State.underlayFileName = null;
     
-    console.log('✓ Underlay cleared');
+    Logger.debug('✓ Underlay cleared');
     
     // Dispatch event for UI updates
     document.dispatchEvent(new CustomEvent('underlayCleared'));
@@ -343,7 +344,7 @@ export const UnderlayManager = {
         this.addResizeHandles();
       }
       
-      console.log(`✓ Restored underlay: ${State.underlayFileName}`);
+      Logger.debug(`✓ Restored underlay: ${State.underlayFileName}`);
       
       // Dispatch event for UI updates
       document.dispatchEvent(new CustomEvent('underlayLoaded', {

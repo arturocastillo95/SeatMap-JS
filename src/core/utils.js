@@ -45,6 +45,12 @@ export const Utils = {
     Elements.dragInfo.classList.remove('show');
   },
 
+  reportError(message, error = null) {
+    document.dispatchEvent(new CustomEvent('seatmap:error', {
+      detail: { message, error }
+    }));
+  },
+
   calculateSeatDimensions(rawWidth, rawHeight) {
     const innerWidth = Math.max(0, rawWidth - (CONFIG.SECTION_MARGIN * 2));
     const innerHeight = Math.max(0, rawHeight - (CONFIG.SECTION_MARGIN * 2));

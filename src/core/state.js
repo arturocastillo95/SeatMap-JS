@@ -51,7 +51,6 @@ export const State = {
   // Selection state
   selectionStart: null,
   selectionRect: null,
-  selectedSections: [],
   
   // Section dragging state
   isDraggingSections: false,

@@ -10,6 +10,9 @@ import { SectionInteractionHandler } from './SectionInteractionHandler.js';
 import { ResizeHandleManager } from './ResizeHandleManager.js';
 import { SectionTransformations } from './SectionTransformations.js';
 import { State } from '../core/state.js';
+import union from '@turf/union';
+import { polygon } from '@turf/helpers';
+import { Logger } from '../core/logger.js';
 
 /**
  * Unified SectionManager that delegates to specialized managers
@@ -171,7 +174,7 @@ export const SectionManager = {
     const colorValue = parseInt(colorHex.replace('#', ''), 16);
     section.sectionColor = colorValue;
     
-    console.log(`✓ Updated section color to ${colorHex}`);
+    Logger.debug(`✓ Updated section color to ${colorHex}`);
   },
 
   setSeatColor(section, colorHex) {
@@ -186,7 +189,7 @@ export const SectionManager = {
     // Update all existing seats (if any)
     SeatManager.updateAllSeats(section);
     
-    console.log(`✓ Updated seat color to ${colorHex}`);
+    Logger.debug(`✓ Updated seat color to ${colorHex}`);
   },
 
   setSeatTextColor(section, colorHex) {
@@ -201,7 +204,7 @@ export const SectionManager = {
     // Update all existing seats (if any)
     SeatManager.updateAllSeats(section);
     
-    console.log(`✓ Updated seat text color to ${colorHex}`);
+    Logger.debug(`✓ Updated seat text color to ${colorHex}`);
   },
 
   setRowLabelColor(section, colorHex) {
@@ -218,13 +221,13 @@ export const SectionManager = {
       label.style.fill = colorValue;
     });
     
-    console.log(`✓ Updated row label color to ${colorHex}`);
+    Logger.debug(`✓ Updated row label color to ${colorHex}`);
   },
 
   setGlowEnabled(section, enabled) {
     section.glowEnabled = enabled;
     SeatManager.updateAllSeats(section);
-    console.log(`✓ Updated glow enabled to ${enabled}`);
+    Logger.debug(`✓ Updated glow enabled to ${enabled}`);
   },
 
   setGlowColor(section, colorHex) {
@@ -234,25 +237,25 @@ export const SectionManager = {
     const colorValue = parseInt(colorHex.replace('#', ''), 16);
     section.glowColor = colorValue;
     SeatManager.updateAllSeats(section);
-    console.log(`✓ Updated glow color to ${colorHex}`);
+    Logger.debug(`✓ Updated glow color to ${colorHex}`);
   },
 
   setGlowOpacity(section, opacity) {
     section.glowOpacity = opacity;
     SeatManager.updateAllSeats(section);
-    console.log(`✓ Updated glow opacity to ${opacity}`);
+    Logger.debug(`✓ Updated glow opacity to ${opacity}`);
   },
 
   setGlowStrength(section, strength) {
     section.glowStrength = strength;
     SeatManager.updateAllSeats(section);
-    console.log(`✓ Updated glow strength to ${strength}`);
+    Logger.debug(`✓ Updated glow strength to ${strength}`);
   },
 
   setGlowBlur(section, blur) {
     section.glowBlur = blur;
     SeatManager.updateAllSeats(section);
-    console.log(`✓ Updated glow blur to ${blur}`);
+    Logger.debug(`✓ Updated glow blur to ${blur}`);
   },
 
   setSectionPadding(section, padding) {
@@ -269,7 +272,7 @@ export const SectionManager = {
        SectionTransformations.positionSeatsAndLabels(section);
     }
     
-    console.log(`✓ Updated section padding to ${padding}`);
+    Logger.debug(`✓ Updated section padding to ${padding}`);
   },
 
   // ============================================
@@ -330,11 +333,6 @@ export const SectionManager = {
     }
 
     try {
-      // Dynamic import to avoid loading turf unless needed
-      // Pin to v6.5.0 to ensure pairwise union support
-      const { default: union } = await import('https://cdn.jsdelivr.net/npm/@turf/union@6.5.0/+esm');
-      const { polygon } = await import('https://cdn.jsdelivr.net/npm/@turf/helpers@6.5.0/+esm');
-
       // 1. Convert zones to Turf polygons
       const turfPolys = zones.map(zone => {
         // Get global coordinates of the zone corners

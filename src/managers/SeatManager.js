@@ -6,6 +6,7 @@ import { State } from '../core/state.js';
 import { CONFIG, COLORS, VISUAL_CONFIG } from '../core/config.js';
 import { Utils } from '../core/utils.js';
 import { SectionTransformations } from './SectionTransformations.js';
+import { Logger } from '../core/logger.js';
 
 /**
  * Manager for seat operations
@@ -130,7 +131,7 @@ export const SeatManager = {
       
       // Normal mode behavior
       if (!State.isDeleteMode) {
-        console.log('Seat clicked:', seat.seatId);
+        Logger.debug('Seat clicked:', seat.seatId);
         Utils.flash(seat, COLORS.FLASH_SEAT);
       }
     });
@@ -279,7 +280,7 @@ export const SeatManager = {
       this.updateSeatVisual(seat, section);
     });
     
-    console.log(`✓ Updated ${section.seats.length} seat visuals`);
+    Logger.debug(`✓ Updated ${section.seats.length} seat visuals`);
   },
 
   /**

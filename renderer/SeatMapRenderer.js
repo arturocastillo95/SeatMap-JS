@@ -16,6 +16,7 @@ import { InventoryManager } from './inventory/InventoryManager.js';
 import { renderUnderlay } from './rendering/UnderlayRenderer.js';
 import { createSectionContainer, createSectionBackground, renderGAContent, renderZoneContent } from './rendering/SectionRenderer.js';
 import { renderRowLabels, buildRowLabelMap, getRowLabelText } from './rendering/RowLabelRenderer.js';
+import { createDebugLogger } from './core/logger.js';
 
 export class SeatMapRenderer {
     static CONFIG = {
@@ -117,6 +118,7 @@ export class SeatMapRenderer {
             orphanHighlightColor: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_COLOR,
             orphanHighlightDuration: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_DURATION,
             orphanHighlightPulseScale: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_PULSE_SCALE,
+            debug: false,
             fitToSectionsPadding: 40,
             showControls: true,
             backgroundAlpha: 1,
@@ -128,6 +130,7 @@ export class SeatMapRenderer {
             enableZoneZoom: true,
             ...options
         };
+        this.debug = createDebugLogger(this.options.debug);
 
         this.app = new PIXI.Application();
         this.viewport = new PIXI.Container();
@@ -543,7 +546,7 @@ export class SeatMapRenderer {
         // Store loaded data for getSections() API
         this.loadedData = data;
 
-        console.log("Loading map data...", data);
+        this.debug("Loading map data...", data);
 
         // PHASE 0: Start underlay loading in parallel (non-blocking)
         // Store underlay bounds from data for initial centering (before image loads)
@@ -1210,7 +1213,7 @@ export class SeatMapRenderer {
     onSeatClick(seatContainer) {
         // Block selection during or right after gestures (pinch zoom, pan)
         if (this.inputHandler?.isGestureActive?.()) {
-            console.log('Selection blocked: gesture in progress');
+            this.debug('Selection blocked: gesture in progress');
             return;
         }
         
@@ -1221,7 +1224,7 @@ export class SeatMapRenderer {
             const zoomRatio = currentZoom / initialZoom;
             
             if (zoomRatio < this.options.mobileMinZoomForSelection) {
-                console.log(`Selection blocked on mobile: zoom in more (current: ${zoomRatio.toFixed(2)}x, required: ${this.options.mobileMinZoomForSelection}x)`);
+                this.debug(`Selection blocked on mobile: zoom in more (current: ${zoomRatio.toFixed(2)}x, required: ${this.options.mobileMinZoomForSelection}x)`);
                 return;
             }
         }
@@ -1229,11 +1232,11 @@ export class SeatMapRenderer {
         const result = this.selectionManager.toggleSelection(seatContainer);
         
         if (!result.success) {
-            console.log(`Selection blocked: ${result.reason}`);
+            this.debug(`Selection blocked: ${result.reason}`);
             return;
         }
 
-        console.log("Seat clicked:", seatContainer.seatData, "Selected:", seatContainer.selected);
+        this.debug("Seat clicked:", seatContainer.seatData, "Selected:", seatContainer.selected);
 
         // Create deferred label if needed
         if (seatContainer._labelDeferred && !seatContainer.text) {
@@ -1429,10 +1432,10 @@ export class SeatMapRenderer {
         // Load GA inventory into GASelectionManager
         if (this.gaSelectionManager && inventoryData.ga) {
             this.gaSelectionManager.loadInventory({ ga: inventoryData.ga });
-            console.log("GA inventory loaded:", inventoryData.ga.length, "sections");
+            this.debug("GA inventory loaded:", inventoryData.ga.length, "sections");
         }
 
-        console.log("Inventory loaded:", result);
+        this.debug("Inventory loaded:", result);
     }
 
     updateSeatVisuals(seatContainer) {
@@ -1547,7 +1550,7 @@ export class SeatMapRenderer {
 
     // GA Selection handlers
     handleGASelectionConfirm(selectionData) {
-        console.log('GA selection confirmed:', selectionData);
+        this.debug('GA selection confirmed:', selectionData);
         // Dispatch event for external handling
         this.container.dispatchEvent(new CustomEvent('gaSelectionConfirm', {
             detail: selectionData,
@@ -1561,7 +1564,7 @@ export class SeatMapRenderer {
     }
 
     handleGASelectionCancel() {
-        console.log('GA selection cancelled');
+        this.debug('GA selection cancelled');
     }
 
     // Get all GA selections
@@ -1778,7 +1781,7 @@ export class SeatMapRenderer {
         // Store promo by section ID
         this.sectionPromos.set(section.id || section.name, normalizedPromo);
         
-        console.log(`Promo set for section "${sectionId}":`, normalizedPromo);
+        this.debug(`Promo set for section "${sectionId}":`, normalizedPromo);
         return true;
     }
 

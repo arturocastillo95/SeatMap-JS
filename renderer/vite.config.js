@@ -16,7 +16,12 @@ export default defineConfig({
         lib: {
             entry: resolve(__dirname, 'index.js'),
             name: 'SeatMapRenderer',
-            fileName: (format) => `seatmap-renderer.${format}.js`
+            formats: ['es', 'umd', 'cjs'],
+            fileName: (format) => {
+                if (format === 'es') return 'seatmap-renderer.es.js';
+                if (format === 'umd') return 'seatmap-renderer.umd.js';
+                return 'seatmap-renderer.cjs';
+            }
         },
         rollupOptions: {
             // Externalize pixi.js - consumers should provide their own

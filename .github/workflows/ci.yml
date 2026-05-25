@@ -19,10 +19,16 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: renderer/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install renderer dependencies
-        run: npm ci --prefix renderer
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build editor
+        run: npm run build:editor
 
       - name: Build renderer
         run: npm run build:renderer
+
+      - name: Verify renderer package contents
+        run: npm run pack:renderer

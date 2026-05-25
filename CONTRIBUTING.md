@@ -14,7 +14,7 @@ Thanks for helping improve SeatMap JS. This repo contains two related pieces:
 ## Setup
 
 ```bash
-npm --prefix renderer install
+npm install
 ```
 
 ## Development
@@ -37,13 +37,13 @@ Open the URL printed by Vite. The booking demo is available at `/demo-booking.ht
 
 ## Checks
 
-Build the renderer before opening a pull request:
+Run the full smoke test before opening a pull request:
 
 ```bash
-npm run build:renderer
+npm test
 ```
 
-The root `npm test` script currently runs the renderer build as the project smoke test.
+The root `npm test` script runs the editor build, renderer build, and renderer package dry-run.
 
 ## Pull Requests
 

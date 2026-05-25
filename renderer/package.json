@@ -3,20 +3,23 @@
   "version": "1.0.0",
   "description": "A lightweight, embeddable renderer for SeatMap JS files (SMF format).",
   "type": "module",
-  "main": "dist/seatmap-renderer.umd.js",
+  "main": "dist/seatmap-renderer.cjs",
   "module": "dist/seatmap-renderer.es.js",
   "exports": {
     ".": {
       "import": "./dist/seatmap-renderer.es.js",
-      "require": "./dist/seatmap-renderer.umd.js"
+      "require": "./dist/seatmap-renderer.cjs"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "README.md"
   ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "prepack": "npm run build",
     "preview": "vite preview"
   },
   "keywords": [

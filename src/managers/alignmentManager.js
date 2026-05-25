@@ -5,6 +5,7 @@
 import { State, Elements } from '../core/state.js';
 import { SectionManager } from './sectionManager.js';
 import { COLORS } from '../core/config.js';
+import { Logger } from '../core/logger.js';
 
 export const AlignmentManager = {
   // Configuration
@@ -616,7 +617,7 @@ export const AlignmentManager = {
       
       SectionManager.updateRowLabels(section);
       this.updateSeatPositions(section);
-      console.log(`✓ Row labels ${section.rowLabelReversed ? 'reversed' : 'normal'}`);
+      Logger.debug(`✓ Row labels ${section.rowLabelReversed ? 'reversed' : 'normal'}`);
     }
   },
 
@@ -647,7 +648,7 @@ export const AlignmentManager = {
       Elements.seatNumberFlipBtn.classList.toggle('active', section.seatNumberReversed);
       
       SectionManager.updateSeatNumbers(section);
-      console.log(`✓ Seat numbering ${section.seatNumberReversed ? 'reversed' : 'normal'}`);
+      Logger.debug(`✓ Seat numbering ${section.seatNumberReversed ? 'reversed' : 'normal'}`);
     }
   },
 
@@ -761,7 +762,7 @@ export const AlignmentManager = {
     if (State.selectedSections.length === 1) {
       const section = State.selectedSections[0];
       SectionManager.alignRows(section, 'left');
-      console.log('✓ Aligned rows to left');
+      Logger.debug('✓ Aligned rows to left');
     }
   },
 
@@ -769,7 +770,7 @@ export const AlignmentManager = {
     if (State.selectedSections.length === 1) {
       const section = State.selectedSections[0];
       SectionManager.alignRows(section, 'center');
-      console.log('✓ Aligned rows to center');
+      Logger.debug('✓ Aligned rows to center');
     }
   },
 
@@ -777,7 +778,7 @@ export const AlignmentManager = {
     if (State.selectedSections.length === 1) {
       const section = State.selectedSections[0];
       SectionManager.alignRows(section, 'right');
-      console.log('✓ Aligned rows to right');
+      Logger.debug('✓ Aligned rows to right');
     }
   },
 
