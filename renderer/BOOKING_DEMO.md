@@ -4,7 +4,7 @@ A complete, production-ready ticket booking interface built with plain HTML, CSS
 
 ## Overview
 
-The booking demo (`demo-booking.html`) showcases how to build a real-world ticket purchasing experience using the SeatMapRenderer. It's designed as a reference implementation for developers integrating the renderer into their own booking systems.
+The booking demos use two entry points: `demo-booking.html` for local Vite development and `demo-booking-bundled.html` for static hosting and GitHub Pages previews. They are designed as reference implementations for developers integrating the renderer into their own booking systems.
 
 ![Booking Demo Screenshot](./screenshots/booking-demo.png)
 
@@ -59,7 +59,8 @@ The booking demo (`demo-booking.html`) showcases how to build a real-world ticke
 
 ```
 renderer/
-├── demo-booking.html      # Complete booking demo (standalone)
+├── demo-booking.html      # Vite-powered development version
+├── demo-booking-bundled.html # Static-hosting / GitHub Pages version
 ├── demo-venue.json        # Sample venue data
 ├── SeatMapRenderer.js     # Main renderer
 └── ...
@@ -75,14 +76,18 @@ pnpm dev
 # Open http://localhost:5173/demo-booking.html
 ```
 
-Or serve statically after building:
+### Running the Static Preview
+
+From the repo root:
 
 ```bash
-cd renderer
-pnpm build
+pnpm build:renderer-pages
+cd renderer/.pages
 python -m http.server 8000
-# Open http://localhost:8000/demo-booking.html
+# Open http://localhost:8000
 ```
+
+This stages the bundled demo as `index.html` together with `demo-venue.json` and `dist/`, which matches the artifact published by GitHub Pages.
 
 ### Integration Guide
 

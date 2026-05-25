@@ -38,6 +38,15 @@ pnpm build
 # Open demo-booking-bundled.html directly or via any HTTP server
 ```
 
+For a GitHub Pages-ready preview artifact from the repo root:
+
+```bash
+pnpm build:renderer-pages
+# Output: renderer/.pages
+```
+
+The GitHub Pages workflow publishes the bundled booking demo from `renderer/.pages` and serves it from the site root.
+
 ## Features
 
 ### Current Implementation (Phase 1 & 2)

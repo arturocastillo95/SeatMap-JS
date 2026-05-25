@@ -57,6 +57,13 @@ pnpm dev:renderer
 pnpm build:renderer
 ```
 
+For a GitHub Pages-ready booking demo preview:
+
+```bash
+pnpm build:renderer-pages
+# Output: renderer/.pages
+```
+
 See the [Renderer Documentation](renderer/README.md) for package usage and booking demo examples.
 
 ## 📚 Documentation
@@ -162,6 +169,7 @@ pnpm dev:editor       # Serve the editor at http://localhost:8000
 pnpm build:editor     # Build the editor with Vite
 pnpm dev:renderer     # Start the renderer Vite dev server
 pnpm build:renderer   # Build @seatmap-js/renderer
+pnpm build:renderer-pages # Stage the bundled booking demo for GitHub Pages in renderer/.pages
 pnpm pack:renderer    # Dry-run the renderer package publish contents
 pnpm test             # Run editor build, renderer build, and package dry-run
 ```

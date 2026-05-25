@@ -10,6 +10,7 @@
     "build:editor": "vite build",
     "dev:renderer": "pnpm --filter @seatmap-js/renderer dev",
     "build:renderer": "pnpm --filter @seatmap-js/renderer build",
+    "build:renderer-pages": "pnpm build:renderer && node scripts/build-renderer-pages.mjs",
     "preview:renderer": "pnpm --filter @seatmap-js/renderer preview",
     "pack:renderer": "pnpm --filter @seatmap-js/renderer publish --dry-run --no-git-checks",
     "test": "pnpm build:editor && pnpm build:renderer && pnpm pack:renderer"

@@ -28,6 +28,7 @@ dist/
 build/
 *.min.js
 *.min.css
+renderer/.pages/
 
 # Temporary files
 tmp/
