@@ -7,8 +7,8 @@ Thanks for helping improve SeatMap JS. This repo contains two related pieces:
 
 ## Requirements
 
-- Node.js 18 or newer
-- pnpm 10 or newer
+- Node.js 22.13 or newer
+- pnpm 11.3.0 or newer
 
 ## Setup
 

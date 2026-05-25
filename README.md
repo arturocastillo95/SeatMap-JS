@@ -25,6 +25,11 @@ A modular, interactive venue seating map editor built with PixiJS 8.x. Create, e
 
 ## 🚀 Quick Start
 
+### Requirements
+
+- Node.js 22.13 or newer
+- pnpm 11.3.0 or newer
+
 ### Editor App
 
 1. **Run a local server** (required for ES modules):

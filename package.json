@@ -4,7 +4,7 @@
   "description": "A modular venue seating map editor and embeddable PixiJS renderer.",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev:editor": "vite --host 0.0.0.0 --port 8000",
     "build:editor": "vite build",
@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/arturocastillo95/SeatMap-JS#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13"
   },
   "dependencies": {
     "@turf/helpers": "6.5.0",

@@ -1,2 +1,4 @@
 packages:
   - renderer
+allowBuilds:
+  esbuild: true

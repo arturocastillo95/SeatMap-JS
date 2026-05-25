@@ -91,6 +91,11 @@ pnpm build
 
 ## Installation
 
+### Requirements
+
+- Node.js 22.13 or newer
+- pnpm 11.3.0 or newer
+
 ### Workspace Setup
 
 ```bash

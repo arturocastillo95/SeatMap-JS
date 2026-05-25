@@ -41,7 +41,7 @@
   },
   "homepage": "https://github.com/arturocastillo95/SeatMap-JS/tree/main/renderer#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13"
   },
   "devDependencies": {
     "pixi.js": "^8.14.3",
