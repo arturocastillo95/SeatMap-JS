@@ -1,3 +1,5 @@
+
+
 # SeatMap JS
 
 > **Version 0.1.2** | [Changelog](docs/CHANGELOG.md) | [License](LICENSE.md)
@@ -79,7 +81,7 @@ See the [Renderer Documentation](renderer/README.md) for package usage and booki
 ## 🏗️ Project Structure
 
 ```
-venue-map-js/
+SeatMap-JS/
 ├── package.json            # Root scripts for editor and renderer workflows
 ├── index.html              # Main editor application
 ├── js/
