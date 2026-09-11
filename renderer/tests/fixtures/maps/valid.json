@@ -1,0 +1,21 @@
+{
+  "format": "SMF",
+  "version": "2.1.0",
+  "sections": [
+    {
+      "id": "main",
+      "name": "Principal",
+      "type": "regular",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 100,
+      "rowLabels": { "type": "letters", "start": "A" },
+      "pricing": { "basePrice": 125.5 },
+      "seats": [
+        { "id": "a-1", "r": 0, "c": 0, "n": "1", "x": 10, "y": 10 },
+        { "id": "a-2", "r": 0, "c": 1, "n": "2", "x": 30, "y": 10, "sn": true }
+      ]
+    }
+  ]
+}

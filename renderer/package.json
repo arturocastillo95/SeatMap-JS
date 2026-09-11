@@ -1,26 +1,41 @@
 {
   "name": "@seatmap-js/renderer",
-  "version": "1.0.0",
+  "version": "2.0.0-rc.1",
   "description": "A lightweight, embeddable renderer for SeatMap JS files (SMF format).",
   "type": "module",
   "main": "dist/seatmap-renderer.cjs",
   "module": "dist/seatmap-renderer.es.js",
   "exports": {
     ".": {
+      "types": "./index.d.ts",
       "import": "./dist/seatmap-renderer.es.js",
       "require": "./dist/seatmap-renderer.cjs"
-    }
+    },
+    "./styles.css": "./dist/renderer.css"
+  },
+  "bin": {
+    "seatmap-renderer-audit": "bin/audit-map.js"
   },
   "files": [
+    "audit",
+    "bin",
+    "core/RowLabels.js",
+    "demo-venue.json",
     "dist",
     "LICENSE.md",
-    "README.md"
+    "README.md",
+    "index.d.ts",
+    "MIGRATION.md",
+    "VALIDATION.md",
+    "examples"
   ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "prepack": "pnpm run build",
-    "preview": "vite preview"
+    "prepack": "npm run build",
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "playwright test"
   },
   "keywords": [
     "seatmap",
@@ -48,6 +63,10 @@
     "vite": "^7.2.4"
   },
   "peerDependencies": {
-    "pixi.js": "^8.0.0"
-  }
+    "pixi.js": "^8.14.3"
+  },
+  "types": "./index.d.ts",
+  "sideEffects": [
+    "**/*.css"
+  ]
 }

@@ -1,121 +1,139 @@
-/**
- * SeatMapRenderer Tooltip Styles
- * 
- * Include this CSS file or copy these styles to your application
- * to properly display the seat/section tooltips.
- * 
- * Required HTML structure:
- * <div id="seat-tooltip" class="seat-tooltip">
- *   <div class="tooltip-header">
- *     <div class="tooltip-col">
- *       <span class="tooltip-label">SECTION</span>
- *       <span class="tooltip-value" id="tt-section">--</span>
- *     </div>
- *     <div class="tooltip-col border-left">
- *       <span class="tooltip-label">ROW</span>
- *       <span class="tooltip-value" id="tt-row">--</span>
- *     </div>
- *     <div class="tooltip-col border-left">
- *       <span class="tooltip-label">SEAT</span>
- *       <span class="tooltip-value" id="tt-seat">--</span>
- *     </div>
- *   </div>
- *   <div class="tooltip-footer" id="tt-footer">
- *     <span id="tt-category">STANDARD</span>
- *     <span>
- *       <span class="tooltip-original-price" id="tt-original-price"></span>
- *       <span id="tt-price">$0</span>
- *     </span>
- *   </div>
- *   <div class="tooltip-promo" id="tt-promo">
- *     <span id="tt-promo-text">PROMO</span>
- *   </div>
- * </div>
- */
-
-.seat-tooltip {
-    position: fixed;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    pointer-events: none;
-    z-index: 2000;
-    opacity: 0;
-    transition: opacity 0.15s ease-out;
-    overflow: hidden;
-    min-width: 220px;
-    transform: translate(-50%, -100%);
-    margin-top: -15px;
+.seatmap-host {
+  position: relative;
 }
-
-.seat-tooltip.bottom {
-    transform: translate(-50%, 0);
-    margin-top: 15px;
+.seatmap-canvas {
+  display: block;
+  touch-action: none;
 }
-
-.tooltip-header {
-    display: flex;
-    padding: 12px 5px;
-    background: white;
-    justify-content: center;
+.seatmap-ui,
+.seatmap-dialog,
+.seatmap-tooltip {
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+  color: #202124;
+  background: #fff;
 }
-
-.tooltip-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0 15px;
-    min-width: 40px;
+.seatmap-ui {
+  box-sizing: border-box;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  max-width: min(360px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  overflow: auto;
+  border: 1px solid #c8cbd0;
+  border-radius: 6px;
+  padding: 8px;
 }
-
-.tooltip-col.border-left {
-    border-left: 1px solid #eee;
+.seatmap-ui summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-weight: 600;
 }
-
-.tooltip-label {
-    font-size: 9px;
-    color: #999;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+.seatmap-ui label,
+.seatmap-dialog label {
+  display: block;
+  margin: 8px 0;
 }
-
-.tooltip-value {
-    font-size: 18px;
-    font-weight: 800;
-    color: #111;
+.seatmap-ui input,
+.seatmap-ui select,
+.seatmap-dialog input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #757575;
+  border-radius: 4px;
+  font: inherit;
 }
-
-.tooltip-footer {
-    background: #e67e22;
-    color: white;
-    padding: 12px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 700;
-    font-size: 16px;
+.seatmap-ui button,
+.seatmap-dialog button {
+  font: inherit;
+  color: #202124;
+  background: #f7f7f8;
+  border: 1px solid #a5a8ad;
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 40px;
+  cursor: pointer;
 }
-
-.tooltip-original-price {
-    font-size: 11px;
-    text-decoration: line-through;
-    opacity: 0.6;
-    margin-right: 8px;
-    font-weight: 400;
-    vertical-align: middle;
+.seatmap-ui button:disabled,
+.seatmap-dialog button:disabled {
+  cursor: default;
+  color: #64676c;
+  background: #eee;
 }
-
-.tooltip-promo {
-    display: none;
-    background: #dc2626;
-    color: white;
-    padding: 8px 20px;
-    text-align: center;
-    font-weight: 700;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.seatmap-ui button[aria-pressed="true"] {
+  background: #d5eddf;
+  border-color: #17613b;
+}
+.seatmap-ui :focus-visible,
+.seatmap-dialog :focus-visible {
+  outline: 3px solid #17613b;
+  outline-offset: 2px;
+}
+.seatmap-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.seatmap-results {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.seatmap-results li {
+  border-bottom: 1px solid #ddd;
+  padding: 4px 0;
+}
+.seatmap-results button {
+  width: 100%;
+  text-align: left;
+}
+.seatmap-selection button {
+  display: block;
+  margin: 4px 0;
+}
+.seatmap-dialog {
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  padding: 24px;
+  width: min(340px, calc(100% - 64px));
+}
+.seatmap-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.seatmap-dialog h2 {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+.seatmap-dialog button {
+  margin-right: 8px;
+}
+.seatmap-tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 100;
+  max-width: 260px;
+  padding: 8px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+}
+.seatmap-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .seatmap-ui *,
+  .seatmap-dialog * {
+    animation: none !important;
+    transition: none !important;
+  }
 }

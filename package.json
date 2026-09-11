@@ -12,8 +12,11 @@
     "build:renderer": "pnpm --filter @seatmap-js/renderer build",
     "build:renderer-pages": "pnpm build:renderer && node scripts/build-renderer-pages.mjs",
     "preview:renderer": "pnpm --filter @seatmap-js/renderer preview",
-    "pack:renderer": "pnpm --filter @seatmap-js/renderer publish --dry-run --no-git-checks",
-    "test": "pnpm build:editor && pnpm build:renderer && pnpm pack:renderer"
+    "pack:renderer": "node scripts/verify-renderer-package.mjs",
+    "audit:renderer-map": "node renderer/bin/audit-map.js",
+    "test": "pnpm test:unit && pnpm build:editor && pnpm build:renderer && pnpm pack:renderer",
+    "test:unit": "node --test renderer/tests/*.test.js",
+    "test:browser": "pnpm build:renderer-pages && pnpm --filter @seatmap-js/renderer test:browser"
   },
   "keywords": [
     "seatmap",
@@ -42,6 +45,13 @@
     "pixi.js": "^8.14.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.1",
+    "@playwright/test": "1.61.1",
+    "@types/react": "19.1.16",
+    "@types/react-dom": "19.1.9",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "typescript": "5.9.3",
     "vite": "^7.2.4"
   }
 }

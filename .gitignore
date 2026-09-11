@@ -51,3 +51,8 @@ Thumbs.db
 
 /assets
 /renderer/FootstepAnimation.js
+
+# Browser verification artifacts
+renderer/test-results/
+renderer/playwright-report/
+renderer/benchmark-results/

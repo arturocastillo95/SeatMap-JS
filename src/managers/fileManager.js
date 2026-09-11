@@ -375,7 +375,8 @@ export const FileManager = {
           id: seat.id,
           r: seat.rowIndex,
           c: seat.colIndex,
-          n: seat.seatLabel ? seat.seatLabel.text : (seat.children[2] instanceof PIXI.Text ? seat.children[2].text : (seat.colIndex + 1).toString()),
+          // The visible label can be an accessibility icon; persist the actual number.
+          n: String(seat.seatNumber ?? seat.colIndex + 1),
           x: seat.relativeX !== undefined ? seat.relativeX : seat.x,
           y: seat.relativeY !== undefined ? seat.relativeY : seat.y
         };

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="es-MX"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>SeatMap 2.0 — ejemplo compacto</title><link rel="stylesheet" href="../../assets/tooltip.css" />
+<style>body{margin:0;background:#f8f8f8;color:#222;font:16px system-ui,sans-serif}main{padding:24px}header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}h1{margin:0 0 4px;font-size:22px}p{margin:0}button{min-height:40px;padding:8px 12px;border:1px solid #c7c7c7;border-radius:6px;background:#fff;color:inherit;font:inherit;cursor:pointer}button:focus-visible{outline:3px solid #0f766e;outline-offset:2px}#map{width:100%;height:72vh;min-height:420px;border:1px solid #ddd;background:#0f0f13}#status{min-height:24px;margin-top:12px}@media(max-width:640px){main{padding:12px}header{align-items:flex-start;flex-direction:column}#map{height:70vh;min-height:360px}}</style></head>
+<body><main><header><div><h1>Selección de asientos</h1><p>Ejemplo compacto de integración.</p></div><button id="reload" type="button">Recargar inventario</button></header><div id="map"></div><p id="status" role="status">Cargando recinto…</p></main>
+<script type="module">
+import { SeatMapRenderer } from "../../SeatMapRenderer.js";
+import { inventory } from "../fixtures.js";
+const host=document.querySelector("#map"),status=document.querySelector("#status"),reload=document.querySelector("#reload");
+const renderer=await SeatMapRenderer.create(host,{preventOrphanSeats:true});
+const response=await fetch("../../demo-venue.json"); if(!response.ok)throw new Error(`No se pudo cargar el recinto: ${response.status}`); const map=await response.json();
+host.addEventListener("cartChange",event=>{status.textContent=`Seleccionados: ${event.detail.totalCount}. Total: ${renderer.formatPrice(event.detail.grandTotal)}`});
+reload.addEventListener("click",()=>{renderer.loadInventory(inventory(map));status.textContent="Inventario actualizado."});
+await renderer.loadData(map);renderer.loadInventory(inventory(map));status.textContent="Recinto listo.";window.addEventListener("pagehide",()=>renderer.destroy(),{once:true});
+</script></body></html>
