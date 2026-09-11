@@ -3,515 +3,455 @@
  */
 
 export class SelectionManager {
-    /**
-     * @param {Object} options - Configuration options
-     * @param {number} options.maxSelectedSeats - Maximum seats allowed
-     * @param {boolean} options.preventOrphanSeats - Enable orphan prevention
-     * @param {HTMLElement} options.container - DOM container for events
-     * @param {Function} options.getGASelectionCount - Function to get current GA selection count
-     * @param {boolean} options.orphanHighlightEnabled - Enable orphan seat highlight animation
-     * @param {number} options.orphanHighlightColor - Color for orphan highlight (hex)
-     * @param {number} options.orphanHighlightDuration - Duration of highlight animation (ms)
-     * @param {number} options.orphanHighlightPulseScale - Scale factor for pulse animation
-     */
-    constructor(options = {}) {
-        this.options = {
-            maxSelectedSeats: 10,
-            preventOrphanSeats: true,
-            orphanHighlightEnabled: true,
-            orphanHighlightColor: 0xff6b6b,
-            orphanHighlightDuration: 1500,
-            orphanHighlightPulseScale: 1.3,
-            ...options
-        };
-        
-        this.selectedSeats = new Set();
-        this.seatsByRow = {}; // seatsByRow[sectionId][rowIndex] = [sorted seats]
-        this.container = options.container;
-        this.getGASelectionCount = options.getGASelectionCount || (() => 0);
+  /**
+   * @param {Object} options - Configuration options
+   * @param {number} options.maxSelectedSeats - Maximum seats allowed
+   * @param {boolean} options.preventOrphanSeats - Enable orphan prevention
+   * @param {HTMLElement} options.container - DOM container for events
+   * @param {Function} options.getGASelectionCount - Function to get current GA selection count
+   * @param {boolean} options.orphanHighlightEnabled - Enable orphan seat highlight animation
+   * @param {number} options.orphanHighlightColor - Color for orphan highlight (hex)
+   * @param {number} options.orphanHighlightDuration - Duration of highlight animation (ms)
+   * @param {number} options.orphanHighlightPulseScale - Scale factor for pulse animation
+   */
+  constructor(options = {}) {
+    this.options = {
+      maxSelectedSeats: 10,
+      preventOrphanSeats: true,
+      orphanHighlightEnabled: true,
+      orphanHighlightColor: 0xff6b6b,
+      orphanHighlightDuration: 1500,
+      orphanHighlightPulseScale: 1.3,
+      ...options,
+    };
+
+    this.selectedSeats = new Set();
+    this.seatsByRow = Object.create(null); // seatsByRow[sectionId][rowIndex] = [sorted seats]
+    this.container = options.container;
+    this.getGASelectionCount = options.getGASelectionCount || (() => 0);
+  }
+
+  /**
+   * Register a seat in the row-indexed lookup
+   * @param {Object} seatContainer - The seat container
+   * @param {string} sectionId - Section identifier
+   * @param {number} rowIndex - Row index
+   */
+  registerSeat(seatContainer, sectionId, rowIndex) {
+    if (!this.seatsByRow[sectionId]) {
+      this.seatsByRow[sectionId] = Object.create(null);
+    }
+    if (!this.seatsByRow[sectionId][rowIndex]) {
+      this.seatsByRow[sectionId][rowIndex] = [];
+    }
+    this.seatsByRow[sectionId][rowIndex].push(seatContainer);
+  }
+
+  /**
+   * Sort all registered rows by x-position for adjacency detection
+   */
+  sortAllRows() {
+    for (const sectionId in this.seatsByRow) {
+      for (const rowIndex in this.seatsByRow[sectionId]) {
+        this.seatsByRow[sectionId][rowIndex].sort((a, b) => a.x - b.x);
+      }
+    }
+  }
+
+  /**
+   * Clear all seat registrations
+   */
+  clearRegistrations() {
+    this.seatsByRow = Object.create(null);
+  }
+
+  /**
+   * Check if selection limit is reached (includes GA selections)
+   * @returns {boolean}
+   */
+  isLimitReached() {
+    const totalSelected = this.selectedSeats.size + this.getGASelectionCount();
+    return totalSelected >= this.options.maxSelectedSeats;
+  }
+
+  /**
+   * Get remaining available slots
+   * @returns {number}
+   */
+  getRemainingSlots() {
+    const totalSelected = this.selectedSeats.size + this.getGASelectionCount();
+    return Math.max(0, this.options.maxSelectedSeats - totalSelected);
+  }
+
+  /**
+   * Set the GA selection count getter function
+   * @param {Function} fn
+   */
+  setGASelectionCountGetter(fn) {
+    this.getGASelectionCount = fn || (() => 0);
+  }
+
+  /**
+   * Get current selection count
+   * @returns {number}
+   */
+  getSelectionCount() {
+    return this.selectedSeats.size;
+  }
+
+  /**
+   * Get all selected seats
+   * @returns {Set<Object>}
+   */
+  getSelectedSeats() {
+    return this.selectedSeats;
+  }
+
+  /**
+   * Select a seat
+   * @param {Object} seatContainer
+   * @returns {boolean} Success
+   */
+  select(seatContainer) {
+    if (this.isLimitReached()) {
+      return false;
+    }
+    this.selectedSeats.add(seatContainer);
+    seatContainer.selected = true;
+    return true;
+  }
+
+  /**
+   * Deselect a seat
+   * @param {Object} seatContainer
+   */
+  deselect(seatContainer) {
+    this.selectedSeats.delete(seatContainer);
+    seatContainer.selected = false;
+  }
+
+  /**
+   * Deselect a specific seat (alias for deselect)
+   * @param {Object} seatContainer
+   */
+  deselectSeat(seatContainer) {
+    this.deselect(seatContainer);
+  }
+
+  /**
+   * Clear all selections
+   */
+  clearSelection() {
+    for (const seat of this.selectedSeats) {
+      seat.selected = false;
+    }
+    this.selectedSeats.clear();
+  }
+
+  /**
+   * Check if a seat is available (not booked/reserved)
+   * @param {Object} seatContainer
+   * @returns {boolean}
+   */
+  isSeatAvailable(seatContainer) {
+    const status = seatContainer.seatData.status || "unknown";
+    return status === "available";
+  }
+
+  /**
+   * Get adjacent seats (left and right neighbors)
+   * @param {Object} seatContainer
+   * @returns {{ left: Object|null, right: Object|null }}
+   */
+  getAdjacentSeats(seatContainer) {
+    const sectionId = seatContainer.sectionId;
+    const rowIndex =
+      seatContainer.seatData.r ?? seatContainer.seatData.rowIndex;
+
+    if (!this.seatsByRow[sectionId] || !this.seatsByRow[sectionId][rowIndex]) {
+      return { left: null, right: null };
     }
 
-    /**
-     * Register a seat in the row-indexed lookup
-     * @param {PIXI.Container} seatContainer - The seat container
-     * @param {string} sectionId - Section identifier
-     * @param {number} rowIndex - Row index
-     */
-    registerSeat(seatContainer, sectionId, rowIndex) {
-        if (!this.seatsByRow[sectionId]) {
-            this.seatsByRow[sectionId] = {};
-        }
-        if (!this.seatsByRow[sectionId][rowIndex]) {
-            this.seatsByRow[sectionId][rowIndex] = [];
-        }
-        this.seatsByRow[sectionId][rowIndex].push(seatContainer);
+    const rowSeats = this.seatsByRow[sectionId][rowIndex];
+    const index = rowSeats.indexOf(seatContainer);
+
+    if (index === -1) {
+      return { left: null, right: null };
     }
 
-    /**
-     * Sort all registered rows by x-position for adjacency detection
-     */
-    sortAllRows() {
-        for (const sectionId in this.seatsByRow) {
-            for (const rowIndex in this.seatsByRow[sectionId]) {
-                this.seatsByRow[sectionId][rowIndex].sort((a, b) => a.x - b.x);
-            }
-        }
+    return {
+      left: index > 0 ? rowSeats[index - 1] : null,
+      right: index < rowSeats.length - 1 ? rowSeats[index + 1] : null,
+    };
+  }
+
+  /**
+   * Check if a seat is a special needs (SN) seat
+   * @param {Object} seatContainer
+   * @returns {boolean}
+   */
+  isSpecialNeedsSeat(seatContainer) {
+    return (
+      seatContainer.seatData?.sn === true ||
+      seatContainer.seatData?.specialNeeds === true
+    );
+  }
+
+  /**
+   * Check if selecting/deselecting a seat would create an orphan
+   * Special needs (SN) seats are exempt from orphan rules
+   * @param {Object} seatContainer - The seat being clicked
+   * @param {string} action - 'select' or 'deselect'
+   * @returns {{ wouldCreateOrphan: boolean, orphanSeats: Object[] }}
+   */
+  wouldCreateOrphan(seatContainer, action) {
+    // Special needs seats are exempt from orphan rules
+    if (this.isSpecialNeedsSeat(seatContainer)) {
+      return { wouldCreateOrphan: false, orphanSeats: [] };
     }
 
-    /**
-     * Clear all seat registrations
-     */
-    clearRegistrations() {
-        this.seatsByRow = {};
+    const sectionId = seatContainer.sectionId;
+    const rowIndex =
+      seatContainer.seatData.r ?? seatContainer.seatData.rowIndex;
+
+    if (!this.seatsByRow[sectionId] || !this.seatsByRow[sectionId][rowIndex]) {
+      return { wouldCreateOrphan: false, orphanSeats: [] };
     }
 
-    /**
-     * Check if selection limit is reached (includes GA selections)
-     * @returns {boolean}
-     */
-    isLimitReached() {
-        const totalSelected = this.selectedSeats.size + this.getGASelectionCount();
-        return totalSelected >= this.options.maxSelectedSeats;
+    const rowSeats = this.seatsByRow[sectionId][rowIndex];
+    const seatIndex = rowSeats.indexOf(seatContainer);
+
+    if (seatIndex === -1) {
+      return { wouldCreateOrphan: false, orphanSeats: [] };
     }
 
-    /**
-     * Get remaining available slots
-     * @returns {number}
-     */
-    getRemainingSlots() {
-        const totalSelected = this.selectedSeats.size + this.getGASelectionCount();
-        return Math.max(0, this.options.maxSelectedSeats - totalSelected);
+    // Simulate the state after the action
+    // Special needs seats are treated as "boundaries" (like unavailable seats)
+    const simulatedSelection = rowSeats.map((seat, idx) => {
+      if (!this.isSeatAvailable(seat)) return false;
+      if (this.isSpecialNeedsSeat(seat)) return false; // SN seats don't count for orphan detection
+      if (idx === seatIndex) return action === "select";
+      return seat.selected;
+    });
+
+    const totalSelected = simulatedSelection.filter((s) => s).length;
+
+    if (totalSelected <= 1) {
+      return { wouldCreateOrphan: false, orphanSeats: [] };
     }
 
-    /**
-     * Set the GA selection count getter function
-     * @param {Function} fn
-     */
-    setGASelectionCountGetter(fn) {
-        this.getGASelectionCount = fn || (() => 0);
-    }
+    const orphanSeats = [];
 
-    /**
-     * Get current selection count
-     * @returns {number}
-     */
-    getSelectionCount() {
-        return this.selectedSeats.size;
-    }
+    if (action === "select") {
+      // Check for single-seat gaps
+      for (let i = 0; i < simulatedSelection.length; i++) {
+        if (simulatedSelection[i]) continue;
+        if (!this.isSeatAvailable(rowSeats[i])) continue;
+        if (this.isSpecialNeedsSeat(rowSeats[i])) continue; // Skip SN seats
 
-    /**
-     * Get all selected seats
-     * @returns {Set<PIXI.Container>}
-     */
-    getSelectedSeats() {
-        return this.selectedSeats;
-    }
+        let leftBoundary = false;
+        let leftSelected = false;
 
-    /**
-     * Select a seat
-     * @param {PIXI.Container} seatContainer
-     * @returns {boolean} Success
-     */
-    select(seatContainer) {
-        if (this.isLimitReached()) {
-            return false;
-        }
-        this.selectedSeats.add(seatContainer);
-        seatContainer.selected = true;
-        return true;
-    }
-
-    /**
-     * Deselect a seat
-     * @param {PIXI.Container} seatContainer
-     */
-    deselect(seatContainer) {
-        this.selectedSeats.delete(seatContainer);
-        seatContainer.selected = false;
-    }
-
-    /**
-     * Deselect a specific seat (alias for deselect)
-     * @param {PIXI.Container} seatContainer
-     */
-    deselectSeat(seatContainer) {
-        this.deselect(seatContainer);
-    }
-
-    /**
-     * Clear all selections
-     */
-    clearSelection() {
-        for (const seat of this.selectedSeats) {
-            seat.selected = false;
-        }
-        this.selectedSeats.clear();
-    }
-
-    /**
-     * Check if a seat is available (not booked/reserved)
-     * @param {PIXI.Container} seatContainer 
-     * @returns {boolean}
-     */
-    isSeatAvailable(seatContainer) {
-        const status = seatContainer.seatData.status || 'available';
-        return status === 'available';
-    }
-
-    /**
-     * Get adjacent seats (left and right neighbors)
-     * @param {PIXI.Container} seatContainer 
-     * @returns {{ left: PIXI.Container|null, right: PIXI.Container|null }}
-     */
-    getAdjacentSeats(seatContainer) {
-        const sectionId = seatContainer.sectionId;
-        const rowIndex = seatContainer.seatData.r ?? seatContainer.seatData.rowIndex;
-        
-        if (!this.seatsByRow[sectionId] || !this.seatsByRow[sectionId][rowIndex]) {
-            return { left: null, right: null };
-        }
-        
-        const rowSeats = this.seatsByRow[sectionId][rowIndex];
-        const index = rowSeats.indexOf(seatContainer);
-        
-        if (index === -1) {
-            return { left: null, right: null };
-        }
-        
-        return {
-            left: index > 0 ? rowSeats[index - 1] : null,
-            right: index < rowSeats.length - 1 ? rowSeats[index + 1] : null
-        };
-    }
-
-    /**
-     * Check if a seat is a special needs (SN) seat
-     * @param {PIXI.Container} seatContainer
-     * @returns {boolean}
-     */
-    isSpecialNeedsSeat(seatContainer) {
-        return seatContainer.seatData?.sn === true || seatContainer.seatData?.specialNeeds === true;
-    }
-
-    /**
-     * Check if selecting/deselecting a seat would create an orphan
-     * Special needs (SN) seats are exempt from orphan rules
-     * @param {PIXI.Container} seatContainer - The seat being clicked
-     * @param {string} action - 'select' or 'deselect'
-     * @returns {{ wouldCreateOrphan: boolean, orphanSeats: PIXI.Container[] }}
-     */
-    wouldCreateOrphan(seatContainer, action) {
-        // Special needs seats are exempt from orphan rules
-        if (this.isSpecialNeedsSeat(seatContainer)) {
-            return { wouldCreateOrphan: false, orphanSeats: [] };
-        }
-
-        const sectionId = seatContainer.sectionId;
-        const rowIndex = seatContainer.seatData.r ?? seatContainer.seatData.rowIndex;
-        
-        if (!this.seatsByRow[sectionId] || !this.seatsByRow[sectionId][rowIndex]) {
-            return { wouldCreateOrphan: false, orphanSeats: [] };
-        }
-        
-        const rowSeats = this.seatsByRow[sectionId][rowIndex];
-        const seatIndex = rowSeats.indexOf(seatContainer);
-        
-        if (seatIndex === -1) {
-            return { wouldCreateOrphan: false, orphanSeats: [] };
-        }
-        
-        // Simulate the state after the action
-        // Special needs seats are treated as "boundaries" (like unavailable seats)
-        const simulatedSelection = rowSeats.map((seat, idx) => {
-            if (!this.isSeatAvailable(seat)) return false;
-            if (this.isSpecialNeedsSeat(seat)) return false; // SN seats don't count for orphan detection
-            if (idx === seatIndex) return action === 'select';
-            return seat.selected;
-        });
-        
-        const totalSelected = simulatedSelection.filter(s => s).length;
-        
-        if (totalSelected <= 1) {
-            return { wouldCreateOrphan: false, orphanSeats: [] };
-        }
-        
-        const orphanSeats = [];
-        
-        if (action === 'select') {
-            // Check for single-seat gaps
-            for (let i = 0; i < simulatedSelection.length; i++) {
-                if (simulatedSelection[i]) continue;
-                if (!this.isSeatAvailable(rowSeats[i])) continue;
-                if (this.isSpecialNeedsSeat(rowSeats[i])) continue; // Skip SN seats
-                
-                let leftBoundary = false;
-                let leftSelected = false;
-                
-                if (i === 0) {
-                    leftBoundary = true;
-                } else {
-                    for (let j = i - 1; j >= 0; j--) {
-                        if (!this.isSeatAvailable(rowSeats[j]) || this.isSpecialNeedsSeat(rowSeats[j])) {
-                            leftBoundary = true; // SN seats act as boundaries
-                            break;
-                        }
-                        if (simulatedSelection[j]) {
-                            leftSelected = true;
-                            break;
-                        }
-                        break;
-                    }
-                }
-                
-                let rightBoundary = false;
-                let rightSelected = false;
-                
-                if (i === simulatedSelection.length - 1) {
-                    rightBoundary = true;
-                } else {
-                    for (let j = i + 1; j < simulatedSelection.length; j++) {
-                        if (!this.isSeatAvailable(rowSeats[j]) || this.isSpecialNeedsSeat(rowSeats[j])) {
-                            rightBoundary = true; // SN seats act as boundaries
-                            break;
-                        }
-                        if (simulatedSelection[j]) {
-                            rightSelected = true;
-                            break;
-                        }
-                        break;
-                    }
-                }
-                
-                const isMiddleGap = leftSelected && rightSelected;
-                const isLeftEdgeGap = leftBoundary && rightSelected;
-                const isRightEdgeGap = leftSelected && rightBoundary;
-                const isAdjacentToClicked = (i === seatIndex - 1) || (i === seatIndex + 1);
-                
-                if (isMiddleGap) {
-                    orphanSeats.push(rowSeats[i]);
-                } else if ((isLeftEdgeGap || isRightEdgeGap) && !isAdjacentToClicked) {
-                    orphanSeats.push(rowSeats[i]);
-                }
-            }
+        if (i === 0) {
+          leftBoundary = true;
         } else {
-            // For deselecting: check for isolated seats
-            for (let i = 0; i < simulatedSelection.length; i++) {
-                if (!simulatedSelection[i]) continue;
-                if (!this.isSeatAvailable(rowSeats[i])) continue;
-                if (this.isSpecialNeedsSeat(rowSeats[i])) continue; // SN seats can be isolated
-                
-                let hasSelectedNeighbor = false;
-                
-                if (i > 0 && this.isSeatAvailable(rowSeats[i - 1]) && simulatedSelection[i - 1]) {
-                    hasSelectedNeighbor = true;
-                }
-                
-                if (i < simulatedSelection.length - 1 && this.isSeatAvailable(rowSeats[i + 1]) && simulatedSelection[i + 1]) {
-                    hasSelectedNeighbor = true;
-                }
-                
-                if (!hasSelectedNeighbor) {
-                    orphanSeats.push(rowSeats[i]);
-                }
+          for (let j = i - 1; j >= 0; j--) {
+            if (
+              !this.isSeatAvailable(rowSeats[j]) ||
+              this.isSpecialNeedsSeat(rowSeats[j])
+            ) {
+              leftBoundary = true; // SN seats act as boundaries
+              break;
             }
-        }
-        
-        return {
-            wouldCreateOrphan: orphanSeats.length > 0,
-            orphanSeats: orphanSeats
-        };
-    }
-
-    /**
-     * Validate and attempt a selection/deselection action
-     * @param {PIXI.Container} seatContainer - The seat being clicked
-     * @returns {{ success: boolean, reason?: string, orphanSeats?: Array }}
-     */
-    validateAction(seatContainer) {
-        const status = seatContainer.seatData.status || 'available';
-        
-        // Check if seat is available
-        if (status !== 'available') {
-            return { success: false, reason: 'unavailable', status };
-        }
-        
-        const action = seatContainer.selected ? 'deselect' : 'select';
-        
-        // Check selection limit
-        if (action === 'select' && this.isLimitReached()) {
-            this.dispatchEvent('selection-limit-reached', { limit: this.options.maxSelectedSeats });
-            return { success: false, reason: 'limit-reached', limit: this.options.maxSelectedSeats };
-        }
-        
-        // Check orphan prevention
-        if (this.options.preventOrphanSeats) {
-            const orphanCheck = this.wouldCreateOrphan(seatContainer, action);
-            
-            if (orphanCheck.wouldCreateOrphan) {
-                const orphanSeatLabels = orphanCheck.orphanSeats.map(s => {
-                    const row = s.seatData.rl || s.seatData.rowLabel || s.seatData.r;
-                    const seat = s.seatData.n || s.seatData.sl || s.seatData.seatLabel || s.seatData.s;
-                    return `Row ${row}, Seat ${seat}`;
-                }).join('; ');
-                
-                const message = action === 'deselect'
-                    ? `Cannot deselect this seat: it would leave ${orphanCheck.orphanSeats.length === 1 ? 'a single seat' : 'single seats'} isolated (${orphanSeatLabels})`
-                    : `Cannot select this seat: it would leave ${orphanCheck.orphanSeats.length === 1 ? 'a single seat' : 'single seats'} isolated (${orphanSeatLabels})`;
-                
-                this.dispatchEvent('orphan-seat-blocked', {
-                    action,
-                    seat: seatContainer.seatData,
-                    sectionId: seatContainer.sectionId,
-                    orphanSeats: orphanCheck.orphanSeats.map(s => s.seatData),
-                    orphanSeatContainers: orphanCheck.orphanSeats,
-                    message,
-                    orphanCount: orphanCheck.orphanSeats.length
-                });
-                
-                // Visual feedback - highlight the orphan seats
-                this.highlightOrphanSeats(orphanCheck.orphanSeats);
-                
-                return { 
-                    success: false, 
-                    reason: 'orphan-prevention', 
-                    message,
-                    orphanSeats: orphanCheck.orphanSeats 
-                };
+            if (simulatedSelection[j]) {
+              leftSelected = true;
+              break;
             }
+            break;
+          }
         }
-        
-        return { success: true, action };
-    }
 
-    /**
-     * Toggle seat selection with validation
-     * @param {PIXI.Container} seatContainer
-     * @returns {{ success: boolean, selected?: boolean, reason?: string }}
-     */
-    toggleSelection(seatContainer) {
-        const validation = this.validateAction(seatContainer);
-        
-        if (!validation.success) {
-            return validation;
-        }
-        
-        if (seatContainer.selected) {
-            this.deselect(seatContainer);
-            return { success: true, selected: false };
+        let rightBoundary = false;
+        let rightSelected = false;
+
+        if (i === simulatedSelection.length - 1) {
+          rightBoundary = true;
         } else {
-            this.select(seatContainer);
-            return { success: true, selected: true };
+          for (let j = i + 1; j < simulatedSelection.length; j++) {
+            if (
+              !this.isSeatAvailable(rowSeats[j]) ||
+              this.isSpecialNeedsSeat(rowSeats[j])
+            ) {
+              rightBoundary = true; // SN seats act as boundaries
+              break;
+            }
+            if (simulatedSelection[j]) {
+              rightSelected = true;
+              break;
+            }
+            break;
+          }
         }
+
+        const isMiddleGap = leftSelected && rightSelected;
+        const isLeftEdgeGap = leftBoundary && rightSelected;
+        const isRightEdgeGap = leftSelected && rightBoundary;
+        const isAdjacentToClicked = i === seatIndex - 1 || i === seatIndex + 1;
+
+        if (isMiddleGap) {
+          orphanSeats.push(rowSeats[i]);
+        } else if ((isLeftEdgeGap || isRightEdgeGap) && !isAdjacentToClicked) {
+          orphanSeats.push(rowSeats[i]);
+        }
+      }
+    } else {
+      // For deselecting: check for isolated seats
+      for (let i = 0; i < simulatedSelection.length; i++) {
+        if (!simulatedSelection[i]) continue;
+        if (!this.isSeatAvailable(rowSeats[i])) continue;
+        if (this.isSpecialNeedsSeat(rowSeats[i])) continue; // SN seats can be isolated
+
+        let hasSelectedNeighbor = false;
+
+        if (
+          i > 0 &&
+          this.isSeatAvailable(rowSeats[i - 1]) &&
+          simulatedSelection[i - 1]
+        ) {
+          hasSelectedNeighbor = true;
+        }
+
+        if (
+          i < simulatedSelection.length - 1 &&
+          this.isSeatAvailable(rowSeats[i + 1]) &&
+          simulatedSelection[i + 1]
+        ) {
+          hasSelectedNeighbor = true;
+        }
+
+        if (!hasSelectedNeighbor) {
+          orphanSeats.push(rowSeats[i]);
+        }
+      }
     }
 
-    /**
-     * Dispatch a custom event on the container
-     * @param {string} eventName
-     * @param {Object} detail
-     */
-    dispatchEvent(eventName, detail) {
-        if (this.container) {
-            const event = new CustomEvent(eventName, { detail });
-            this.container.dispatchEvent(event);
-        }
+    return {
+      wouldCreateOrphan: orphanSeats.length > 0,
+      orphanSeats: orphanSeats,
+    };
+  }
+
+  /**
+   * Validate and attempt a selection/deselection action
+   * @param {Object} seatContainer - The seat being clicked
+   * @returns {{ success: boolean, reason?: string, orphanSeats?: Array }}
+   */
+  validateAction(seatContainer) {
+    const status = seatContainer.seatData.status || "unknown";
+
+    // Check if seat is available
+    if (status !== "available") {
+      return { success: false, reason: "unavailable", status };
     }
 
-    /**
-     * Highlight orphan seats with a warning color and pulse animation
-     * @param {PIXI.Container[]} seatContainers - Array of seat containers to highlight
-     */
-    highlightOrphanSeats(seatContainers) {
-        if (!this.options.orphanHighlightEnabled) return;
-        if (!seatContainers || seatContainers.length === 0) return;
-        
-        const WARNING_COLOR = this.options.orphanHighlightColor;
-        const ANIMATION_DURATION = this.options.orphanHighlightDuration;
-        const PULSE_SCALE = this.options.orphanHighlightPulseScale;
-        
-        seatContainers.forEach(container => {
-            if (!container || !container.children) return;
-            
-            // Find the seat graphic (usually the first child with a tint property)
-            const seatGraphic = container.children.find(child => 
-                child.tint !== undefined
-            ) || container.children[0];
-            
-            if (!seatGraphic) return;
-            
-            // Store original values
-            const originalTint = seatGraphic.tint ?? 0xffffff;
-            const originalScaleX = container.scale.x;
-            const originalScaleY = container.scale.y;
-            
-            // Apply warning color
-            seatGraphic.tint = WARNING_COLOR;
-            
-            // Pulse animation using requestAnimationFrame
-            const startTime = performance.now();
-            
-            const animate = (currentTime) => {
-                const elapsed = currentTime - startTime;
-                const progress = elapsed / ANIMATION_DURATION;
-                
-                if (progress >= 1) {
-                    // Animation complete - restore original values
-                    seatGraphic.tint = originalTint;
-                    container.scale.set(originalScaleX, originalScaleY);
-                    return;
-                }
-                
-                // Pulse effect: scale up then down
-                // Use sine wave for smooth in-out pulse (2 pulses)
-                const pulseProgress = Math.sin(progress * Math.PI * 4) * 0.5 + 0.5;
-                const scaleMultiplier = 1 + (PULSE_SCALE - 1) * pulseProgress * (1 - progress);
-                
-                container.scale.set(
-                    originalScaleX * scaleMultiplier,
-                    originalScaleY * scaleMultiplier
-                );
-                
-                // Fade tint back to original over time
-                if (progress > 0.7) {
-                    const fadeProgress = (progress - 0.7) / 0.3;
-                    seatGraphic.tint = this.lerpColor(WARNING_COLOR, originalTint, fadeProgress);
-                }
-                
-                requestAnimationFrame(animate);
-            };
-            
-            requestAnimationFrame(animate);
+    const action = seatContainer.selected ? "deselect" : "select";
+
+    // Check selection limit
+    if (action === "select" && this.isLimitReached()) {
+      this.dispatchEvent("selection-limit-reached", {
+        limit: this.options.maxSelectedSeats,
+      });
+      return {
+        success: false,
+        reason: "limit-reached",
+        limit: this.options.maxSelectedSeats,
+      };
+    }
+
+    // Check orphan prevention
+    if (this.options.preventOrphanSeats) {
+      const orphanCheck = this.wouldCreateOrphan(seatContainer, action);
+
+      if (orphanCheck.wouldCreateOrphan) {
+        const orphanSeatLabels = orphanCheck.orphanSeats
+          .map((s) => {
+            const row = s.seatData.rl || s.seatData.rowLabel || s.seatData.r;
+            const seat =
+              s.seatData.n ||
+              s.seatData.sl ||
+              s.seatData.seatLabel ||
+              s.seatData.s;
+            return `Row ${row}, Seat ${seat}`;
+          })
+          .join("; ");
+
+        const message =
+          action === "deselect"
+            ? `Cannot deselect this seat: it would leave ${orphanCheck.orphanSeats.length === 1 ? "a single seat" : "single seats"} isolated (${orphanSeatLabels})`
+            : `Cannot select this seat: it would leave ${orphanCheck.orphanSeats.length === 1 ? "a single seat" : "single seats"} isolated (${orphanSeatLabels})`;
+
+        this.dispatchEvent("orphan-seat-blocked", {
+          action,
+          seat: seatContainer.seatData,
+          sectionId: seatContainer.sectionId,
+          orphanSeats: orphanCheck.orphanSeats.map((s) => s.seatData),
+          message,
+          orphanCount: orphanCheck.orphanSeats.length,
         });
+
+        // Visual feedback - highlight the orphan seats
+
+        return {
+          success: false,
+          reason: "orphan-prevention",
+          message,
+          orphanSeats: orphanCheck.orphanSeats,
+        };
+      }
     }
 
-    /**
-     * Interpolate between two colors
-     * @param {number} color1 - Start color (hex)
-     * @param {number} color2 - End color (hex)
-     * @param {number} t - Interpolation factor (0-1)
-     * @returns {number} Interpolated color
-     */
-    lerpColor(color1, color2, t) {
-        const r1 = (color1 >> 16) & 0xff;
-        const g1 = (color1 >> 8) & 0xff;
-        const b1 = color1 & 0xff;
-        
-        const r2 = (color2 >> 16) & 0xff;
-        const g2 = (color2 >> 8) & 0xff;
-        const b2 = color2 & 0xff;
-        
-        const r = Math.round(r1 + (r2 - r1) * t);
-        const g = Math.round(g1 + (g2 - g1) * t);
-        const b = Math.round(b1 + (b2 - b1) * t);
-        
-        return (r << 16) | (g << 8) | b;
+    return { success: true, action };
+  }
+
+  /**
+   * Toggle seat selection with validation
+   * @param {Object} seatContainer
+   * @returns {{ success: boolean, selected?: boolean, reason?: string }}
+   */
+  toggleSelection(seatContainer) {
+    const validation = this.validateAction(seatContainer);
+
+    if (!validation.success) {
+      return validation;
     }
 
-    /**
-     * Cleanup
-     */
-    destroy() {
-        this.selectedSeats.clear();
-        this.seatsByRow = {};
-        this.container = null;
+    if (seatContainer.selected) {
+      this.deselect(seatContainer);
+      return { success: true, selected: false };
+    } else {
+      this.select(seatContainer);
+      return { success: true, selected: true };
     }
+  }
+
+  /**
+   * Dispatch a custom event on the container
+   * @param {string} eventName
+   * @param {Object} detail
+   */
+  dispatchEvent(eventName, detail) {
+    if (this.container) {
+      const event = new CustomEvent(eventName, { detail });
+      this.container.dispatchEvent(event);
+    }
+  }
+
+  /**
+   * Cleanup
+   */
+  destroy() {
+    this.selectedSeats.clear();
+    this.seatsByRow = Object.create(null);
+    this.container = null;
+  }
 }

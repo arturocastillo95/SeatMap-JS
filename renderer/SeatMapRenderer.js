@@ -1,1859 +1,866 @@
-/**
- * SeatMap Renderer
- * A lightweight, modular renderer for SeatMap JS files (SMF format).
- */
-
-import * as PIXI from 'pixi.js';
-import { TooltipManager } from './TooltipManager.js';
-import { TextureCache } from './core/TextureCache.js';
-import { ViewportManager } from './core/ViewportManager.js';
-import { InputHandler } from './interaction/InputHandler.js';
-import { SelectionManager } from './interaction/SelectionManager.js';
-import { CartManager } from './interaction/CartManager.js';
-import { GASelectionManager } from './interaction/GASelectionManager.js';
-import { UIManager } from './ui/UIManager.js';
-import { InventoryManager } from './inventory/InventoryManager.js';
-import { renderUnderlay } from './rendering/UnderlayRenderer.js';
-import { createSectionContainer, createSectionBackground, renderGAContent, renderZoneContent } from './rendering/SectionRenderer.js';
-import { renderRowLabels, buildRowLabelMap, getRowLabelText } from './rendering/RowLabelRenderer.js';
-import { createDebugLogger } from './core/logger.js';
+import * as PIXI from "pixi.js";
+import {
+  BookingStore,
+  normalizeMap,
+  RendererError,
+  copy,
+  currencyDigits,
+} from "./booking/BookingStore.js";
+import { TextureCache } from "./core/TextureCache.js";
+import { ViewportManager } from "./core/ViewportManager.js";
+import { InputHandler } from "./interaction/InputHandler.js";
+import {
+  renderUnderlay,
+  sharedImageCount,
+} from "./rendering/UnderlayRenderer.js";
+import {
+  createSectionContainer,
+  createSectionBackground,
+  renderGAContent,
+  renderZoneContent,
+} from "./rendering/SectionRenderer.js";
+import { renderRowLabels } from "./rendering/RowLabelRenderer.js";
+import {
+  abortable,
+  checkSignal,
+  abortError,
+  nextFrame,
+} from "./core/Lifecycle.js";
+import { createAccessibleIcon } from "./assets/accessibleIcon.js";
+import { MapUI, spanishStrings } from "./ui/MapUI.js";
 
 export class SeatMapRenderer {
-    static CONFIG = {
-        PADDING: 0,
-        MIN_ZOOM: 0.1,
-        MAX_ZOOM: 2.5,
-        ZOOM_SPEED: 1.1,
-        BACKGROUND_COLOR: 0x0f0f13,
-        SECTION_ZOOM_PADDING: 50,
-        ANIMATION_DURATION: 250,
-        SEAT_RADIUS: 6,
-        SEAT_RADIUS_HOVER: 12,
-        SEAT_HOVER_SPEED: 0.35,
-        SEAT_LABEL_SIZE: 7,
-        TOOLTIP_SPEED: 0.15,
-        UI_PADDING: 40,
-        ZONE_FADE_RATIO: 5,
-        ANIMATION_THRESHOLD: 0.01,
-        SEAT_TEXTURE_RESOLUTION: 4,
-        BOOKED_COLOR: 0x8B8B8B,
-        RESERVED_COLOR: 0xff6666,
-        SPECIAL_SEAT_SCALE: 1.5,
-        MAX_SELECTED_SEATS: 10,
-        PREVENT_ORPHAN_SEATS: true,
-        // Tap zoom behavior
-        TAP_ZOOM_BOOST: 1,
-        DOUBLE_TAP_ZOOM_BOOST: 1.5,
-        DOUBLE_TAP_MAX_DELAY: 300,
-        DOUBLE_TAP_MAX_DISTANCE: 50,
-        TAP_MAX_DURATION: 300,
-        TAP_MAX_MOVEMENT: 10,
-        GESTURE_COOLDOWN_MS: 200,
-        // Mobile selection behavior
-        MOBILE_REQUIRE_ZOOM_FOR_SELECTION: true,
-        MOBILE_MIN_ZOOM_FOR_SELECTION: 2.0,
-        MOBILE_SEAT_HITAREA_SCALE: 1.8,
-        // Progressive loading
-        SEAT_CHUNK_SIZE: 200,
-        DEFER_SEAT_LABELS: true,
-        // Grid background
-        SHOW_GRID: true,
-        GRID_COLOR: 0x1a1a22,
-        GRID_SIZE: 30,
-        GRID_LINE_WIDTH: 1,
-        // Orphan seat highlight animation
-        ORPHAN_HIGHLIGHT_ENABLED: true,
-        ORPHAN_HIGHLIGHT_COLOR: 0xff6b6b,
-        ORPHAN_HIGHLIGHT_DURATION: 1500,
-        ORPHAN_HIGHLIGHT_PULSE_SCALE: 1.3
+  static async create(container, options = {}) {
+    checkSignal(options.signal);
+    const instance = new SeatMapRenderer(container, options);
+    const initialization = instance.init();
+    try {
+      await abortable(initialization, options.signal);
+      checkSignal(options.signal);
+      return instance;
+    } catch (error) {
+      instance.destroy();
+      initialization.then(
+        () => instance.destroy(),
+        () => {},
+      );
+      throw error;
+    }
+  }
+  constructor(container, options = {}) {
+    this.container = container;
+    this.options = {
+      mode: "booking",
+      locale: "es-MX",
+      currency: "MXN",
+      maxSelectedSeats: 10,
+      preventOrphanSeats: true,
+      seatRadius: 6,
+      seatChunkSize: 200,
+      seatTextureResolution: 4,
+      seatLabelSize: 8,
+      bookedColor: 0x8b8b8b,
+      reservedColor: 0xff6666,
+      backgroundColor: 0x0f0f13,
+      padding: 12,
+      minZoom: 0.01,
+      maxZoom: 5,
+      zoomSpeed: 1.1,
+      animationDuration: 250,
+      sectionZoomPadding: 30,
+      enableZoneZoom: true,
+      enableSectionZoom: true,
+      mobileRequireZoomForSelection: true,
+      mobileMinZoomForSelection: 2,
+      mobileSeatHitareaScale: 1.8,
+      showGrid: true,
+      gridSize: 30,
+      gridColor: 0x1a1a22,
+      gridLineWidth: 1,
+      orphanHighlightEnabled: true,
+      ...options,
     };
-
-    static async create(container, options = {}) {
-        const renderer = new SeatMapRenderer(container, options);
-        await renderer.init();
-        return renderer;
+    for (const k of [
+      "seatRadius",
+      "seatChunkSize",
+      "seatTextureResolution",
+      "gridSize",
+      "maxZoom",
+    ]) {
+      if (!Number.isFinite(this.options[k]) || this.options[k] <= 0)
+        throw new RendererError("VALIDATION_ERROR", `${k} must be positive`);
     }
-
-    constructor(container, options = {}) {
-        this.container = container;
-        this.options = {
-            padding: SeatMapRenderer.CONFIG.PADDING,
-            minZoom: SeatMapRenderer.CONFIG.MIN_ZOOM,
-            maxZoom: SeatMapRenderer.CONFIG.MAX_ZOOM,
-            zoomSpeed: SeatMapRenderer.CONFIG.ZOOM_SPEED,
-            backgroundColor: SeatMapRenderer.CONFIG.BACKGROUND_COLOR,
-            sectionZoomPadding: SeatMapRenderer.CONFIG.SECTION_ZOOM_PADDING,
-            animationDuration: SeatMapRenderer.CONFIG.ANIMATION_DURATION,
-            seatRadius: SeatMapRenderer.CONFIG.SEAT_RADIUS,
-            seatRadiusHover: SeatMapRenderer.CONFIG.SEAT_RADIUS_HOVER,
-            seatHoverSpeed: SeatMapRenderer.CONFIG.SEAT_HOVER_SPEED,
-            seatLabelSize: SeatMapRenderer.CONFIG.SEAT_LABEL_SIZE,
-            tooltipSpeed: SeatMapRenderer.CONFIG.TOOLTIP_SPEED,
-            uiPadding: SeatMapRenderer.CONFIG.UI_PADDING,
-            zoneFadeRatio: SeatMapRenderer.CONFIG.ZONE_FADE_RATIO,
-            animationThreshold: SeatMapRenderer.CONFIG.ANIMATION_THRESHOLD,
-            seatTextureResolution: SeatMapRenderer.CONFIG.SEAT_TEXTURE_RESOLUTION,
-            bookedColor: SeatMapRenderer.CONFIG.BOOKED_COLOR,
-            reservedColor: SeatMapRenderer.CONFIG.RESERVED_COLOR,
-            specialSeatScale: SeatMapRenderer.CONFIG.SPECIAL_SEAT_SCALE,
-            maxSelectedSeats: SeatMapRenderer.CONFIG.MAX_SELECTED_SEATS,
-            preventOrphanSeats: SeatMapRenderer.CONFIG.PREVENT_ORPHAN_SEATS,
-            tapZoomBoost: SeatMapRenderer.CONFIG.TAP_ZOOM_BOOST,
-            doubleTapZoomBoost: SeatMapRenderer.CONFIG.DOUBLE_TAP_ZOOM_BOOST,
-            doubleTapMaxDelay: SeatMapRenderer.CONFIG.DOUBLE_TAP_MAX_DELAY,
-            doubleTapMaxDistance: SeatMapRenderer.CONFIG.DOUBLE_TAP_MAX_DISTANCE,
-            tapMaxDuration: SeatMapRenderer.CONFIG.TAP_MAX_DURATION,
-            tapMaxMovement: SeatMapRenderer.CONFIG.TAP_MAX_MOVEMENT,
-            gestureCooldownMs: SeatMapRenderer.CONFIG.GESTURE_COOLDOWN_MS,
-            mobileRequireZoomForSelection: SeatMapRenderer.CONFIG.MOBILE_REQUIRE_ZOOM_FOR_SELECTION,
-            mobileMinZoomForSelection: SeatMapRenderer.CONFIG.MOBILE_MIN_ZOOM_FOR_SELECTION,
-            mobileSeatHitareaScale: SeatMapRenderer.CONFIG.MOBILE_SEAT_HITAREA_SCALE,
-            seatChunkSize: SeatMapRenderer.CONFIG.SEAT_CHUNK_SIZE,
-            deferSeatLabels: SeatMapRenderer.CONFIG.DEFER_SEAT_LABELS,
-            showGrid: SeatMapRenderer.CONFIG.SHOW_GRID,
-            gridColor: SeatMapRenderer.CONFIG.GRID_COLOR,
-            gridSize: SeatMapRenderer.CONFIG.GRID_SIZE,
-            gridLineWidth: SeatMapRenderer.CONFIG.GRID_LINE_WIDTH,
-            orphanHighlightEnabled: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_ENABLED,
-            orphanHighlightColor: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_COLOR,
-            orphanHighlightDuration: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_DURATION,
-            orphanHighlightPulseScale: SeatMapRenderer.CONFIG.ORPHAN_HIGHLIGHT_PULSE_SCALE,
-            debug: false,
-            fitToSectionsPadding: 40,
-            showControls: true,
-            backgroundAlpha: 1,
-            resizeTo: container,
-            antialias: true,
-            resolution: window.devicePixelRatio || 1,
-            autoDensity: true,
-            enableSectionZoom: false,
-            enableZoneZoom: true,
-            ...options
-        };
-        this.debug = createDebugLogger(this.options.debug);
-
-        this.app = new PIXI.Application();
-        this.viewport = new PIXI.Container();
-        this.gridContainer = null; // Background grid
-        
-        // Shared state
-        this.state = {
-            isDragging: false,
-            lastPos: null,
-            initialScale: 1,
-            hasUnderlay: false,
-            boundaries: null,
-            lastDist: null,
-            lastCenter: null,
-            initialBounds: null,
-            initialPosition: null,
-            isTouchDevice: this.detectTouchDevice()
-        };
-
-        this.isInitialized = false;
-        this.animatingSeats = new Set();
-        this._resizeObserver = null;
-        this._resizeTimeout = null;
-        this._lastContainerSize = { width: 0, height: 0 };
-        
-        // Section tracking for external API
-        this.sectionContainers = new Map(); // Map<sectionId, PIXI.Container>
-        this.loadedData = null; // Store loaded map data for getSections()
-
-        // Bind methods
-        this.updateSeatAnimations = this.updateSeatAnimations.bind(this);
-        this.resizeHandler = this.resizeHandler.bind(this);
-        this.handleContainerResize = this.handleContainerResize.bind(this);
+    if (!Number.isSafeInteger(this.options.seatChunkSize))
+      throw new RendererError(
+        "VALIDATION_ERROR",
+        "seatChunkSize must be an integer",
+      );
+    this.strings = { ...spanishStrings, ...options.strings };
+    this._priceFormatter = new Intl.NumberFormat(this.options.locale, {
+      style: "currency",
+      currency: this.options.currency,
+    });
+    this._priceDivisor = 10 ** currencyDigits(this.options.currency);
+    this._store = new BookingStore(this.options);
+    this._views = new Map();
+    this._sections = new Map();
+    this._highlights = new Set();
+    this._generation = 0;
+    this._destroyed = false;
+    this.isInitialized = false;
+    this._ready = false;
+  }
+  async init() {
+    if (!this.container?.appendChild)
+      throw new RendererError(
+        "INVALID_CONTAINER",
+        "An HTMLElement container is required",
+      );
+    this.app = new PIXI.Application();
+    try {
+      await this.app.init({
+        backgroundColor: this.options.backgroundColor,
+        backgroundAlpha: this.options.backgroundAlpha ?? 1,
+        antialias: this.options.antialias ?? true,
+        resolution:
+          this.options.resolution ?? Math.min(window.devicePixelRatio || 1, 2),
+        autoDensity: true,
+        width: Math.max(1, this.container.clientWidth),
+        height: Math.max(1, this.container.clientHeight),
+      });
+      this._appReady = true;
+      if (this._destroyed) {
+        this.app.destroy(true, { children: true, texture: false });
+        this.app = null;
+        throw abortError();
+      }
+      this._motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+      this._motionHandler = () => {
+        this.options.animationDuration = this._motion.matches
+          ? 0
+          : (this._animationDuration ?? 250);
+        if (this._motion.matches) {
+          this.viewportManager?.cancelAnimation();
+          this._clearHighlights();
+        }
+      };
+      this._animationDuration = this.options.animationDuration;
+      this._motionHandler();
+      this._motion.addEventListener("change", this._motionHandler);
+      this.container.appendChild(this.app.canvas);
+      this.app.canvas.classList.add("seatmap-canvas");
+      this.app.canvas.setAttribute("aria-hidden", "true");
+      this.viewport = new PIXI.Container();
+      this.app.stage.addChild(this.viewport);
+      this.state = {
+        initialScale: 1,
+        initialBounds: null,
+        initialPosition: null,
+        hasUnderlay: false,
+        isDragging: false,
+        isTouchDevice: navigator.maxTouchPoints > 0,
+      };
+      this.textureCache = new TextureCache(this.app.renderer, {
+        resolution: this.options.seatTextureResolution,
+      });
+      this.viewportManager = new ViewportManager({
+        app: this.app,
+        viewport: this.viewport,
+        state: this.state,
+        config: this.options,
+        onUpdate: () => this._semanticZoom(),
+      });
+      this.inputHandler = new InputHandler({
+        app: this.app,
+        viewport: this.viewport,
+        state: this.state,
+        config: this.options,
+        domContainer: this.app.canvas,
+        onZoomChange: () => {
+          this._navigated = true;
+          this.viewportManager.cancelAnimation();
+          this._semanticZoom();
+        },
+        getConstrainedPosition: (x, y, s) =>
+          this.viewportManager.getConstrainedPosition(x, y, s),
+      });
+      this.inputHandler.setup();
+      this._pointerDown = () => {
+        this._navigated = true;
+        this.viewportManager.cancelAnimation();
+      };
+      this.app.canvas.addEventListener("pointerdown", this._pointerDown);
+      this.ui = new MapUI(this);
+      this._resize = () => {
+        clearTimeout(this._resizeTimer);
+        this._resizeTimer = setTimeout(() => this._performResize(), 100);
+      };
+      this._observer = new ResizeObserver(this._resize);
+      this._observer.observe(this.container);
+      this.isInitialized = true;
+      this._performResize();
+    } catch (error) {
+      // Pixi can allocate its renderer before an application plugin fails.
+      // Application.destroy assumes all plugins initialized, so dispose only
+      // resources that exist when init itself did not complete.
+      if (!this._appReady && this.app) {
+        this.app.ticker?.stop();
+        if (this.app.cancelResize) {
+          this.app.resizeTo = null;
+          this.app.cancelResize();
+        }
+        this.app.ticker?.destroy();
+        this.app.stage?.destroy({ children: true, texture: false });
+        this.app.renderer?.destroy(true);
+        this.app = null;
+      }
+      this.destroy();
+      throw error;
     }
-
-    /**
-     * Detect if device supports touch
-     * @returns {boolean}
-     */
-    detectTouchDevice() {
-        return ('ontouchstart' in window) || 
-               (navigator.maxTouchPoints > 0) || 
-               (navigator.msMaxTouchPoints > 0);
+  }
+  _emit(name, detail) {
+    this.container?.dispatchEvent(
+      new CustomEvent(name, { detail: copy(detail) }),
+    );
+  }
+  _diagnostic(code, message, extra = {}) {
+    this._emit("renderer-diagnostic", { code, message, ...extra });
+  }
+  _error(error) {
+    if (error.name !== "AbortError")
+      this._emit("renderer-error", {
+        code: error.code ?? "RENDER_ERROR",
+        message: error.message,
+        path: error.path ?? "",
+      });
+    return error;
+  }
+  _requireReady() {
+    if (this._destroyed || !this._ready)
+      throw new RendererError("NOT_READY", "Wait for loadData() to complete");
+  }
+  _clearHighlights() {
+    for (const h of this._highlights) {
+      cancelAnimationFrame(h.frame);
+      if (!h.view.destroyed) h.view.tint = 0xffffff;
     }
-
-    async init() {
-        try {
-            await this.app.init(this.options);
-            this.container.appendChild(this.app.canvas);
-            
-            // Render background grid first (behind everything)
-            if (this.options.showGrid) {
-                this.renderGrid();
-            }
-            
-            this.app.stage.addChild(this.viewport);
-
-            // Initialize modules
-            this.textureCache = new TextureCache(this.app.renderer, {
-                resolution: this.options.seatTextureResolution
-            });
-
-            this.viewportManager = new ViewportManager({
-                app: this.app,
-                viewport: this.viewport,
-                state: this.state,
-                config: this.options,
-                onUpdate: () => this.updateUIVisibility()
-            });
-
-            this.inputHandler = new InputHandler({
-                app: this.app,
-                viewport: this.viewport,
-                state: this.state,
-                config: this.options,
-                domContainer: this.container,
-                onZoomChange: () => this.updateUIVisibility(),
-                getConstrainedPosition: (x, y, scale) => 
-                    this.viewportManager.getConstrainedPosition(x, y, scale)
-            });
-            this.inputHandler.setup();
-
-            this.selectionManager = new SelectionManager({
-                maxSelectedSeats: this.options.maxSelectedSeats,
-                preventOrphanSeats: this.options.preventOrphanSeats,
-                container: this.container,
-                orphanHighlightEnabled: this.options.orphanHighlightEnabled,
-                orphanHighlightColor: this.options.orphanHighlightColor,
-                orphanHighlightDuration: this.options.orphanHighlightDuration,
-                orphanHighlightPulseScale: this.options.orphanHighlightPulseScale
-            });
-
-            this.cartManager = new CartManager({
-                container: this.container,
-                onCartChange: this.options.onCartChange,
-                getPromo: (sectionName) => this.getSectionPromo(sectionName)
-            });
-
-            this.gaSelectionManager = new GASelectionManager({
-                container: this.container,
-                maxSelectedSeats: this.options.maxSelectedSeats,
-                getCurrentSelectionCount: () => this.selectionManager.getSelectionCount(),
-                onConfirm: (data) => this.handleGASelectionConfirm(data),
-                onCancel: () => this.handleGASelectionCancel()
-            });
-
-            // Wire up SelectionManager to know about GA selections
-            this.selectionManager.setGASelectionCountGetter(
-                () => this.gaSelectionManager.getTotalGASelections()
-            );
-
-            this.uiManager = new UIManager({
-                app: this.app,
-                config: this.options,
-                onResetClick: () => this.fitToView(),
-                showControls: this.options.showControls
-            });
-            this.uiManager.create();
-
-            this.inventoryManager = new InventoryManager({
-                config: this.options
-            });
-
-            this.tooltipManager = new TooltipManager({
-                animationSpeed: this.options.tooltipSpeed
-            });
-
-            // Setup animation loop
-            this.app.ticker.add(this.updateSeatAnimations);
-            
-            // Handle resize with ResizeObserver for container-based responsiveness
-            this.setupResizeObserver();
-            window.addEventListener('resize', this.resizeHandler);
-            
-            // Load icon font
-            try {
-                await document.fonts.load("300 14px 'Material Symbols Outlined'");
-            } catch (e) {
-                console.warn("Failed to load icon font:", e);
-            }
-
-            this.isInitialized = true;
-        } catch (error) {
-            console.error('Failed to initialize SeatMapRenderer:', error);
-            throw error;
-        }
+    this._highlights.clear();
+  }
+  _clearScene() {
+    this.viewportManager?.cancelAnimation();
+    this.inputHandler?.reset();
+    this._clearHighlights();
+    this.ui?.closeDialog();
+    this.ui?.hideTooltip();
+    if (this.viewport)
+      for (const child of this.viewport.removeChildren()) {
+        child.releaseAsset?.();
+        child.destroy({ children: true, texture: false });
+      }
+    this._views.clear();
+    this._sections.clear();
+    this.viewport?.position.set(0, 0);
+    this.viewport?.scale.set(1);
+    this.textureCache?.clear();
+    this._store.reset();
+    this._unmatched = [];
+    this._ready = false;
+    if (this.state) {
+      this.state.initialBounds = null;
+      this.state.initialPosition = null;
+      this.state.initialScale = 1;
+      this.state.hasUnderlay = false;
+      this.state.underlayBounds = null;
     }
-
-    /**
-     * Setup ResizeObserver to watch container size changes
-     */
-    setupResizeObserver() {
-        // Store initial size
-        this._lastContainerSize = {
-            width: this.container.clientWidth,
-            height: this.container.clientHeight
-        };
-
-        // Use ResizeObserver for better container resize detection
-        if (typeof ResizeObserver !== 'undefined') {
-            this._resizeObserver = new ResizeObserver((entries) => {
-                for (const entry of entries) {
-                    const { width, height } = entry.contentRect;
-                    
-                    // Only handle if size actually changed
-                    if (width !== this._lastContainerSize.width || 
-                        height !== this._lastContainerSize.height) {
-                        this._lastContainerSize = { width, height };
-                        this.handleContainerResize();
-                    }
-                }
-            });
-            this._resizeObserver.observe(this.container);
-        }
+  }
+  async loadData(input, { signal } = {}) {
+    if (!this.isInitialized || this._destroyed)
+      throw this._error(
+        new RendererError("NOT_READY", "Renderer is not initialized"),
+      );
+    let map;
+    try {
+      checkSignal(signal);
+      map = normalizeMap(input, this.options);
+    } catch (e) {
+      throw this._error(e);
     }
-
-    /**
-     * Handle container resize with debouncing
-     */
-    handleContainerResize() {
-        // Debounce resize handling to avoid excessive recalculations
-        if (this._resizeTimeout) {
-            clearTimeout(this._resizeTimeout);
+    this._loadController?.abort();
+    const controller = new AbortController();
+    this._loadController = controller;
+    const generation = ++this._generation;
+    const abort = () => controller.abort();
+    signal?.addEventListener("abort", abort, { once: true });
+    const current = () => {
+      checkSignal(controller.signal);
+      if (this._destroyed || generation !== this._generation)
+        throw abortError();
+    };
+    this._clearScene();
+    this._navigated = false;
+    this._store.load(map);
+    this._map = map;
+    this.ui.refresh();
+    let underlay;
+    try {
+      current();
+      this._labels = new PIXI.Container();
+      this._labels.isLabelsLayer = true;
+      this.viewport.addChild(this._labels);
+      if (
+        map.underlay?.visible !== false &&
+        (map.underlay?.sourceUrl || map.underlay?.dataUrl)
+      ) {
+        underlay = renderUnderlay(this.viewport, map.underlay, {
+          signal: controller.signal,
+        })
+          .then((sprite) => {
+            current();
+            this.state.hasUnderlay = Boolean(sprite);
+            return sprite;
+          })
+          .catch((error) => {
+            if (error.name === "AbortError") return null;
+            if (generation === this._generation && !this._destroyed)
+              this._diagnostic("UNDERLAY_FAILED", error.message);
+            return null;
+          });
+      }
+      const sorted = [...map.sections].sort(
+        (a, b) =>
+          Number(Boolean(b.isZone || b.type === "ga")) -
+          Number(Boolean(a.isZone || a.type === "ga")),
+      );
+      const total = map.sections.reduce((n, s) => n + s.seats.length, 0);
+      let loaded = 0;
+      for (const section of sorted.filter((s) => s.isZone || s.type === "ga"))
+        this._renderSection(section);
+      this._emit("mapZonesLoaded", {
+        zoneCount: sorted.filter((s) => s.isZone || s.type === "ga").length,
+      });
+      current();
+      for (const section of sorted.filter(
+        (s) => !s.isZone && s.type !== "ga",
+      )) {
+        current();
+        const view = this._renderSection(section);
+        for (
+          let i = 0;
+          i < section.seats.length;
+          i += this.options.seatChunkSize
+        ) {
+          current();
+          for (const seat of section.seats.slice(
+            i,
+            i + this.options.seatChunkSize,
+          )) {
+            this._createSeat(view, seat, section);
+            loaded++;
+          }
+          this._emit("seatLoadProgress", {
+            loaded,
+            total,
+            percent: total ? Math.round((loaded / total) * 100) : 100,
+          });
+          if (loaded < total) await nextFrame(controller.signal);
         }
-
-        this._resizeTimeout = setTimeout(() => {
-            this.performResize();
-        }, 100);
+        current();
+        if (section.rowLabels?.type !== "none" && !section.rowLabels?.hidden)
+          renderRowLabels(view, section);
+      }
+      current();
+      this.viewport.addChild(this._labels);
+      if (!this._navigated) this.fitToView(false);
+      await underlay;
+      current();
+      if (!this._navigated) this.fitToView(false);
+      this._ready = true;
+      this._sync();
+      current();
+      this._emit("seatLoadProgress", { loaded: total, total, percent: 100 });
+      current();
+      this._emit("mapFullyLoaded", { totalSections: map.sections.length });
+    } catch (error) {
+      if (generation === this._generation && !this._destroyed) {
+        controller.abort();
+        this._clearScene();
+        this._map = null;
+        this.ui.refresh();
+      }
+      throw this._error(error);
+    } finally {
+      signal?.removeEventListener("abort", abort);
     }
-
-    /**
-     * Perform the actual resize operations
-     */
-    performResize() {
-        if (!this.isInitialized || !this.app) return;
-
-        // Resize PIXI application
-        this.app.resize();
-        
-        // Re-render grid to match new size
-        if (this.options.showGrid) {
-            this.renderGrid();
-        }
-        
-        // Reposition UI elements
-        this.uiManager.repositionUI();
-
-        // If we have content loaded, re-fit the view
-        if (this.viewport.children.length > 0 && this.state.initialBounds) {
-            // Calculate what the new initial scale should be
-            const bounds = this.state.initialBounds;
-            const screenWidth = this.app.screen.width;
-            const screenHeight = this.app.screen.height;
-            const padding = this.options.padding || 0;
-
-            const scaleX = (screenWidth - padding * 2) / bounds.width;
-            const scaleY = (screenHeight - padding * 2) / bounds.height;
-            const newInitialScale = Math.min(scaleX, scaleY, 1);
-
-            // Calculate zoom ratio to maintain relative zoom level
-            const currentScale = this.viewport.scale.x;
-            const zoomRatio = currentScale / this.state.initialScale;
-
-            // Update initial scale
-            const oldInitialScale = this.state.initialScale;
-            this.state.initialScale = newInitialScale;
-
-            // Update initial position
-            const centerX = bounds.x + bounds.width / 2;
-            const centerY = bounds.y + bounds.height / 2;
-            this.state.initialPosition = {
-                x: (screenWidth / 2) - (centerX * newInitialScale),
-                y: (screenHeight / 2) - (centerY * newInitialScale)
-            };
-
-            // If zoomed out (at or near initial view), re-fit
-            if (zoomRatio <= 1.05) {
-                // User was at initial view, fit again
-                this.viewportManager.fitToView(false);
-            } else {
-                // User was zoomed in - maintain relative zoom and re-constrain
-                const newScale = newInitialScale * zoomRatio;
-                const constrainedScale = Math.min(Math.max(newScale, this.options.minZoom), this.options.maxZoom);
-                
-                // Re-center on current view center
-                const viewCenterX = screenWidth / 2;
-                const viewCenterY = screenHeight / 2;
-                const worldCenterX = (viewCenterX - this.viewport.position.x) / currentScale;
-                const worldCenterY = (viewCenterY - this.viewport.position.y) / currentScale;
-
-                let newX = viewCenterX - (worldCenterX * constrainedScale);
-                let newY = viewCenterY - (worldCenterY * constrainedScale);
-
-                // Apply constraints
-                const constrained = this.viewportManager.getConstrainedPosition(newX, newY, constrainedScale);
-                
-                this.viewport.scale.set(constrainedScale);
-                this.viewport.position.set(constrained.x, constrained.y);
-            }
-
-            // Update UI visibility
-            this.updateUIVisibility();
-        }
-    }
-
-    /**
-     * Legacy window resize handler
-     */
-    resizeHandler() {
-        this.handleContainerResize();
-    }
-
-    /**
-     * Render a grid background pattern
-     * The grid is rendered on the stage behind the viewport
-     */
-    renderGrid() {
-        // Remove existing grid if any
-        if (this.gridContainer) {
-            this.gridContainer.destroy();
-        }
-
-        this.gridContainer = new PIXI.Container();
-        this.gridContainer.label = 'grid';
-
-        const graphics = new PIXI.Graphics();
-        const width = this.app.screen.width;
-        const height = this.app.screen.height;
-        const gridSize = this.options.gridSize;
-        const gridColor = this.options.gridColor;
-        const lineWidth = this.options.gridLineWidth;
-
-        // Draw vertical lines
-        for (let x = 0; x <= width; x += gridSize) {
-            graphics.moveTo(x, 0);
-            graphics.lineTo(x, height);
-        }
-
-        // Draw horizontal lines
-        for (let y = 0; y <= height; y += gridSize) {
-            graphics.moveTo(0, y);
-            graphics.lineTo(width, y);
-        }
-
-        graphics.stroke({ width: lineWidth, color: gridColor });
-
-        this.gridContainer.addChild(graphics);
-        this.app.stage.addChildAt(this.gridContainer, 0);
-    }
-
-    /**
-     * Update grid color dynamically
-     * @param {number} color - New grid color (hex)
-     */
-    setGridColor(color) {
-        this.options.gridColor = color;
-        if (this.options.showGrid) {
-            this.renderGrid();
-        }
-    }
-
-    /**
-     * Toggle grid visibility
-     * @param {boolean} show - Whether to show the grid
-     */
-    setGridVisible(show) {
-        this.options.showGrid = show;
-        if (show) {
-            this.renderGrid();
-        } else if (this.gridContainer) {
-            this.gridContainer.destroy();
-            this.gridContainer = null;
-        }
-    }
-
-    updateUIVisibility() {
-        const zoom = this.viewport.scale.x;
-        this.uiManager.update(zoom, this.state.initialScale, this.options.maxZoom);
-    }
-
-    destroy() {
-        this.isInitialized = false;
-
-        // Clean up resize handling
-        window.removeEventListener('resize', this.resizeHandler);
-        if (this._resizeObserver) {
-            this._resizeObserver.disconnect();
-            this._resizeObserver = null;
-        }
-        if (this._resizeTimeout) {
-            clearTimeout(this._resizeTimeout);
-            this._resizeTimeout = null;
-        }
-        
-        if (this.app && this.app.ticker) {
-            this.app.ticker.remove(this.updateSeatAnimations);
-        }
-
-        // Destroy modules
-        if (this.textureCache) this.textureCache.destroy();
-        if (this.inputHandler) this.inputHandler.destroy();
-        if (this.selectionManager) this.selectionManager.destroy();
-        if (this.cartManager) this.cartManager.destroy();
-        if (this.uiManager) this.uiManager.destroy();
-        if (this.inventoryManager) this.inventoryManager.destroy();
-        if (this.viewportManager) this.viewportManager.destroy();
-        if (this.tooltipManager) this.tooltipManager.destroy();
-        
-        if (this.app) {
-            this.app.destroy(true, { children: true, texture: true });
-            this.app = null;
-        }
-
-        this.animatingSeats.clear();
-        this.viewport = null;
-        this.labelsLayer = null;
-        this.gridContainer = null;
-    }
-
-    async loadData(data) {
-        if (!this.isInitialized) {
-            console.error('SeatMapRenderer not initialized. Call init() first.');
-            return;
-        }
-
-        // Clear existing content
-        if (this.viewport.children.length > 0) {
-            this.viewport.removeChildren().forEach(child => {
-                child.destroy({ children: true, texture: false, baseTexture: false });
-            });
-        }
-
-        // Reset state
-        this.uiManager.clearZoneContainers();
-        this.labelsLayer = new PIXI.Container();
-        this.selectionManager.clearRegistrations();
-        this.selectionManager.clearSelection();
-        this.inventoryManager.clearRegistrations();
-        this.animatingSeats.clear();
-        this.sectionContainers.clear();
-        
-        // Cancel any pending seat rendering from previous load
-        if (this._seatRenderingAbort) {
-            this._seatRenderingAbort.abort = true;
-        }
-        this._seatRenderingAbort = { abort: false };
-
-        if (!data) {
-            console.error("No data provided to loadData");
-            return;
-        }
-
-        // Store loaded data for getSections() API
-        this.loadedData = data;
-
-        this.debug("Loading map data...", data);
-
-        // PHASE 0: Start underlay loading in parallel (non-blocking)
-        // Store underlay bounds from data for initial centering (before image loads)
-        let underlayPromise = null;
-        this.state.hasUnderlay = false; // Will be set true when underlay actually loads
-        this.state.underlayBounds = null; // Bounds from JSON data for initial fit
-        
-        if (data.underlay && data.underlay.visible !== false) {
-            // Store expected bounds from JSON for initial fit calculation
-            // This allows proper centering before the image loads
-            if (data.underlay.sourceUrl || data.underlay.dataUrl) {
-                // Use stored dimensions if available, otherwise estimate from canvas
-                const underlayWidth = data.underlay.width || data.canvas?.width || 1000;
-                const underlayHeight = data.underlay.height || data.canvas?.height || 800;
-                const underlayScale = data.underlay.scale || 1;
-                
-                this.state.underlayBounds = {
-                    x: data.underlay.x || 0,
-                    y: data.underlay.y || 0,
-                    width: underlayWidth * underlayScale,
-                    height: underlayHeight * underlayScale
-                };
-            }
-            
-            underlayPromise = renderUnderlay(this.viewport, data.underlay).then(sprite => {
-                if (sprite && sprite.parent) {
-                    // Move underlay to back (index 0) once loaded
-                    this.viewport.setChildIndex(sprite, 0);
-                    // Now we have the real underlay, update state
-                    this.state.hasUnderlay = true;
-                    // Clear the estimated bounds, fitToView will use actual sprite
-                    this.state.underlayBounds = null;
-                }
-                return sprite;
-            }).catch(err => {
-                console.warn('Underlay failed to load (non-blocking):', err);
-                this.state.underlayBounds = null;
-                return null;
-            });
-        }
-
-        // PHASE 1: Render zones/GA sections first (instant visual feedback)
-        const seatedSections = [];
-        if (data.sections) {
-            const sortedSections = [...data.sections].sort((a, b) => {
-                const aIsZone = !!a.isZone || a.type === 'ga';
-                const bIsZone = !!b.isZone || b.type === 'ga';
-                if (aIsZone && !bIsZone) return -1;
-                if (!aIsZone && bIsZone) return 1;
-                return 0;
-            });
-
-            for (const sectionData of sortedSections) {
-                const isZoneOrGA = !!sectionData.isZone || sectionData.type === 'ga';
-                if (isZoneOrGA) {
-                    // Render zones/GA immediately
-                    this.renderSection(sectionData);
-                } else {
-                    // Queue seated sections for progressive loading
-                    seatedSections.push(sectionData);
-                }
-            }
-        }
-
-        this.viewport.addChild(this.labelsLayer);
-        
-        // Fit to view using underlay bounds (accurate from JSON dimensions)
-        // Mobile will override this with fitToSections in the page code
-        this.fitToView();
-        
-        // Dispatch event for initial content rendered
-        this.container.dispatchEvent(new CustomEvent('mapZonesLoaded', { 
-            detail: { seatedSectionsCount: seatedSections.length }
-        }));
-
-        // PHASE 2: Render seated sections progressively (non-blocking)
-        if (seatedSections.length > 0) {
-            await this.renderSeatedSectionsProgressively(seatedSections, this._seatRenderingAbort);
-        }
-        
-        // Move labels layer to top after all sections are rendered
-        // This ensures zone labels appear above seats
-        if (this.labelsLayer.parent) {
-            this.viewport.addChild(this.labelsLayer); // Re-adding moves to top
-        }
-        
-        // Dispatch event for full load complete
-        this.container.dispatchEvent(new CustomEvent('mapFullyLoaded', { 
-            detail: { totalSections: data.sections?.length || 0 }
-        }));
-    }
-
-    /**
-     * Render seated sections progressively to avoid blocking UI
-     * @param {Array} sections - Array of section data
-     * @param {Object} abortSignal - Object with abort flag
-     */
-    async renderSeatedSectionsProgressively(sections, abortSignal) {
-        for (const sectionData of sections) {
-            if (abortSignal.abort) return;
-            
-            // Render section container and background immediately
-            const container = createSectionContainer(sectionData);
-            const { graphics, fillColor } = createSectionBackground(sectionData);
-            container.addChild(graphics);
-            
-            graphics.hitArea = new PIXI.Rectangle(0, 0, sectionData.width, sectionData.height);
-            
-            // On desktop (>= 768px), don't enable zoom on individual sections - zones handle zoom
-            // On mobile, individual sections can still be tapped to zoom
-            const isMobile = window.innerWidth < 768;
-            const enableZoom = this.options.enableSectionZoom && isMobile;
-            if (enableZoom) {
-                graphics.eventMode = 'static';
-                graphics.cursor = 'zoom-in';
-                container.eventMode = 'static';
-                
-                graphics.on('pointertap', (e) => {
-                    const isValidTap = this.inputHandler?.isValidTap?.() ?? !this.state.isDragging;
-                    if (isValidTap) {
-                        e.stopPropagation();
-                        const tapPoint = { x: e.global.x, y: e.global.y };
-                        const isDoubleTap = this.inputHandler?.isDoubleTap?.(tapPoint) ?? false;
-                        // Mobile: use tap-centered zoom
-                        const zoomPoint = tapPoint;
-                        
-                        if (isDoubleTap) {
-                            this.inputHandler.clearDoubleTap();
-                            this.zoomToSection(container, zoomPoint, this.options.doubleTapZoomBoost);
-                        } else {
-                            const isZoomed = this.viewportManager?.isZoomedIn?.() ?? false;
-                            if (!isZoomed) {
-                                this.inputHandler?.recordTap?.(tapPoint);
-                                this.zoomToSection(container, zoomPoint, this.options.tapZoomBoost);
-                            } else {
-                                this.inputHandler?.recordTap?.(tapPoint);
-                            }
-                        }
-                    }
-                });
-            } else {
-                graphics.eventMode = 'none';
-            }
-
-            this.viewport.addChild(container);
-            
-            // Store container reference for zoomToSectionById
-            const sectionId = sectionData.id || sectionData.name;
-            this.sectionContainers.set(sectionId, container);
-            
-            // Render seats in chunks (non-blocking)
-            await this.renderSeatsChunked(container, sectionData, abortSignal);
-            
-            // Row labels after seats
-            if (sectionData.rowLabels && sectionData.rowLabels.type !== 'none' && !sectionData.rowLabels.hidden) {
-                renderRowLabels(container, sectionData);
-            }
-        }
-        
-        // Sort all rows after all seats are rendered
-        this.selectionManager.sortAllRows();
-    }
-
-    /**
-     * Render seats in chunks to avoid blocking UI
-     * @param {PIXI.Container} container - Section container
-     * @param {Object} data - Section data
-     * @param {Object} abortSignal - Object with abort flag
-     */
-    async renderSeatsChunked(container, data, abortSignal) {
-        if (!data.seats || data.seats.length === 0) return;
-        
-        const CHUNK_SIZE = this.options.seatChunkSize;
-        const seats = data.seats;
-        const totalSeats = seats.length;
-        const layoutShiftX = data.layoutShiftX || 0;
-        const layoutShiftY = data.layoutShiftY || 0;
-        const rowLabelMap = buildRowLabelMap(seats, data.rowLabels);
-        
-        const style = data.style || {};
-        const defaultSeatColor = style.seatColor ?? 0xffffff;
-        const defaultTextColor = style.seatTextColor ?? 0x000000;
-        const seatStrokeColor = style.seatStrokeColor ?? 0xffffff;
-        const seatStrokeWidth = style.seatStrokeWidth ?? 0;
-        const glow = style.glow || {};
-
-        for (let i = 0; i < seats.length; i += CHUNK_SIZE) {
-            if (abortSignal.abort) return;
-            
-            const chunk = seats.slice(i, i + CHUNK_SIZE);
-            
-            for (const seatData of chunk) {
-                this.createSeat(container, seatData, data, {
-                    layoutShiftX, layoutShiftY, rowLabelMap,
-                    defaultSeatColor, defaultTextColor, seatStrokeColor, seatStrokeWidth, glow
-                });
-            }
-            
-            // Dispatch progress event
-            const progress = Math.min(100, Math.round(((i + chunk.length) / totalSeats) * 100));
-            this.container.dispatchEvent(new CustomEvent('seatLoadProgress', { 
-                detail: { 
-                    sectionName: data.name,
-                    loaded: i + chunk.length, 
-                    total: totalSeats,
-                    progress
-                }
-            }));
-            
-            // Yield to browser between chunks (if more chunks remain)
-            if (i + CHUNK_SIZE < seats.length) {
-                await new Promise(resolve => requestAnimationFrame(resolve));
-            }
-        }
-    }
-
-    /**
-     * Create a single seat (extracted for chunked rendering)
-     */
-    createSeat(container, seatData, sectionData, opts) {
-        const { layoutShiftX, layoutShiftY, rowLabelMap, defaultSeatColor, defaultTextColor, seatStrokeColor, seatStrokeWidth, glow } = opts;
-        
-        const seatContainer = new PIXI.Container();
-        
-        let x = seatData.x ?? seatData.relativeX ?? seatData.baseX;
-        let y = seatData.y ?? seatData.relativeY ?? seatData.baseY;
-        x += layoutShiftX;
-        y += layoutShiftY;
-        
-        seatContainer.x = x;
-        seatContainer.y = y;
-
-        // Glow
-        if (glow.enabled) {
-            const glowGraphics = new PIXI.Graphics();
-            const radius = this.options.seatRadius + ((glow.strength || 10) / 2);
-            glowGraphics.circle(0, 0, radius);
-            glowGraphics.fill({ color: glow.color || 0xffffff, alpha: glow.opacity || 0.5 });
-            if (glow.blur > 0) {
-                const blurFilter = new PIXI.BlurFilter();
-                blurFilter.strength = glow.blur;
-                glowGraphics.filters = [blurFilter];
-            }
-            seatContainer.addChild(glowGraphics);
-        }
-
-        const isSpecial = seatData.sn || seatData.specialNeeds;
-        const seatColor = isSpecial ? 0x2563eb : defaultSeatColor;
-        
-        const texture = this.textureCache.getSeatTexture(
-            this.options.seatRadius, 
-            seatColor, 
-            seatStrokeWidth, 
-            seatStrokeColor
+  }
+  _renderSection(section) {
+    const view = createSectionContainer(section),
+      { graphics } = createSectionBackground(section);
+    view.addChild(graphics);
+    view.sectionData = section;
+    this._sections.set(section.id, view);
+    this.viewport.addChild(view);
+    if (section.isZone) {
+      if (section.showZoneLabel !== false)
+        renderZoneContent(
+          view,
+          section,
+          section.width,
+          section.height,
+          this._labels,
         );
-        
-        const seatSprite = new PIXI.Sprite(texture);
-        seatSprite.anchor.set(0.5);
-        seatSprite.scale.set(1 / this.options.seatTextureResolution);
-        seatContainer.addChild(seatSprite);
-
-        // Label handling - defer creation if option enabled (saves memory/CPU)
-        const labelText = seatData.n ?? seatData.number ?? "";
-        const shouldDefer = this.options.deferSeatLabels && !isSpecial;
-        
-        if (shouldDefer) {
-            // DEFERRED: Don't create text now, create on hover
-            seatContainer.text = null;
-            seatContainer._labelDeferred = true;
-            seatContainer._labelInfo = {
-                text: labelText,
-                isSpecial: false,
-                textColor: defaultTextColor
-            };
-        } else {
-            // Create text immediately (special needs seats or deferring disabled)
-            seatContainer._labelDeferred = false;
-            seatContainer._labelInfo = {
-                text: isSpecial ? 'accessible_forward' : labelText,
-                isSpecial,
-                textColor: isSpecial ? 0xffffff : defaultTextColor
-            };
-            this.createSeatLabel(seatContainer);
-        }
-
-        // Interaction setup
-        seatContainer.eventMode = 'static';
-        seatContainer.cursor = 'pointer';
-        
-        const hitRadius = this.state.isTouchDevice 
-            ? this.options.seatRadius * this.options.mobileSeatHitareaScale 
-            : this.options.seatRadius;
-        seatContainer.hitArea = new PIXI.Circle(0, 0, hitRadius);
-        
-        seatContainer.seatData = seatData;
-        seatContainer.sectionId = sectionData.id || sectionData.name;
-        seatContainer.sectionName = sectionData.name;
-        seatContainer.selected = false;
-        seatContainer.originalLabel = labelText;
-        seatContainer.seatColor = seatColor;
-        seatContainer.seatTextColor = isSpecial ? 0xffffff : defaultTextColor;
-        seatContainer.originalColor = seatColor;
-        seatContainer.originalStrokeColor = seatStrokeColor;
-        seatContainer.originalStrokeWidth = seatStrokeWidth;
-        seatContainer.sectionPricing = sectionData.pricing;
-
-        // Generate key
-        const r = seatData.r !== undefined ? seatData.r : seatData.rowIndex;
-        const rowLabel = rowLabelMap[r] || "";
-        const seatNum = seatData.n ?? seatData.number;
-        const key = `${sectionData.name};;${rowLabel};;${seatNum}`;
-        seatContainer.key = key;
-        seatContainer._rowLabel = rowLabel; // Store for hover
-
-        // Register with managers
-        this.inventoryManager.registerSeat(seatContainer, key, seatData.id);
-        this.selectionManager.registerSeat(seatContainer, seatContainer.sectionId, r);
-
-        // Animation state
-        seatContainer.baseScale = isSpecial ? this.options.specialSeatScale : 1;
-        seatContainer.scale.set(seatContainer.baseScale);
-        seatContainer.targetScale = seatContainer.baseScale;
-        seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
-        seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
-
-        // Store section data reference for hover
-        seatContainer._sectionData = sectionData;
-        
-        // Event handlers
-        seatContainer.on('pointerover', () => this.onSeatHover(seatContainer, sectionData, rowLabel, isSpecial));
-        seatContainer.on('pointerout', () => this.onSeatOut(seatContainer, isSpecial));
-        seatContainer.on('pointertap', (e) => {
-            e.stopPropagation();
-            this.onSeatClick(seatContainer);
+      graphics.visible = section.showZone !== false;
+    } else if (section.type === "ga")
+      renderGAContent(
+        view,
+        section,
+        section.width,
+        section.height,
+        this._labels,
+      );
+    graphics.eventMode = "static";
+    graphics.cursor = "pointer";
+    graphics.on("pointertap", (e) => {
+      if (!this.inputHandler.isValidTap()) return;
+      e.stopPropagation();
+      if (section.type === "ga" && !section.isZone) {
+        if (this._ready && this.options.mode === "booking")
+          this.ui.openGA(section.id);
+      } else if (
+        section.isZone
+          ? this.options.enableZoneZoom
+          : this.options.enableSectionZoom
+      )
+        this.zoomToSectionById(section.id, e.global);
+    });
+    return view;
+  }
+  _createSeat(parent, data, section) {
+    const view = new PIXI.Container();
+    view.position.set(
+      data.x + (section.layoutShiftX ?? 0),
+      data.y + (section.layoutShiftY ?? 0),
+    );
+    view.eventMode = "static";
+    view.hitArea = new PIXI.Circle(
+      0,
+      0,
+      this.options.seatRadius *
+        (this.state.isTouchDevice ? this.options.mobileSeatHitareaScale : 1),
+    );
+    const style = section.style ?? {};
+    view._color = data.sn ? 0x2563eb : (style.seatColor ?? 0xffffff);
+    view._strokeColor = style.seatStrokeColor ?? 0xffffff;
+    view._strokeWidth = style.seatStrokeWidth ?? 0;
+    if (style.glow?.enabled) {
+      const g = new PIXI.Graphics()
+        .circle(0, 0, this.options.seatRadius + (style.glow.strength ?? 10) / 2)
+        .fill({
+          color: style.glow.color ?? view._color,
+          alpha: style.glow.opacity ?? 0.3,
         });
-
-        container.addChild(seatContainer);
+      view._glow = g;
+      view.addChild(g);
     }
-
-    /**
-     * Create seat label text (deferred creation)
-     */
-    createSeatLabel(seatContainer) {
-        if (seatContainer.text) return; // Already created
-        
-        const info = seatContainer._labelInfo;
-        if (!info) return;
-        
-        let fontStyle = {
-            fontFamily: 'system-ui, sans-serif',
+    const sprite = new PIXI.Sprite();
+    sprite.anchor.set(0.5);
+    sprite.scale.set(1 / this.options.seatTextureResolution);
+    view.addChild(sprite);
+    view._sprite = sprite;
+    if (data.sn) {
+      let texture = this.textureCache.get("accessible");
+      if (!texture) {
+        texture = createAccessibleIcon(this.app.renderer);
+        this.textureCache.set("accessible", texture);
+      }
+      const icon = new PIXI.Sprite(texture);
+      icon.anchor.set(0.5);
+      view.addChild(icon);
+    }
+    view.on("pointertap", (e) => {
+      e.stopPropagation();
+      if (this.inputHandler.isGestureActive() || !this._ready) return;
+      if (
+        this.state.isTouchDevice &&
+        this.options.mobileRequireZoomForSelection &&
+        this.viewport.scale.x / this.state.initialScale <
+          this.options.mobileMinZoomForSelection
+      ) {
+        this.zoomToSectionById(section.id, e.global);
+        return;
+      }
+      this._attempt(() =>
+        this._setSeat(data.id, !this._store.seats.get(data.id).selected),
+      );
+    });
+    view.on("pointerover", (e) => {
+      const seat = this._store.seats.get(data.id);
+      if (!seat) return;
+      this.ui.showTooltip(this._store.seatSnapshot(seat), e.global);
+      if (!view._label && !data.sn) {
+        view._label = new PIXI.Text({
+          text: data.n,
+          style: {
+            fontFamily: "system-ui",
             fontSize: this.options.seatLabelSize,
-            fontWeight: 'bold',
-            fill: info.textColor,
-            align: 'center'
+            fill: style.seatTextColor ?? 0x000000,
+          },
+        });
+        view._label.anchor.set(0.5);
+        view.addChild(view._label);
+      }
+      if (view._label) view._label.visible = true;
+    });
+    view.on("pointerout", () => {
+      this.ui.hideTooltip();
+      if (view._label) view._label.visible = false;
+    });
+    this._views.set(data.id, view);
+    parent.addChild(view);
+    this._updateSeat(data.id);
+  }
+  _updateSeat(id) {
+    const view = this._views.get(id),
+      seat = this._store.seats.get(id);
+    if (!view || !seat) return;
+    const status = seat.seatData.status,
+      color = seat.selected
+        ? 0x15803d
+        : status === "available"
+          ? view._color
+          : status === "reserved"
+            ? this.options.reservedColor
+            : this.options.bookedColor;
+    view._sprite.texture = this.textureCache.getSeatTexture(
+      this.options.seatRadius,
+      color,
+      view._strokeWidth,
+      view._strokeColor,
+    );
+    if (view._glow) view._glow.visible = status === "available";
+    view.cursor = status === "available" ? "pointer" : "not-allowed";
+    view.alpha = status === "unknown" ? 0.5 : 1;
+  }
+  _semanticZoom() {
+    if (!this.viewport) return;
+    const ratio = this.viewport.scale.x / (this.state.initialScale || 1);
+    for (const view of this._sections.values())
+      if (view.sectionData.isZone) {
+        view.alpha = Math.max(0, Math.min(1, 2 - ratio));
+        view.eventMode = view.alpha === 0 ? "none" : "auto";
+        if (view.zoneLabel) view.zoneLabel.alpha = view.alpha;
+      }
+  }
+  _sync() {
+    for (const id of this._views.keys()) this._updateSeat(id);
+    this.ui?.refresh();
+    this._semanticZoom();
+    const cart = this.getCart();
+    this._emit("cartChange", cart);
+    this.options.onCartChange?.(copy(cart));
+  }
+  _attempt(fn) {
+    try {
+      return fn();
+    } catch (error) {
+      this.ui?.announce(error.message);
+      throw this._error(error);
+    }
+  }
+  _setSeat(id, selected) {
+    this._requireReady();
+    const result = this._store.selectSeat(id, selected);
+    if (result.success) {
+      this._sync();
+      const seat = this._store.getSeats().find((s) => s.id === id);
+      this._emit(selected ? "seat-selected" : "seat-deselected", {
+        seat,
+        sectionId: seat.sectionId,
+      });
+      (selected ? this.options.onSeatSelect : this.options.onSeatDeselect)?.(
+        copy(seat),
+      );
+    } else {
+      this.ui.announce(this.strings[result.reason] ?? this.strings.unavailable);
+      this._emit(
+        result.reason === "orphan-prevention"
+          ? "orphan-seat-blocked"
+          : result.reason === "limit-reached"
+            ? "selection-limit-reached"
+            : "selection-blocked",
+        result,
+      );
+      this._highlight(result.orphanSeats ?? []);
+    }
+    return result;
+  }
+  _highlight(seats) {
+    if (
+      this.options.animationDuration === 0 ||
+      !this.options.orphanHighlightEnabled
+    )
+      return;
+    for (const seat of seats) {
+      const view = this._views.get(seat.id);
+      if (!view) continue;
+      const h = { view, frame: null },
+        start = performance.now();
+      this._highlights.add(h);
+      const animate = (now) => {
+        if (view.destroyed) return;
+        view.tint = now - start < 700 ? 0xff6b6b : 0xffffff;
+        if (now - start < 700) h.frame = requestAnimationFrame(animate);
+        else this._highlights.delete(h);
+      };
+      h.frame = requestAnimationFrame(animate);
+    }
+  }
+  getSeats() {
+    return this._store.getSeats();
+  }
+  getCart() {
+    return this._store.getCart();
+  }
+  getSections() {
+    return [...this._store.sections.values()].map((s) => ({
+      id: s.id,
+      name: s.name,
+      type: s.type,
+      isZone: !!s.isZone,
+      seatCount: s.seats.length,
+      pricing: copy(s.pricing),
+    }));
+  }
+  selectSeat(id) {
+    return this._attempt(() => this._setSeat(id, true));
+  }
+  deselectSeat(id) {
+    return this._attempt(() => this._setSeat(id, false));
+  }
+  clearSelections() {
+    return this._attempt(() => {
+      this._requireReady();
+      this._store.clearSelections();
+      this._sync();
+      this._emit("selections-cleared", {});
+    });
+  }
+  setGAQuantity(id, quantity) {
+    return this._attempt(() => {
+      this._requireReady();
+      const result = this._store.setGAQuantity(id, quantity);
+      if (result.success) {
+        this._sync();
+        const detail = {
+          sectionId: id,
+          quantity,
+          allSelections: this.getGASelections(),
         };
-
-        if (info.isSpecial) {
-            fontStyle.fontFamily = 'Material Symbols Outlined';
-            fontStyle.fontSize = 14;
-            fontStyle.fontWeight = '300';
-            fontStyle.fill = 0xffffff;
-        }
-
-        const text = new PIXI.Text({ text: info.text, style: fontStyle });
-        text.anchor.set(0.5);
-        text.alpha = info.isSpecial ? 1 : 0;
-        text.scale.set(info.isSpecial ? 0.7 : 0.5);
-        
-        seatContainer.addChild(text);
-        seatContainer.text = text;
-        seatContainer._labelDeferred = false;
-    }
-
-    renderSection(data) {
-        const container = createSectionContainer(data);
-        const { graphics, fillColor } = createSectionBackground(data);
-        container.addChild(graphics);
-        
-        // Store container reference for zoomToSectionById
-        const sectionId = data.id || data.name;
-        this.sectionContainers.set(sectionId, container);
-
-        const isZoneOrGA = !!data.isZone || data.type === 'ga';
-        const enableZoom = isZoneOrGA ? this.options.enableZoneZoom : this.options.enableSectionZoom;
-
-        if (isZoneOrGA) {
-            container.zoneBackground = graphics;
-            // Mark GA sections so they don't fade on zoom (only zones should fade)
-            container.isGASection = data.type === 'ga' && !data.isZone;
-            this.uiManager.registerZoneContainer(container);
-        }
-
-        graphics.hitArea = new PIXI.Rectangle(0, 0, data.width, data.height);
-        
-        if (enableZoom) {
-            graphics.eventMode = 'static';
-            graphics.cursor = 'zoom-in';
-            container.eventMode = 'static';
-            
-            graphics.on('pointertap', (e) => {
-                // Check for valid tap (not a gesture)
-                const isValidTap = this.inputHandler?.isValidTap?.() ?? !this.state.isDragging;
-                
-                if (isValidTap) {
-                    e.stopPropagation();
-                    const tapPoint = { x: e.global.x, y: e.global.y };
-                    // Only use tap-centered zoom on mobile (screen width < 768px) or touch interactions
-                    const isMobile = window.innerWidth < 768;
-                    const isTouchInteraction = e.nativeEvent?.pointerType === 'touch' || e.pointerType === 'touch';
-                    const zoomPoint = (isMobile || isTouchInteraction) ? tapPoint : null;
-                    
-                    // Check for double-tap (second tap within threshold)
-                    const isDoubleTap = this.inputHandler?.isDoubleTap?.(tapPoint) ?? false;
-                    
-                    if (isDoubleTap) {
-                        // Double-tap: zoom to max
-                        this.inputHandler.clearDoubleTap();
-                        this.zoomToSection(container, zoomPoint, this.options.doubleTapZoomBoost);
-                    } else {
-                        // Single tap: only zoom if not already zoomed
-                        const isZoomed = this.viewportManager?.isZoomedIn?.() ?? false;
-                        if (!isZoomed) {
-                            this.inputHandler?.recordTap?.(tapPoint);
-                            this.zoomToSection(container, zoomPoint, this.options.tapZoomBoost);
-                        } else {
-                            // Already zoomed, just record for potential double-tap
-                            this.inputHandler?.recordTap?.(tapPoint);
-                        }
-                    }
-                }
-            });
-        } else {
-            graphics.eventMode = 'none';
-        }
-
-        // Add tooltip hover and click for GA sections (non-zone)
-        if (data.type === 'ga' && !data.isZone) {
-            graphics.eventMode = 'static';
-            graphics.cursor = 'pointer';
-            container.sectionData = data; // Store data for tooltip
-            
-            graphics.on('pointerover', () => {
-                // Don't show tooltip on touch devices
-                if (!this.state.isDragging && !this.state.isTouchDevice) {
-                    this.showGATooltip(data);
-                }
-            });
-            
-            graphics.on('pointerout', () => {
-                this.hideTooltip();
-            });
-            
-            // Click to open GA selection dialog
-            graphics.on('pointertap', (e) => {
-                // Check for valid tap (not a gesture)
-                const isValidTap = this.inputHandler?.isValidTap?.() ?? !this.state.isDragging;
-                
-                if (isValidTap) {
-                    e.stopPropagation();
-                    this.hideTooltip();
-                    this.gaSelectionManager.show(data);
-                }
-            });
-        }
-
-        // Render content
-        if (data.isZone) {
-            renderZoneContent(container, data, data.width, data.height, this.labelsLayer);
-        } else if (data.type === 'ga') {
-            renderGAContent(container, data, data.width, data.height, this.labelsLayer);
-        } else {
-            this.renderSeatsAndLabels(container, data);
-        }
-
-        this.viewport.addChild(container);
-    }
-
-    renderSeatsAndLabels(container, data) {
-        const layoutShiftX = data.layoutShiftX || 0;
-        const layoutShiftY = data.layoutShiftY || 0;
-        const rowLabelMap = buildRowLabelMap(data.seats, data.rowLabels);
-
-        if (data.seats) {
-            const style = data.style || {};
-            const defaultSeatColor = style.seatColor ?? 0xffffff;
-            const defaultTextColor = style.seatTextColor ?? 0x000000;
-            const seatStrokeColor = style.seatStrokeColor ?? 0xffffff;
-            const seatStrokeWidth = style.seatStrokeWidth ?? 0;
-            const glow = style.glow || {};
-
-            data.seats.forEach(seatData => {
-                const seatContainer = new PIXI.Container();
-                
-                let x = seatData.x ?? seatData.relativeX ?? seatData.baseX;
-                let y = seatData.y ?? seatData.relativeY ?? seatData.baseY;
-                x += layoutShiftX;
-                y += layoutShiftY;
-                
-                seatContainer.x = x;
-                seatContainer.y = y;
-
-                // Glow
-                if (glow.enabled) {
-                    const glowGraphics = new PIXI.Graphics();
-                    const radius = this.options.seatRadius + ((glow.strength || 10) / 2);
-                    glowGraphics.circle(0, 0, radius);
-                    glowGraphics.fill({ color: glow.color || 0xffffff, alpha: glow.opacity || 0.5 });
-                    if (glow.blur > 0) {
-                        const blurFilter = new PIXI.BlurFilter();
-                        blurFilter.strength = glow.blur;
-                        glowGraphics.filters = [blurFilter];
-                    }
-                    seatContainer.addChild(glowGraphics);
-                }
-
-                const isSpecial = seatData.sn || seatData.specialNeeds;
-                const seatColor = isSpecial ? 0x2563eb : defaultSeatColor;
-                
-                const texture = this.textureCache.getSeatTexture(
-                    this.options.seatRadius, 
-                    seatColor, 
-                    seatStrokeWidth, 
-                    seatStrokeColor
-                );
-                
-                const seatSprite = new PIXI.Sprite(texture);
-                seatSprite.anchor.set(0.5);
-                seatSprite.scale.set(1 / this.options.seatTextureResolution);
-                seatContainer.addChild(seatSprite);
-
-                // Label
-                let labelText = seatData.n ?? seatData.number ?? "";
-                let fontStyle = {
-                    fontFamily: 'system-ui, sans-serif',
-                    fontSize: this.options.seatLabelSize,
-                    fontWeight: 'bold',
-                    fill: defaultTextColor,
-                    align: 'center'
-                };
-
-                if (isSpecial) {
-                    labelText = 'accessible_forward';
-                    fontStyle.fontFamily = 'Material Symbols Outlined';
-                    fontStyle.fontSize = 14;
-                    fontStyle.fontWeight = '300';
-                    fontStyle.fill = 0xffffff;
-                }
-
-                const text = new PIXI.Text({ text: labelText, style: fontStyle });
-                text.anchor.set(0.5);
-                text.alpha = isSpecial ? 1 : 0;
-                text.scale.set(isSpecial ? 0.7 : 0.5);
-                
-                seatContainer.addChild(text);
-                seatContainer.text = text;
-
-                // Interaction setup
-                seatContainer.eventMode = 'static';
-                seatContainer.cursor = 'pointer';
-                
-                // Larger hit area on touch devices for easier tapping
-                const hitRadius = this.state.isTouchDevice 
-                    ? this.options.seatRadius * this.options.mobileSeatHitareaScale 
-                    : this.options.seatRadius;
-                seatContainer.hitArea = new PIXI.Circle(0, 0, hitRadius);
-                
-                seatContainer.seatData = seatData;
-                seatContainer.sectionId = data.id || data.name;
-                seatContainer.sectionName = data.name;
-                seatContainer.selected = false;
-                seatContainer.originalLabel = labelText;
-                seatContainer.seatColor = seatColor;
-                seatContainer.seatTextColor = isSpecial ? 0xffffff : defaultTextColor;
-                seatContainer.originalColor = seatColor;
-                seatContainer.originalStrokeColor = seatStrokeColor;
-                seatContainer.originalStrokeWidth = seatStrokeWidth;
-                seatContainer.sectionPricing = data.pricing;
-
-                // Generate key
-                const r = seatData.r !== undefined ? seatData.r : seatData.rowIndex;
-                const rowLabel = rowLabelMap[r] || "";
-                const seatNum = seatData.n ?? seatData.number;
-                const key = `${data.name};;${rowLabel};;${seatNum}`;
-                seatContainer.key = key;
-
-                // Register with managers
-                this.inventoryManager.registerSeat(seatContainer, key, seatData.id);
-                this.selectionManager.registerSeat(seatContainer, seatContainer.sectionId, r);
-
-                // Animation state
-                seatContainer.baseScale = isSpecial ? this.options.specialSeatScale : 1;
-                seatContainer.scale.set(seatContainer.baseScale);
-                seatContainer.targetScale = seatContainer.baseScale;
-                seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
-                seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
-
-                // Event handlers
-                seatContainer.on('pointerover', () => this.onSeatHover(seatContainer, data, rowLabel, isSpecial));
-                seatContainer.on('pointerout', () => this.onSeatOut(seatContainer, isSpecial));
-                seatContainer.on('pointertap', (e) => {
-                    e.stopPropagation();
-                    this.onSeatClick(seatContainer);
-                });
-
-                container.addChild(seatContainer);
-            });
-
-            // Sort rows for adjacency detection
-            this.selectionManager.sortAllRows();
-        }
-
-        // Row labels
-        if (data.rowLabels && data.rowLabels.type !== 'none' && !data.rowLabels.hidden) {
-            renderRowLabels(container, data);
-        }
-    }
-
-    onSeatHover(seatContainer, sectionData, rowLabel, isSpecial) {
-        if (this.state.isDragging) return;
-        
-        // Create deferred label if needed
-        if (seatContainer._labelDeferred && !seatContainer.text) {
-            this.createSeatLabel(seatContainer);
-        }
-        
-        // Don't show tooltip on touch devices
-        if (!this.state.isTouchDevice) {
-            this.showTooltip(
-                seatContainer.seatData, 
-                sectionData.name, 
-                rowLabel, 
-                sectionData.pricing,
-                seatContainer.seatColor,
-                seatContainer.seatTextColor
-            );
-        }
-
-        if (seatContainer.text) {
-            const zoom = this.viewport.scale.x;
-            seatContainer.text.resolution = Math.max(2, zoom * 2);
-        }
-
-        const status = seatContainer.seatData.status || 'available';
-        if (status !== 'available') return;
-
-        seatContainer.targetScale = this.options.seatRadiusHover / this.options.seatRadius;
-        seatContainer.targetTextAlpha = 1;
-        seatContainer.targetTextScale = 1;
-        seatContainer.parent.addChild(seatContainer);
-        this.animatingSeats.add(seatContainer);
-    }
-
-    onSeatOut(seatContainer, isSpecial) {
-        this.hideTooltip();
-
-        if (!seatContainer.selected) {
-            seatContainer.targetScale = seatContainer.baseScale;
-            seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
-            seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
-            this.animatingSeats.add(seatContainer);
-        }
-    }
-
-    onSeatClick(seatContainer) {
-        // Block selection during or right after gestures (pinch zoom, pan)
-        if (this.inputHandler?.isGestureActive?.()) {
-            this.debug('Selection blocked: gesture in progress');
-            return;
-        }
-        
-        // On touch devices, require zoom before allowing selection
-        if (this.state.isTouchDevice && this.options.mobileRequireZoomForSelection) {
-            const currentZoom = this.viewport.scale.x;
-            const initialZoom = this.state.initialScale || 1;
-            const zoomRatio = currentZoom / initialZoom;
-            
-            if (zoomRatio < this.options.mobileMinZoomForSelection) {
-                this.debug(`Selection blocked on mobile: zoom in more (current: ${zoomRatio.toFixed(2)}x, required: ${this.options.mobileMinZoomForSelection}x)`);
-                return;
-            }
-        }
-        
-        const result = this.selectionManager.toggleSelection(seatContainer);
-        
-        if (!result.success) {
-            this.debug(`Selection blocked: ${result.reason}`);
-            return;
-        }
-
-        this.debug("Seat clicked:", seatContainer.seatData, "Selected:", seatContainer.selected);
-
-        // Create deferred label if needed
-        if (seatContainer._labelDeferred && !seatContainer.text) {
-            this.createSeatLabel(seatContainer);
-        }
-
-        // Update visual state
-        if (seatContainer.selected) {
-            seatContainer.targetScale = this.options.seatRadiusHover / this.options.seatRadius;
-            seatContainer.targetTextAlpha = 1;
-            seatContainer.targetTextScale = 1;
-            if (seatContainer.text) {
-                seatContainer.text.text = "✓";
-                const zoom = this.viewport.scale.x;
-                seatContainer.text.resolution = Math.max(2, zoom * 2);
-            }
-        } else {
-            seatContainer.targetScale = this.options.seatRadiusHover / this.options.seatRadius;
-            seatContainer.targetTextAlpha = 1;
-            seatContainer.targetTextScale = 1;
-            
-            if (seatContainer.text) {
-                if (seatContainer.seatData.sn || seatContainer.seatData.specialNeeds) {
-                    seatContainer.text.text = 'accessible_forward';
-                } else {
-                    seatContainer.text.text = seatContainer.originalLabel;
-                }
-            }
-        }
-        
-        seatContainer.parent.addChild(seatContainer);
-        this.animatingSeats.add(seatContainer);
-
-        // Dispatch events
-        const eventData = { seat: seatContainer.seatData, sectionId: seatContainer.sectionId };
-        
-        if (seatContainer.selected) {
-            this.container.dispatchEvent(new CustomEvent('seat-selected', { detail: eventData }));
-            if (this.options.onSeatSelect) this.options.onSeatSelect(eventData);
-        } else {
-            this.container.dispatchEvent(new CustomEvent('seat-deselected', { detail: eventData }));
-            if (this.options.onSeatDeselect) this.options.onSeatDeselect(eventData);
-        }
-
-        this.cartManager.handleCartChange(
-            this.selectionManager.getSelectedSeats(),
-            this.gaSelectionManager ? this.gaSelectionManager.getSelectionsArray() : []
+        this._emit("ga-selection-change", detail);
+        this._emit("gaSelectionConfirm", detail);
+      } else this.ui.announce(this.strings.unavailable);
+      return result;
+    });
+  }
+  getGASelections() {
+    return this.getCart().ga;
+  }
+  decreaseGASelection(id) {
+    const g = this._store.ga.get(id);
+    return g?.quantity
+      ? this.setGAQuantity(id, g.quantity - 1)
+      : { success: false, reason: "not-found" };
+  }
+  clearGASelections() {
+    this._requireReady();
+    for (const g of this._store.ga.values()) g.quantity = 0;
+    this._sync();
+    this._emit("ga-selection-change", { allSelections: [] });
+  }
+  loadInventory(data, options) {
+    return this._attempt(() => {
+      this._requireReady();
+      const result = this._store.loadInventory(data, options);
+      this._unmatched = result.unmatched;
+      this._sync();
+      if (result.adjusted.length) this.ui.announce(this.strings.adjusted);
+      if (result.unmatched.length)
+        this._diagnostic(
+          "UNMATCHED_INVENTORY",
+          "Inventory identifiers did not match the map",
+          { identifiers: result.unmatched },
         );
+      return result;
+    });
+  }
+  getUnmatchedInventoryKeys() {
+    return [...(this._unmatched ?? [])];
+  }
+  setSectionPromo(id, promo) {
+    return this.setSectionPromos({ [id]: promo });
+  }
+  setSectionPromos(promos) {
+    return this._attempt(() => {
+      this._requireReady();
+      this._store.setPromos(
+        Array.isArray(promos)
+          ? Object.fromEntries(promos.map((p) => [p.sectionId, p]))
+          : promos,
+      );
+      this._sync();
+    });
+  }
+  getSectionPromo(id) {
+    return copy(this._store.promos.get(id) ?? null);
+  }
+  clearSectionPromo(id) {
+    return this.setSectionPromo(id, null);
+  }
+  clearAllPromos() {
+    this._requireReady();
+    this._store.promos.clear();
+    this._sync();
+  }
+  formatPrice(price) {
+    return this._priceFormatter.format(price / this._priceDivisor);
+  }
+  fitToView(animate = true) {
+    if (
+      !this.isInitialized ||
+      !this.container.clientWidth ||
+      !this.container.clientHeight
+    )
+      return;
+    this.viewportManager.fitToView(animate);
+    this._semanticZoom();
+  }
+  centerMap() {
+    this.fitToView();
+  }
+  fitToSections(animate = true) {
+    const had = this.state.hasUnderlay;
+    this.state.hasUnderlay = false;
+    const underlay = this.viewport.children.find((x) => x.isUnderlay);
+    if (underlay) this.viewport.removeChild(underlay);
+    this.fitToView(animate);
+    if (underlay) this.viewport.addChildAt(underlay, 0);
+    this.state.hasUnderlay = had;
+  }
+  zoomToSectionById(id, tapPoint) {
+    const section = this._sections.get(id);
+    if (!section) return false;
+    this._navigated = true;
+    this.viewportManager.zoomToSection(section, tapPoint);
+    return true;
+  }
+  zoomBy(factor) {
+    this._navigated = true;
+    this.viewportManager.zoomToPoint(
+      { x: this.app.screen.width / 2, y: this.app.screen.height / 2 },
+      Math.max(1, (this.viewport.scale.x * factor) / this.state.initialScale),
+    );
+  }
+  _performResize() {
+    if (
+      !this.isInitialized ||
+      this._destroyed ||
+      !this.container.clientWidth ||
+      !this.container.clientHeight
+    )
+      return;
+    const scale = this.viewport.scale.x,
+      ratio = scale / (this.state.initialScale || 1),
+      center = {
+        x: (this.app.screen.width / 2 - this.viewport.x) / scale,
+        y: (this.app.screen.height / 2 - this.viewport.y) / scale,
+      };
+    this.app.renderer.resize(
+      this.container.clientWidth,
+      this.container.clientHeight,
+    );
+    this._renderGrid();
+    this.fitToView(false);
+    if (this._navigated && ratio > 1.05) {
+      const next = Math.min(
+        this.options.maxZoom,
+        this.state.initialScale * ratio,
+      );
+      this.viewport.scale.set(next);
+      const p = this.viewportManager.getConstrainedPosition(
+        this.app.screen.width / 2 - center.x * next,
+        this.app.screen.height / 2 - center.y * next,
+        next,
+      );
+      this.viewport.position.set(p.x, p.y);
     }
-
-    updateSeatAnimations() {
-        if (this.animatingSeats.size === 0) return;
-
-        const speed = this.options.seatHoverSpeed;
-
-        for (const seat of this.animatingSeats) {
-            const text = seat.text;
-
-            seat.scale.x += (seat.targetScale - seat.scale.x) * speed;
-            seat.scale.y += (seat.targetScale - seat.scale.y) * speed;
-            
-            // Handle deferred text (may be null)
-            if (text) {
-                text.alpha += (seat.targetTextAlpha - text.alpha) * speed;
-                text.scale.x += (seat.targetTextScale - text.scale.x) * speed;
-                text.scale.y += (seat.targetTextScale - text.scale.y) * speed;
-            }
-
-            const textDone = !text || Math.abs(seat.targetTextAlpha - text.alpha) < this.options.animationThreshold;
-            
-            if (Math.abs(seat.targetScale - seat.scale.x) < this.options.animationThreshold && textDone) {
-                seat.scale.set(seat.targetScale);
-                if (text) {
-                    text.alpha = seat.targetTextAlpha;
-                    text.scale.set(seat.targetTextScale);
-                }
-                this.animatingSeats.delete(seat);
-            }
-        }
+  }
+  _renderGrid() {
+    this._grid?.destroy();
+    this._grid = null;
+    if (!this.options.showGrid) return;
+    const g = new PIXI.Graphics();
+    for (let x = 0; x < this.app.screen.width; x += this.options.gridSize)
+      g.moveTo(x, 0).lineTo(x, this.app.screen.height);
+    for (let y = 0; y < this.app.screen.height; y += this.options.gridSize)
+      g.moveTo(0, y).lineTo(this.app.screen.width, y);
+    g.stroke({
+      width: this.options.gridLineWidth,
+      color: this.options.gridColor,
+    });
+    this._grid = g;
+    this.app.stage.addChildAt(g, 0);
+  }
+  setGridVisible(show) {
+    this.options.showGrid = Boolean(show);
+    if (this.isInitialized) this._renderGrid();
+  }
+  setGridColor(color) {
+    this.options.gridColor = color;
+    if (this.isInitialized) this._renderGrid();
+  }
+  getDiagnostics() {
+    return {
+      initialized: this.isInitialized,
+      ready: this._ready,
+      seatViews: this._views.size,
+      sections: this._sections.size,
+      textures: this.textureCache?.size ?? 0,
+      sharedImages: sharedImageCount(),
+      highlightFrames: this._highlights.size,
+      viewportAnimation: !!this.viewportManager?._frame,
+    };
+  }
+  destroy() {
+    if (this._destroyed) return;
+    this._destroyed = true;
+    this.isInitialized = false;
+    this._generation++;
+    this._loadController?.abort();
+    clearTimeout(this._resizeTimer);
+    this._observer?.disconnect();
+    this._motion?.removeEventListener("change", this._motionHandler);
+    this._clearScene();
+    this.inputHandler?.destroy();
+    this.viewportManager?.destroy();
+    this.ui?.destroy();
+    this.textureCache?.destroy();
+    if (this._appReady && this.app) {
+      this.app.canvas.removeEventListener("pointerdown", this._pointerDown);
+      this.app.destroy(true, { children: true, texture: false });
+      this.app = null;
     }
-
-    showTooltip(seatData, sectionName, rowLabel, sectionPricing, seatColor, seatTextColor) {
-        if (!this.tooltipManager) return;
-
-        const status = seatData.status || 'available';
-        
-        // Get price with promo discount applied
-        const priceInfo = this.cartManager.getSeatPrice(seatData, sectionPricing, sectionName);
-        const promo = this.getSectionPromo(sectionName);
-        
-        let price = priceInfo.price > 0 ? `$${priceInfo.price.toLocaleString()} MXN` : 'Not Available';
-        if (status === 'booked' || status === 'sold') price = 'BOOKED';
-        else if (status === 'reserved') price = 'RESERVED';
-        
-        const sectionCategory = sectionName.replace(/\s*\d+$/, '').trim();
-        const category = seatData.category || sectionCategory || 'STANDARD';
-        const isSpecial = seatData.sn || seatData.specialNeeds;
-
-        const content = {
-            section: sectionName,
-            row: rowLabel,
-            seat: isSpecial ? null : (seatData.n ?? seatData.number),
-            price: price,
-            category: category,
-            originalPrice: priceInfo.originalPrice > 0 ? `$${priceInfo.originalPrice.toLocaleString()}` : null,
-            promo: promo ? {
-                text: promo.text,
-                color: promo.color,
-                textColor: promo.textColor
-            } : null
-        };
-
-        if (seatColor !== undefined) {
-            content.color = '#' + seatColor.toString(16).padStart(6, '0');
-        }
-        if (seatTextColor !== undefined) {
-            content.textColor = '#' + seatTextColor.toString(16).padStart(6, '0');
-        }
-
-        this.tooltipManager.show(content);
-    }
-
-    showGATooltip(data) {
-        if (!this.tooltipManager) return;
-
-        const pricing = data.pricing || {};
-        const basePrice = pricing.basePrice || 0;
-        const sectionName = data.name || 'GA';
-        
-        // Check for section promo
-        const promo = this.getSectionPromo(data.id || sectionName);
-        let priceValue = basePrice;
-        let originalPrice = null;
-        let isQuantityPromo = false;
-        
-        if (promo && basePrice > 0) {
-            // Quantity-based promos (2x1, 3x1) don't show per-item discount
-            if (promo.buyX !== undefined && promo.getY !== undefined) {
-                isQuantityPromo = true;
-                // Price stays at basePrice, no strikethrough
-            } else if (promo.discount !== undefined) {
-                // Percentage discount
-                priceValue = Math.round(basePrice * (1 - promo.discount));
-                originalPrice = basePrice;
-            } else if (promo.discountedPrice !== undefined) {
-                // Fixed discount
-                priceValue = promo.discountedPrice;
-                originalPrice = basePrice;
-            }
-        }
-        
-        let price = priceValue > 0 ? `$${priceValue.toLocaleString()} MXN` : '';
-
-        const content = {
-            section: sectionName,
-            row: null,
-            seat: null,
-            price: price,
-            category: 'General Admission',
-            originalPrice: originalPrice > 0 ? `$${originalPrice.toLocaleString()}` : null,
-            promo: promo ? {
-                text: promo.text,
-                color: promo.color,
-                textColor: promo.textColor,
-                isQuantityPromo: isQuantityPromo
-            } : null
-        };
-
-        // Use section color for footer
-        const style = data.style || {};
-        if (style.sectionColor !== undefined) {
-            content.color = '#' + style.sectionColor.toString(16).padStart(6, '0');
-        }
-
-        this.tooltipManager.show(content);
-    }
-
-    hideTooltip() {
-        if (this.tooltipManager) this.tooltipManager.hide();
-    }
-
-    loadInventory(inventoryData) {
-        if (!this.isInitialized) {
-            console.error('SeatMapRenderer not initialized.');
-            return;
-        }
-
-        const result = this.inventoryManager.loadInventory(
-            inventoryData,
-            (seatContainer) => this.updateSeatVisuals(seatContainer)
-        );
-
-        // Load GA inventory into GASelectionManager
-        if (this.gaSelectionManager && inventoryData.ga) {
-            this.gaSelectionManager.loadInventory({ ga: inventoryData.ga });
-            this.debug("GA inventory loaded:", inventoryData.ga.length, "sections");
-        }
-
-        this.debug("Inventory loaded:", result);
-    }
-
-    updateSeatVisuals(seatContainer) {
-        this.inventoryManager.updateSeatVisuals(
-            seatContainer,
-            (radius, color, strokeWidth, strokeColor) => 
-                this.textureCache.getSeatTexture(radius, color, strokeWidth, strokeColor),
-            () => this.cartManager.handleCartChange(
-                this.selectionManager.getSelectedSeats(),
-                this.gaSelectionManager ? this.gaSelectionManager.getSelectionsArray() : []
-            )
-        );
-    }
-
-    getUnmatchedInventoryKeys() {
-        return this.inventoryManager.getUnmatchedKeys();
-    }
-
-    fitToView(animate = true) {
-        if (!this.isInitialized) return;
-        this.viewportManager.fitToView(animate);
-    }
-
-    centerMap() {
-        this.fitToView();
-    }
-
-    /**
-     * Fit viewport to show only sections (excluding underlay)
-     * Useful for mobile where focusing on interactive content is preferred
-     * @param {boolean} animate - Whether to animate the transition
-     * @param {number} padding - Padding around sections (uses config default if not specified)
-     */
-    fitToSections(animate = true, padding = null) {
-        if (!this.isInitialized) return;
-        const paddingValue = padding ?? this.options.fitToSectionsPadding;
-        this.viewportManager.fitToSections(animate, paddingValue);
-    }
-
-    zoomToSection(sectionContainer, tapPoint = null, zoomBoost = 1.3) {
-        if (!this.isInitialized) return;
-        this.viewportManager.zoomToSection(sectionContainer, tapPoint, zoomBoost);
-    }
-
-    /**
-     * Zoom to a section by its ID
-     * @param {string} sectionId - The section ID to zoom to
-     * @param {number} zoomBoost - Optional zoom multiplier (default 1.8)
-     * @returns {boolean} - True if section was found and zoomed to
-     */
-    zoomToSectionById(sectionId, zoomBoost = 1.8) {
-        if (!this.isInitialized) return false;
-        
-        const container = this.sectionContainers.get(sectionId);
-        if (!container) {
-            console.warn(`Section with ID "${sectionId}" not found`);
-            return false;
-        }
-        
-        this.viewportManager.zoomToSection(container, null, zoomBoost);
-        
-        // Dispatch event for external listeners (e.g., to auto-expand mobile drawer)
-        this.container.dispatchEvent(new CustomEvent('sectionZoom', {
-            detail: { sectionId, container },
-            bubbles: true
-        }));
-        
-        return true;
-    }
-
-    /**
-     * Get list of sections from loaded map data
-     * @param {Object} options - Filter options
-     * @param {boolean} options.includeZones - Include zone overlays (default false)
-     * @param {boolean} options.includeGA - Include GA sections (default true)
-     * @returns {Array} - Array of section objects with id, name, type, pricing
-     */
-    getSections(options = {}) {
-        const { includeZones = false, includeGA = true } = options;
-        
-        if (!this.loadedData || !this.loadedData.sections) {
-            return [];
-        }
-        
-        return this.loadedData.sections
-            .filter(section => {
-                if (section.isZone && !includeZones) return false;
-                if (section.type === 'ga' && !section.isZone && !includeGA) return false;
-                return true;
-            })
-            .map(section => {
-                // For GA sections, use sectionColor; for seated sections, use seatColor
-                const isGA = section.type === 'ga';
-                const colorValue = isGA 
-                    ? section.style?.sectionColor 
-                    : section.style?.seatColor;
-                const colorHex = colorValue !== undefined 
-                    ? '#' + colorValue.toString(16).padStart(6, '0')
-                    : null;
-                
-                return {
-                    id: section.id || section.name,
-                    name: section.name,
-                    type: section.type || 'seated',
-                    isZone: !!section.isZone,
-                    pricing: section.pricing || {},
-                    capacity: section.ga?.capacity || section.seats?.length || 0,
-                    color: colorHex
-                };
-            });
-    }
-
-    // GA Selection handlers
-    handleGASelectionConfirm(selectionData) {
-        this.debug('GA selection confirmed:', selectionData);
-        // Dispatch event for external handling
-        this.container.dispatchEvent(new CustomEvent('gaSelectionConfirm', {
-            detail: selectionData,
-            bubbles: true
-        }));
-        // Trigger cart update
-        this.cartManager.handleCartChange(
-            this.selectionManager.getSelectedSeats(),
-            this.gaSelectionManager.getSelectionsArray()
-        );
-    }
-
-    handleGASelectionCancel() {
-        this.debug('GA selection cancelled');
-    }
-
-    // Get all GA selections
-    getGASelections() {
-        return this.gaSelectionManager ? this.gaSelectionManager.getSelectionsArray() : [];
-    }
-
-    // Clear all GA selections
-    clearGASelections() {
-        if (this.gaSelectionManager) {
-            this.gaSelectionManager.clearAll();
-            this.cartManager.handleCartChange(
-                this.selectionManager.getSelectedSeats(),
-                []
-            );
-        }
-    }
-
-    /**
-     * Deselect a specific seat by its ID
-     * @param {string} seatId - The seat ID to deselect
-     * @returns {boolean} - True if seat was found and deselected
-     */
-    deselectSeat(seatId) {
-        const seatContainer = this.inventoryManager.seatsById[seatId];
-        if (!seatContainer || !seatContainer.selected) {
-            return false;
-        }
-
-        // Reset visual state
-        seatContainer.selected = false;
-        const isSpecial = seatContainer.seatData?.sn || seatContainer.seatData?.specialNeeds;
-        
-        seatContainer.targetScale = seatContainer.baseScale;
-        seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
-        seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
-        
-        if (seatContainer.text) {
-            if (isSpecial) {
-                seatContainer.text.text = 'accessible_forward';
-            } else {
-                seatContainer.text.text = seatContainer.originalLabel || '';
-            }
-        }
-        
-        this.animatingSeats.add(seatContainer);
-        
-        // Remove from selection
-        this.selectionManager.deselectSeat(seatContainer);
-        
-        // Trigger cart update
-        this.cartManager.handleCartChange(
-            this.selectionManager.getSelectedSeats(),
-            this.gaSelectionManager.getSelectionsArray()
-        );
-        
-        return true;
-    }
-
-    /**
-     * Decrease GA selection quantity by 1 for a specific section
-     * @param {string} sectionId - The section ID
-     * @returns {boolean} - True if GA selection was decreased
-     */
-    decreaseGASelection(sectionId) {
-        if (!this.gaSelectionManager) return false;
-        
-        const decreased = this.gaSelectionManager.decreaseSelection(sectionId);
-        if (decreased) {
-            // Trigger cart update
-            this.cartManager.handleCartChange(
-                this.selectionManager.getSelectedSeats(),
-                this.gaSelectionManager.getSelectionsArray()
-            );
-        }
-        return decreased;
-    }
-
-    /**
-     * Clear all seat selections (both regular seats and GA)
-     * Updates visual state and triggers cart update event
-     */
-    clearSelections() {
-        // Get currently selected seats before clearing
-        const selectedSeats = this.selectionManager.getSelectedSeats();
-        
-        // Reset visual state for each selected seat
-        for (const seatContainer of selectedSeats) {
-            seatContainer.selected = false;
-            const isSpecial = seatContainer.seatData?.sn || seatContainer.seatData?.specialNeeds;
-            
-            // Reset to non-selected visual state
-            seatContainer.targetScale = seatContainer.baseScale;
-            seatContainer.targetTextAlpha = isSpecial ? 1 : 0;
-            seatContainer.targetTextScale = isSpecial ? 0.7 : 0.5;
-            
-            // Reset text content
-            if (seatContainer.text) {
-                if (isSpecial) {
-                    seatContainer.text.text = 'accessible_forward';
-                } else {
-                    seatContainer.text.text = seatContainer.originalLabel || '';
-                }
-            }
-            
-            this.animatingSeats.add(seatContainer);
-        }
-        
-        // Clear the selection set
-        this.selectionManager.clearSelection();
-        
-        // Clear GA selections
-        if (this.gaSelectionManager) {
-            this.gaSelectionManager.clearAll();
-        }
-        
-        // Trigger cart update with empty selections
-        this.cartManager.handleCartChange(new Set(), []);
-        
-        // Dispatch event
-        this.container.dispatchEvent(new CustomEvent('selections-cleared', {
-            detail: { clearedCount: selectedSeats.size },
-            bubbles: true
-        }));
-    }
-
-    // Legacy getters for backward compatibility
-    get selectedSeats() {
-        return this.selectionManager.getSelectedSeats();
-    }
-
-    get seatsByKey() {
-        return this.inventoryManager.seatsByKey;
-    }
-
-    get seatsById() {
-        return this.inventoryManager.seatsById;
-    }
-
-    /**
-     * Set a promotion/discount for a section
-     * @param {string} sectionId - The section ID to apply promo to
-     * @param {Object} promo - Promo configuration
-     * @param {string} [promo.id] - Unique promo identifier for tracking
-     * @param {string} promo.text - Display text (e.g., "PROMO", "20% OFF", "2x1", "EARLY BIRD")
-     * @param {string} [promo.color] - Background color (default: "#dc2626" red)
-     * @param {string} [promo.textColor] - Text color (default: "#ffffff" white)
-     * @param {number} [promo.discount] - Discount as decimal (0.15 = 15% off)
-     * @param {number} [promo.discountedPrice] - Fixed discounted price (alternative to discount)
-     * @param {number} [promo.buyX] - Buy X items (for quantity-based promos like 2x1)
-     * @param {number} [promo.getY] - Get Y items free (used with buyX)
-     * @returns {boolean} - True if section was found
-     * 
-     * @example
-     * // Simple promo label with ID
-     * renderer.setSectionPromo('VIP 1', { id: 'promo-123', text: 'PROMO' });
-     * 
-     * // Percentage discount with custom color
-     * renderer.setSectionPromo('VIP 2', { 
-     *   id: 'summer-sale',
-     *   text: '20% OFF', 
-     *   color: '#16a34a',
-     *   discount: 0.20
-     * });
-     * 
-     * // Fixed discounted price
-     * renderer.setSectionPromo('GA Floor', { 
-     *   id: 'early-bird-2024',
-     *   text: 'EARLY BIRD', 
-     *   discountedPrice: 500 
-     * });
-     * 
-     * // 2x1 promo (buy 2, get 1 free)
-     * renderer.setSectionPromo('ORO 1', {
-     *   id: '2x1-holiday',
-     *   text: '2x1',
-     *   color: '#7c3aed',
-     *   buyX: 2,
-     *   getY: 1
-     * });
-     * 
-     * // 3x1 promo (buy 3, get 1 free)
-     * renderer.setSectionPromo('ORO 2', {
-     *   id: '3x1-special',
-     *   text: '3x1',
-     *   buyX: 3,
-     *   getY: 1
-     * });
-     */
-    setSectionPromo(sectionId, promo) {
-        if (!this.sectionPromos) {
-            this.sectionPromos = new Map();
-        }
-
-        // Find section in loaded data
-        const section = this.loadedData?.sections?.find(s => s.id === sectionId || s.name === sectionId);
-        if (!section) {
-            console.warn(`Section "${sectionId}" not found for promo`);
-            return false;
-        }
-
-        // Normalize promo object with defaults
-        const normalizedPromo = {
-            id: promo.id || null,
-            text: promo.text || 'PROMO',
-            color: promo.color || '#dc2626',
-            textColor: promo.textColor || '#ffffff',
-            discount: promo.discount,           // decimal (0.15 = 15% off)
-            discountedPrice: promo.discountedPrice,
-            buyX: promo.buyX,                   // quantity-based: buy X
-            getY: promo.getY                    // quantity-based: get Y free
-        };
-
-        // Store promo by section ID
-        this.sectionPromos.set(section.id || section.name, normalizedPromo);
-        
-        this.debug(`Promo set for section "${sectionId}":`, normalizedPromo);
-        return true;
-    }
-
-    /**
-     * Set promotions for multiple sections at once
-     * Accepts either an object mapping section IDs to promo configs,
-     * or an array of promo objects with sectionId included
-     * @param {Object|Array} promos - Promos object or array
-     * 
-     * @example
-     * // Object format (section ID as key)
-     * renderer.setSectionPromos({
-     *   'VIP 1': { id: 'promo-vip', text: 'PROMO', discount: 0.10 },
-     *   'VIP 2': { id: 'promo-2x1', text: '2x1', buyX: 2, getY: 1, color: '#7c3aed' },
-     *   'GA Floor': { id: 'early-bird', text: 'EARLY BIRD', discountedPrice: 500 }
-     * });
-     * 
-     * // Array format (sectionId included in each promo)
-     * renderer.setSectionPromos([
-     *   { sectionId: 'VIP 1', id: 'promo-vip', text: 'PROMO', discount: 0.10 },
-     *   { sectionId: 'VIP 2', id: 'promo-2x1', text: '2x1', buyX: 2, getY: 1, color: '#7c3aed' },
-     *   { sectionId: 'GA Floor', id: 'early-bird', text: 'EARLY BIRD', discountedPrice: 500 }
-     * ]);
-     */
-    setSectionPromos(promos) {
-        if (!promos) return;
-        
-        // Handle array format
-        if (Array.isArray(promos)) {
-            for (const promo of promos) {
-                if (promo.sectionId) {
-                    this.setSectionPromo(promo.sectionId, promo);
-                } else {
-                    console.warn('Promo missing sectionId:', promo);
-                }
-            }
-            return;
-        }
-        
-        // Handle object format
-        if (typeof promos === 'object') {
-            for (const [sectionId, promo] of Object.entries(promos)) {
-                this.setSectionPromo(sectionId, promo);
-            }
-        }
-    }
-
-    /**
-     * Remove promo from a section
-     * @param {string} sectionId - The section ID
-     */
-    clearSectionPromo(sectionId) {
-        if (this.sectionPromos) {
-            this.sectionPromos.delete(sectionId);
-        }
-    }
-
-    /**
-     * Remove all section promos
-     */
-    clearAllPromos() {
-        if (this.sectionPromos) {
-            this.sectionPromos.clear();
-        }
-    }
-
-    /**
-     * Get promo for a section (internal use)
-     * @param {string} sectionId
-     * @returns {Object|null}
-     */
-    getSectionPromo(sectionId) {
-        return this.sectionPromos?.get(sectionId) || null;
-    }
+    this._store.reset();
+    this._map = null;
+    this.viewport = null;
+    this._labels = null;
+    this._grid = null;
+    this._unmatched = [];
+    this.ui = null;
+    this.inputHandler = null;
+    this.viewportManager = null;
+    this.textureCache = null;
+    this._observer = null;
+    this._motion = null;
+    this._loadController = null;
+    this.container = null;
+  }
 }

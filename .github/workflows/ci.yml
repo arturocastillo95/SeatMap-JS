@@ -39,11 +39,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build editor
-        run: pnpm build:editor
+      - name: Unit tests, builds, and packed consumer checks
+        run: pnpm test
 
-      - name: Build renderer
-        run: pnpm build:renderer
+      - name: Install browser engines
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
 
-      - name: Verify renderer package contents
-        run: pnpm pack:renderer
+      - name: Browser and accessibility tests
+        run: pnpm test:browser
+
+      - name: Benchmark desktop fixture
+        working-directory: renderer
+        run: SEATMAP_BENCHMARK=1 pnpm exec playwright test performance.spec.js --project=chromium
+
+      - name: Upload browser traces and benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renderer-verification
+          path: renderer/test-results
+          if-no-files-found: ignore

@@ -2,10 +2,11 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
+    esbuild: { jsx: "automatic" },
     // Development server configuration
     server: {
         port: 3000,
-        open: '/dev.html',
+        open: false,
         // Allow all hosts (for ngrok, localtunnel, etc.)
         host: '0.0.0.0',
         allowedHosts: ['.ngrok-free.dev', '.ngrok.io', 'localhost']

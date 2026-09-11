@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <title>Renderer test host</title>
+    <link rel="stylesheet" href="/assets/tooltip.css" />
+    <style>
+      body {
+        margin: 0;
+      }
+      #map {
+        width: min(900px, 100vw);
+        height: 650px;
+      }
+      #other {
+        width: 600px;
+        height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="map"></div>
+      <div id="other"></div>
+    </main>
+    <script type="module">
+      import * as PIXI from "pixi.js";
+      import { SeatMapRenderer } from "/SeatMapRenderer.js";
+      import { makeMap, inventory } from "/tests/fixtures.js";
+      window.api = { PIXI, SeatMapRenderer, makeMap, inventory };
+      window.ready = async (count = 100, options = {}) => {
+        const r = await SeatMapRenderer.create(document.querySelector("#map"), {
+          animationDuration: 0,
+          preventOrphanSeats: false,
+          ...options,
+        });
+        window.r = r;
+        window.map = makeMap(count);
+        await r.loadData(window.map);
+        return r;
+      };
+    </script>
+  </body>
+</html>

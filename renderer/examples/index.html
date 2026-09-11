@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SeatMap 2.0 — integración</title><link rel="stylesheet" href="../assets/tooltip.css"><style>body{font:16px system-ui;margin:24px;background:#f8f8f8;color:#222}h1{font-size:22px}#map{height:70vh;min-height:400px;width:100%}button{padding:8px}pre{white-space:pre-wrap}</style></head>
+<body><main><h1>Selección de asientos</h1><p>Demostración con inventario simulado. No realiza reservas.</p><div id="map"></div><p id="status" role="status"></p><button id="reload" type="button">Cambiar mapa</button></main>
+
+<script type="module">
+import {SeatMapRenderer} from '../SeatMapRenderer.js';
+import {makeMap,inventory} from './fixtures.js';
+const host=document.querySelector('#map'),status=document.querySelector('#status');
+const renderer=await SeatMapRenderer.create(host,{preventOrphanSeats:true});
+host.addEventListener('cartChange',e=>status.textContent=`Seleccionados: ${e.detail.totalCount}. Total: ${renderer.formatPrice(e.detail.grandTotal)}`);
+let count=1000;async function load(){const map=makeMap(count);await renderer.loadData(map);renderer.loadInventory(inventory(map));}
+document.querySelector('#reload').onclick=()=>{count=count===1000?10000:1000;load().catch(e=>status.textContent=e.message);};
+await load();window.addEventListener('pagehide',()=>renderer.destroy(),{once:true});
+</script></body></html>

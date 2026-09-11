@@ -74,7 +74,7 @@ See the [Renderer Documentation](renderer/README.md) for package usage and booki
 - **[File Format Specification](docs/FILE_FORMAT.md)** - SMF v2.0.0 format documentation
 - **[Changelog](docs/CHANGELOG.md)** - Version history and release notes
 - **[Renderer Documentation](renderer/README.md)** - Embeddable map viewer
-- **[Booking Demo Guide](renderer/BOOKING_DEMO.md)** - Production-ready ticket booking reference implementation
+- **[Booking Demo Guide](renderer/BOOKING_DEMO.md)** - Renderer 2.0 staging example and integration guidance
 
 ## 🏗️ Project Structure
 
@@ -172,8 +172,8 @@ pnpm build:editor     # Build the editor with Vite
 pnpm dev:renderer     # Start the renderer Vite dev server
 pnpm build:renderer   # Build @seatmap-js/renderer
 pnpm build:renderer-pages # Stage the bundled booking demo for GitHub Pages in renderer/.pages
-pnpm pack:renderer    # Dry-run the renderer package publish contents
-pnpm test             # Run editor build, renderer build, and package dry-run
+pnpm pack:renderer    # Verify the packed renderer in isolated consumers
+pnpm test             # Run unit tests, both builds, and packed consumer checks
 ```
 
 ## 🎨 Customization

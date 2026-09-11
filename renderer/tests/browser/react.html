@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <title>React integration test</title>
+  </head>
+  <body>
+    <main id="root"></main>
+    <script type="module">
+      import React from "react";
+      import { createRoot } from "react-dom/client";
+      import { ReactSeatMap } from "/examples/ReactSeatMap.tsx";
+      import { makeMap, inventory } from "/tests/fixtures.js";
+      const root = createRoot(document.querySelector("#root"));
+      window.fixtures = { makeMap, inventory };
+      window.carts = [];
+      window.mountExample = (mapUrl, inventoryUrl) =>
+        root.render(
+          React.createElement(
+            React.StrictMode,
+            null,
+            React.createElement(ReactSeatMap, {
+              mapUrl,
+              inventoryUrl,
+              onCartChange: (cart) => window.carts.push(cart),
+            }),
+          ),
+        );
+      window.unmountExample = () => root.unmount();
+    </script>
+  </body>
+</html>
