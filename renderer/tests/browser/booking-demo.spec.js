@@ -1,6 +1,14 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+// Exercise underlay loading without making booking tests depend on an image CDN.
+test.beforeEach(async ({ page }) => {
+  await page.route("https://i.postimg.cc/**", (route) => route.fulfill({
+    contentType: "image/svg+xml",
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="1329" height="1329"><rect width="1329" height="1329" fill="#eee"/></svg>',
+  }));
+});
+
 async function openDemo(page, path = "/examples/booking/index.html") {
   await page.goto(path);
   await expect(page.locator("canvas")).toHaveCount(1);
