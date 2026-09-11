@@ -1,7 +1,7 @@
-# Booking example
+# Booking examples
 
-The 2.0 example is `examples/index.html`. Run `pnpm dev:renderer` and open `/examples/index.html`, or run `pnpm build:renderer-pages` and serve `renderer/.pages`.
+The main Renderer 2.0 demo is `examples/booking/index.html`. It restores the complete event, section browser, selection summary, mobile drawer, and order-review experience while using only the supported public renderer API. Run `pnpm dev:renderer` and open `/examples/booking/`, or run `pnpm build:renderer-pages` and serve `renderer/.pages`.
 
-The example uses generated map data and simulated inventory. It creates no reservations or payments. The built artifact includes the installed Pixi runtime and license rather than depending on a CDN.
+The demo uses the maintained 863-seat venue and deterministic simulated inventory. Prices are VIP $1,000, Oro $700, General $500, and accessible seats $0 MXN. The review dialog creates no reservation and processes no payment. The built Pages artifact includes the installed Pixi runtime and license without a CDN.
 
-Use `examples/vanilla.js` or `examples/ReactSeatMap.tsx` for integration with your own map and inventory endpoints. Read MIGRATION.md for the breaking changes and VALIDATION.md for remaining release gates.
+The smaller `examples/compact/index.html` remains available as a focused integration sample. `examples/vanilla.js` and `examples/ReactSeatMap.tsx` demonstrate lifecycle-safe integration with application endpoints. Read `MIGRATION.md` for breaking changes and `VALIDATION.md` for the remaining real-device and assistive-technology release gates.

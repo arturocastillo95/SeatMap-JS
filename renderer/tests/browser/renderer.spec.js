@@ -347,7 +347,7 @@ test("built UMD example loads the packed runtime and self-hosted Pixi", async ({
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="1329" height="1329"/>',
     }),
   );
-  await page.goto("/.pages/examples/index.html");
+  await page.goto("/.pages/examples/compact/index.html");
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.locator("#status")).toHaveText("Recinto listo.");
   await page.getByText("Elegir asientos", { exact: true }).click();

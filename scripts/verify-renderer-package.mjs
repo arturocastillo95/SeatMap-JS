@@ -33,6 +33,13 @@ try {
   cpSync(join(temp, "package"), join(modules, "@seatmap-js", "renderer"), {
     recursive: true,
   });
+  for (const example of [
+    "examples/booking/index.html",
+    "examples/booking/booking-demo.js",
+    "examples/compact/index.html",
+  ])
+    if (!readFileSync(join(temp, "package", example), "utf8").length)
+      throw new Error(`Packed renderer is missing ${example}`);
   symlinkSync(
     realpathSync(join(root, "node_modules", "pixi.js")),
     join(modules, "pixi.js"),
@@ -93,7 +100,7 @@ try {
     "ReactSeatMap.tsx",
   ]);
   console.log(
-    "Packed consumer checks passed: ES, CJS, SSR import, CSS export, map audit, TypeScript, React example.",
+    "Packed consumer checks passed: ES, CJS, SSR import, CSS export, map audit, TypeScript, React example, booking examples.",
   );
 } finally {
   rmSync(temp, { recursive: true, force: true });

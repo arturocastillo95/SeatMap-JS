@@ -22,6 +22,8 @@ cpSync(resolve(rendererRoot, "examples"), resolve(outputDir, "examples"), {
 cpSync(resolve(rendererRoot, "dist"), resolve(outputDir, "dist"), {
   recursive: true,
 });
+for (const file of ["demo-booking.html", "demo-booking-bundled.html"])
+  cpSync(resolve(rendererRoot, file), resolve(outputDir, file));
 cpSync(
   resolve(rendererRoot, "demo-venue.json"),
   resolve(outputDir, "demo-venue.json"),
@@ -40,21 +42,23 @@ cpSync(
 );
 writeFileSync(
   resolve(outputDir, "index.html"),
-  '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=examples/index.html"><title>SeatMap</title></head><body><a href="examples/index.html">Abrir demostración</a></body></html>',
+  '<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=examples/booking/index.html"><title>SeatMap</title></head><body><a href="examples/booking/index.html">Abrir demostración de compra</a></body></html>',
 );
 
-const examplePath = resolve(outputDir, "examples/index.html");
-const example = readFileSync(examplePath, "utf8")
-  .replace("../assets/tooltip.css", "../dist/renderer.css")
-  .replace(
-    '<script type="module">',
-    '<script src="../dist/pixi.min.js"></script><script src="../dist/seatmap-renderer.umd.js"></script><script type="module">',
-  )
-  .replace(
-    'import { SeatMapRenderer } from "../SeatMapRenderer.js";',
-    "const { SeatMapRenderer } = window.SeatMapRenderer;",
-  );
-writeFileSync(examplePath, example);
+for (const relativePath of ["examples/booking/index.html", "examples/compact/index.html"]) {
+  const examplePath = resolve(outputDir, relativePath);
+  const example = readFileSync(examplePath, "utf8")
+    .replace("../../assets/tooltip.css", "../../dist/renderer.css")
+    .replace(
+      '<script type="module">',
+      '<script src="../../dist/pixi.min.js"></script><script src="../../dist/seatmap-renderer.umd.js"></script><script type="module">',
+    )
+    .replace(
+      'import { SeatMapRenderer } from "../../SeatMapRenderer.js";',
+      "const { SeatMapRenderer } = window.SeatMapRenderer;",
+    );
+  writeFileSync(examplePath, example);
+}
 
 // Disable Jekyll processing so asset paths are served exactly as emitted.
 writeFileSync(resolve(outputDir, ".nojekyll"), "");

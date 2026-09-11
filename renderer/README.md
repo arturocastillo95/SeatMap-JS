@@ -2,7 +2,7 @@
 
 Framework-neutral PixiJS renderer for SMF 2.0/2.1 maps, with inventory-driven booking state and a built-in accessible HTML picker. The package is a staging release candidate; see [validation gates](VALIDATION.md) before deploying a stable release.
 
-The maintained browser demo loads `demo-venue.json` with simulated inventory.
+The maintained browser demo at `examples/booking/index.html` loads `demo-venue.json` with simulated inventory and provides the complete section, cart, mobile drawer, and review flow. The focused integration sample remains at `examples/compact/index.html`.
 Synthetic 1,000- and 10,000-seat maps remain dedicated performance fixtures.
 
 ```js
@@ -86,6 +86,6 @@ From `renderer/`, run `SEATMAP_BENCHMARK=1 pnpm exec playwright test performance
 
 ES, CJS, and UMD bundles are built. ES/CJS consumers explicitly import `@seatmap-js/renderer/styles.css`; UMD consumers supply global PIXI and link the CSS file. The module is safe to import during SSR; creation requires browser APIs.
 
-Read [MIGRATION.md](MIGRATION.md) before upgrading from 1.x. Examples include framework-neutral mounting and React Strict Mode cleanup. Legacy demos describe 1.x and are not 2.0 integration references.
+Read [MIGRATION.md](MIGRATION.md) before upgrading from 1.x. Examples include framework-neutral mounting, the complete booking demo, and React Strict Mode cleanup. The historical booking URLs redirect to the Renderer 2.0 demo.
 
 License: GPL-3.0-only; see LICENSE.md.

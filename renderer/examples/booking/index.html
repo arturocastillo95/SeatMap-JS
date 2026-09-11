@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Compra de boletos — SeatMap 2.0</title>
+  <link rel="stylesheet" href="../../assets/tooltip.css" />
+  <link rel="stylesheet" href="./booking.css" />
+</head>
+<body>
+  <svg class="sr-only" aria-hidden="true"><defs>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></symbol>
+    <symbol id="i-seat" viewBox="0 0 24 24"><path d="M7 12V7a3 3 0 0 1 6 0v5m-8 0h12a2 2 0 0 1 2 2v3H5v-5Zm1 5v3m12-3v3"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2"/><path d="M3 20c0-4 2-6 6-6s6 2 6 6m0-5c4 0 6 2 6 5"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 24 24"><path d="M8 4v16m0-16L4 8m4-4 4 4m4 12V4m0 16-4-4m4 4 4-4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  </defs></svg>
+  <div id="booking-demo" data-map-url="../../demo-venue.json">
+    <header class="mobile-bar"><img src="./event-poster.svg" alt="" /><div class="mobile-bar-copy"><strong data-event-title></strong><span data-event-short-date></span></div><button class="plain-button" type="button" data-open-event aria-label="Ver información del evento"><svg class="icon"><use href="#i-info"/></svg></button></header>
+    <div class="demo-app">
+      <aside class="demo-sidebar" aria-label="Compra de boletos">
+        <button class="drawer-toggle" type="button" aria-expanded="false"><span>Selecciona tus boletos</span><span data-mobile-count>0 boletos</span></button>
+        <div class="demo-sidebar-scroll">
+          <header class="event-header"><img class="event-poster" src="./event-poster.svg" alt="Escenario ilustrado del evento ficticio" /><div class="event-copy"><h1 data-event-title></h1><div class="event-meta"><span class="icon-text"><svg class="icon"><use href="#i-calendar"/></svg><span data-event-short-date></span></span><span class="icon-text"><svg class="icon"><use href="#i-pin"/></svg><span data-event-venue></span></span></div><button class="text-button" type="button" data-open-event>Ver información</button></div>
+            <div class="section-toolbar"><button class="plain-button icon-text" type="button" data-clear disabled><svg class="icon"><use href="#i-trash"/></svg>Limpiar</button><button class="plain-button icon-text" type="button" data-sort><svg class="icon"><use href="#i-sort"/></svg><span>Precio: mayor a menor</span></button></div>
+          </header>
+          <section data-section-browser aria-labelledby="section-title"><h2 id="section-title" class="sr-only">Secciones</h2><div class="section-list" data-sections></div></section>
+          <section class="selection-view" data-selection-view hidden aria-labelledby="selection-title"><div class="selection-heading"><button class="plain-button" type="button" data-selection-back aria-label="Volver a las secciones"><svg class="icon"><use href="#i-arrow"/></svg></button><div><h2 id="selection-title">Tu selección</h2><p data-selection-count></p></div></div><div class="selection-list" data-selection-lines></div><div class="summary-box" data-section-summaries></div></section>
+        </div>
+      </aside>
+      <main class="map-area" aria-label="Mapa del recinto"><div class="map-message" role="status" aria-live="polite" data-status>Cargando recinto…</div><div id="seatmap-container"></div></main>
+    </div>
+    <footer class="purchase-footer" data-purchase-footer><div class="purchase-total"><strong data-total>$0.00</strong><span data-footer-count>0 boletos</span></div><button class="primary-button" type="button" data-review disabled>Revisar selección</button></footer>
+    <div class="sr-only" role="status" aria-live="polite" data-live></div>
+    <dialog data-event-dialog aria-labelledby="event-dialog-title"><img class="dialog-poster" src="./event-poster.svg" alt="" /><div class="dialog-header"><h2 id="event-dialog-title" data-event-title></h2><button class="dialog-close" type="button" data-close-event aria-label="Cerrar información"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="dialog-body"><p data-event-description></p><div class="dialog-meta"><span class="icon-text"><svg class="icon"><use href="#i-calendar"/></svg><span><strong data-event-date></strong><br/><span data-event-doors></span></span></span><span class="icon-text"><svg class="icon"><use href="#i-pin"/></svg><strong data-event-venue></strong></span></div></div></dialog>
+    <dialog data-review-dialog aria-labelledby="review-title"><div class="dialog-header"><h2 id="review-title">Revisa tu selección</h2><button class="dialog-close" type="button" data-close-review aria-label="Cerrar resumen"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="dialog-body"><div data-review-content></div><p class="review-note">Esta demostración no reserva boletos ni procesa pagos.</p></div></dialog>
+  </div>
+  <script type="module">
+    import { SeatMapRenderer } from "../../SeatMapRenderer.js";
+    import { createBookingInventory } from "./inventory.js";
+    import { initBookingDemo } from "./booking-demo.js";
+    window.bookingDemo = await initBookingDemo({ SeatMapRenderer, root: document.querySelector("#booking-demo"), inventoryLoader: createBookingInventory });
+  </script>
+</body>
+</html>
