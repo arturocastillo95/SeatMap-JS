@@ -13,6 +13,7 @@
     "build:renderer-pages": "pnpm build:renderer && node scripts/build-renderer-pages.mjs",
     "preview:renderer": "pnpm --filter @seatmap-js/renderer preview",
     "pack:renderer": "node scripts/verify-renderer-package.mjs",
+    "audit:renderer-map": "node renderer/bin/audit-map.js",
     "test": "pnpm test:unit && pnpm build:editor && pnpm build:renderer && pnpm pack:renderer",
     "test:unit": "node --test renderer/tests/*.test.js",
     "test:browser": "pnpm build:renderer-pages && pnpm --filter @seatmap-js/renderer test:browser"

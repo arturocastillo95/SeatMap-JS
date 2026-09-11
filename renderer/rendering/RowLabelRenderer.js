@@ -3,6 +3,9 @@
  */
 
 import * as PIXI from "pixi.js";
+import { buildRowLabelMap, getRowLabelText } from "../core/RowLabels.js";
+
+export { buildRowLabelMap, getRowLabelText } from "../core/RowLabels.js";
 
 /**
  * Generate label text based on index and type
@@ -11,70 +14,6 @@ import * as PIXI from "pixi.js";
  * @param {string|number} startValue - Starting value
  * @returns {string}
  */
-export function getRowLabelText(index, type, startValue) {
-  if (type === "numbers") {
-    const start = parseInt(startValue) || 1;
-    return (index + start).toString();
-  } else if (type === "letters") {
-    const start = startValue || "A";
-    const offset =
-      [...String(start)].reduce(
-        (value, char) => value * 26 + char.charCodeAt(0) - 64,
-        0,
-      ) - 1;
-
-    let labelIndex = index + offset;
-    let label = "";
-
-    while (labelIndex >= 0) {
-      label = String.fromCharCode(65 + (labelIndex % 26)) + label;
-      labelIndex = Math.floor(labelIndex / 26) - 1;
-    }
-    return label;
-  }
-  return "";
-}
-
-/**
- * Build a map of row indices to label text
- * @param {Array} seats - Array of seat data
- * @param {Object} rowLabelsConfig - Row labels configuration
- * @returns {Object} Map of rowIndex -> labelText
- */
-export function buildRowLabelMap(seats, rowLabelsConfig) {
-  const rowLabelMap = {};
-
-  if (!seats || seats.length === 0) {
-    return rowLabelMap;
-  }
-
-  // Group seats by row index
-  const rows = {};
-  seats.forEach((seat) => {
-    const r = seat.r !== undefined ? seat.r : seat.rowIndex;
-    if (r !== undefined) rows[r] = true;
-  });
-
-  const rowIndices = Object.keys(rows)
-    .map(Number)
-    .sort((a, b) => a - b);
-  const config = rowLabelsConfig || { type: "numbers" };
-  const totalRows = rowIndices.length;
-
-  rowIndices.forEach((rowIndex, arrayIndex) => {
-    const labelIndex = config.reversed
-      ? totalRows - 1 - arrayIndex
-      : arrayIndex;
-    rowLabelMap[rowIndex] = getRowLabelText(
-      labelIndex,
-      config.type,
-      config.start,
-    );
-  });
-
-  return rowLabelMap;
-}
-
 /**
  * Render row labels for a section
  * @param {PIXI.Container} container - Container to add labels to

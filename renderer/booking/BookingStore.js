@@ -1,4 +1,4 @@
-import { buildRowLabelMap } from "../rendering/RowLabelRenderer.js";
+import { buildRowLabelMap } from "../core/RowLabels.js";
 import { SelectionManager } from "../interaction/SelectionManager.js";
 
 export class RendererError extends Error {

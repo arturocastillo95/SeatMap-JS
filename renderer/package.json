@@ -13,7 +13,13 @@
     },
     "./styles.css": "./dist/renderer.css"
   },
+  "bin": {
+    "seatmap-renderer-audit": "bin/audit-map.js"
+  },
   "files": [
+    "audit",
+    "bin",
+    "core/RowLabels.js",
     "dist",
     "LICENSE.md",
     "README.md",

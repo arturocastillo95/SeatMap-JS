@@ -1,0 +1,46 @@
+{
+  "format": "SMF",
+  "version": "2.1.0",
+  "sections": [
+    {
+      "id": "duplicate-section",
+      "name": "Misma sección",
+      "type": "regular",
+      "x": 0,
+      "y": 0,
+      "width": -1,
+      "height": 100,
+      "points": [0, 0, 10],
+      "rowLabels": { "type": "letters", "start": "a" },
+      "pricing": { "basePrice": -10 },
+      "seats": [
+        {
+          "id": "duplicate-seat",
+          "r": 0,
+          "c": 0,
+          "n": "accessible_forward",
+          "x": 10,
+          "y": 10
+        },
+        {
+          "id": "duplicate-seat",
+          "r": 0,
+          "c": 1,
+          "n": "accessible_forward",
+          "x": "bad",
+          "y": 10
+        }
+      ]
+    },
+    {
+      "id": "duplicate-section",
+      "name": "Misma sección",
+      "type": "regular",
+      "x": 0,
+      "y": 100,
+      "width": 200,
+      "height": 100,
+      "seats": []
+    }
+  ]
+}

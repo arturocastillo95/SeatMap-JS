@@ -1,6 +1,7 @@
 # Renderer 2.0 checkpoint and resumption plan
 
-Saved: September 11, 2026. Feature work is paused at the user's request.
+Saved: September 11, 2026. Work resumed on the same date; the production-map
+audit described below is now implemented.
 
 This document belongs to the local Git checkpoint containing the Renderer 2.0
 implementation. The starting commit was `661c49a` (`Add live demo link to README`).
@@ -45,7 +46,7 @@ not a renderer runtime dependency. GPL-3.0-only licensing is unchanged.
 
 The final local run completed successfully:
 
-- 14 unit/lifecycle tests.
+- 17 unit/lifecycle/audit tests.
 - Editor and renderer production builds.
 - Isolated packed-consumer ES/CJS imports without a DOM, stylesheet export,
   public TypeScript declarations, and compilation of the actual React example.
@@ -90,15 +91,20 @@ adding more features; do not restart the renderer rewrite.
 
 The legacy `renderer/demo-venue.json` contains repeated `accessible_forward` seat
 labels in “Zona accesible”. A diagnostic experiment substituting those labels
-in memory also exposed duplicate inventory keys elsewhere, including section
-10. That experiment did not establish authoritative seat numbers and did not
+in memory also exposed duplicate inventory keys elsewhere, including section 10. That experiment did not establish authoritative seat numbers and did not
 repair the source file. The new validator correctly refuses ambiguous maps.
 
-Next concrete tooling change: add a read-only map audit command that reports all
-duplicate IDs, ambiguous section/row/seat keys, malformed geometry, and invalid
-labels with source locations. Cover it with valid and invalid fixtures. Obtain
-the authoritative venue labels and IDs before changing the real map; do not
+The read-only `audit:renderer-map` command now reports all duplicate IDs,
+ambiguous section/row/seat keys, malformed geometry, and invalid labels with JSON
+paths. It has valid and invalid fixtures and is also shipped as
+`seatmap-renderer-audit`. The source map is never modified. Obtain the
+authoritative venue labels and IDs before changing the real map; do not
 automatically renumber seats or invent mappings to live inventory.
+
+Running it against `demo-venue.json` reports 19 errors: 10 invalid
+`accessible_forward` seat labels and 9 ambiguous inventory keys across sections
+9 and 10 (zero-based JSON paths). These findings are evidence for correction,
+not enough information to infer the missing labels.
 
 Acceptance: a real target map normalizes successfully, identifiers match the
 inventory API, accessibility metadata is separate from labels, and an approved
@@ -179,17 +185,17 @@ claims to reflect that evidence.
 
 ## File map for the next session
 
-| Concern | Starting files |
-| --- | --- |
-| Normalization, inventory, money, cart | `booking/BookingStore.js`, `tests/booking.test.js` |
-| Renderer orchestration and cancellation | `SeatMapRenderer.js`, `core/Lifecycle.js`, `tests/lifecycle.test.js` |
-| Assets, viewport, input cleanup | `rendering/UnderlayRenderer.js`, `core/TextureCache.js`, `core/ViewportManager.js`, `interaction/InputHandler.js` |
-| Booking rules | `interaction/SelectionManager.js` |
-| Accessible UI and styles | `ui/MapUI.js`, `assets/tooltip.css`, `assets/accessibleIcon.js` |
-| Public contract | `index.js`, `index.d.ts`, `package.json`, `MIGRATION.md` |
-| Integration and browser regressions | `examples/`, `tests/browser/`, `playwright.config.js` |
-| Packing and hosted demo | `../scripts/verify-renderer-package.mjs`, `../scripts/build-renderer-pages.mjs` |
-| CI and release evidence | `../.github/workflows/ci.yml`, `VALIDATION.md` |
+| Concern                                 | Starting files                                                                                                    |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Normalization, inventory, money, cart   | `booking/BookingStore.js`, `tests/booking.test.js`                                                                |
+| Renderer orchestration and cancellation | `SeatMapRenderer.js`, `core/Lifecycle.js`, `tests/lifecycle.test.js`                                              |
+| Assets, viewport, input cleanup         | `rendering/UnderlayRenderer.js`, `core/TextureCache.js`, `core/ViewportManager.js`, `interaction/InputHandler.js` |
+| Booking rules                           | `interaction/SelectionManager.js`                                                                                 |
+| Accessible UI and styles                | `ui/MapUI.js`, `assets/tooltip.css`, `assets/accessibleIcon.js`                                                   |
+| Public contract                         | `index.js`, `index.d.ts`, `package.json`, `MIGRATION.md`                                                          |
+| Integration and browser regressions     | `examples/`, `tests/browser/`, `playwright.config.js`                                                             |
+| Packing and hosted demo                 | `../scripts/verify-renderer-package.mjs`, `../scripts/build-renderer-pages.mjs`                                   |
+| CI and release evidence                 | `../.github/workflows/ci.yml`, `VALIDATION.md`                                                                    |
 
 ## Local tooling note
 
@@ -203,8 +209,8 @@ were tooling constraints, not test failures.
 
 ## Suggested next-session request
 
-“Resume from `renderer/CHECKPOINT.md` on `codex/renderer-v2-checkpoint`. Verify
-the baseline, then implement the read-only production-map audit described in
-step 2. Preserve authoritative seat IDs and labels. Continue toward staging
-integration once I provide the target application and inventory contract; do
-not publish the package yet.”
+“Resume from `renderer/CHECKPOINT.md` on `codex/renderer-v2-checkpoint`. Use the
+map audit from step 2 to validate an authoritative production map without
+inventing seat labels or IDs. Then continue with staging integration once I
+provide the target application and inventory contract; do not publish the
+package yet.”

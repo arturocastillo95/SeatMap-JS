@@ -3,21 +3,21 @@
 Framework-neutral PixiJS renderer for SMF 2.0/2.1 maps, with inventory-driven booking state and a built-in accessible HTML picker. The package is a staging release candidate; see [validation gates](VALIDATION.md) before deploying a stable release.
 
 ```js
-import { SeatMapRenderer } from '@seatmap-js/renderer';
-import '@seatmap-js/renderer/styles.css';
+import { SeatMapRenderer } from "@seatmap-js/renderer";
+import "@seatmap-js/renderer/styles.css";
 
 const abort = new AbortController();
 const renderer = await SeatMapRenderer.create(container, {
   signal: abort.signal,
-  locale: 'es-MX',
-  currency: 'MXN',
-  onCartChange: cart => updateCheckoutPreview(cart)
+  locale: "es-MX",
+  currency: "MXN",
+  onCartChange: (cart) => updateCheckoutPreview(cart),
 });
 await renderer.loadData(map, { signal: abort.signal });
 renderer.loadInventory({
-  currency: 'MXN',
-  seats: [{ id: 'seat-id', status: 'available', price: 15000 }],
-  ga: [{ sectionId: 'floor-id', available: 100, price: 10000 }]
+  currency: "MXN",
+  seats: [{ id: "seat-id", status: "available", price: 15000 }],
+  ga: [{ sectionId: "floor-id", available: 100, price: 10000 }],
 });
 // On unmount:
 abort.abort();
@@ -34,25 +34,36 @@ Provide a host element with an explicit height. Install PixiJS 8.14.3+ (major 8)
 - Quantity promotions make the cheapest eligible items free within each section. Section IDs are authoritative.
 - Loading can be aborted or superseded; destruction is idempotent. Underlay failure produces diagnostics.
 - Keyboard users can select through the section/search picker with 50 seats per page. Multiple instances own independent UI.
+
+Audit an SMF file before connecting inventory. The command is read-only and
+reports every duplicate identifier, ambiguous inventory key, malformed geometry,
+and invalid label with its JSON path:
+
+```sh
+pnpm audit:renderer-map renderer/demo-venue.json
+# Installed package:
+seatmap-renderer-audit venue.json --json
+```
+
 - No network booking, payment, reservation, or analytics service is included. The consuming backend remains authoritative.
 
 ## API
 
 See [index.d.ts](index.d.ts) for options, snapshots, errors, and event types. Primary methods:
 
-| Method | Purpose |
-| --- | --- |
-| `loadData(map, { signal })` | Validate and load an SMF map |
-| `loadInventory(data, { mode })` | Apply snapshot (default) or patch inventory |
-| `getSeats()`, `getSections()`, `getCart()` | Read detached snapshots |
-| `selectSeat(id)`, `deselectSeat(id)` | Validated selection through shared rules |
-| `setGAQuantity(id, quantity)` | Set GA quantity with availability/limit checks |
-| `clearSelections()` | Clear seat and GA selections |
-| `setSectionPromo(id, promo)` | Set a section's promotion |
-| `setSectionPromos(promos)` | Atomically set multiple promotions |
-| `fitToView()`, `zoomToSectionById(id)` | Navigate the map |
-| `getDiagnostics()` | Inspect owned resource counts |
-| `destroy()` | Release resources and owned DOM |
+| Method                                     | Purpose                                        |
+| ------------------------------------------ | ---------------------------------------------- |
+| `loadData(map, { signal })`                | Validate and load an SMF map                   |
+| `loadInventory(data, { mode })`            | Apply snapshot (default) or patch inventory    |
+| `getSeats()`, `getSections()`, `getCart()` | Read detached snapshots                        |
+| `selectSeat(id)`, `deselectSeat(id)`       | Validated selection through shared rules       |
+| `setGAQuantity(id, quantity)`              | Set GA quantity with availability/limit checks |
+| `clearSelections()`                        | Clear seat and GA selections                   |
+| `setSectionPromo(id, promo)`               | Set a section's promotion                      |
+| `setSectionPromos(promos)`                 | Atomically set multiple promotions             |
+| `fitToView()`, `zoomToSectionById(id)`     | Navigate the map                               |
+| `getDiagnostics()`                         | Inspect owned resource counts                  |
+| `destroy()`                                | Release resources and owned DOM                |
 
 Events are dispatched on the host element: `cartChange`, `seat-selected`, `seat-deselected`, `ga-selection-change`, `gaSelectionConfirm`, `selection-limit-reached`, `selection-blocked`, `orphan-seat-blocked`, `selections-cleared`, `mapZonesLoaded`, `seatLoadProgress`, `mapFullyLoaded`, `renderer-error`, and `renderer-diagnostic`.
 

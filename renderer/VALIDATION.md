@@ -4,7 +4,7 @@ Status: **release candidate; not cleared for stable production publication**.
 
 ## Automated gates
 
-Local verification passed 14 unit/lifecycle tests and 61 active browser scenarios. Eight opt-in benchmark cases and three native-touch cases on non-touch engines are intentionally skipped in the default browser run. The desktop benchmarks were run separately.
+Local verification passed 17 unit/lifecycle/audit tests and 61 active browser scenarios. Eight opt-in benchmark cases and three native-touch cases on non-touch engines are intentionally skipped in the default browser run. The desktop benchmarks were run separately.
 
 - `pnpm test`: booking/lifecycle regression tests, editor and renderer builds, isolated packed-consumer ES/CJS/SSR imports, CSS export, and TypeScript compilation.
 - `pnpm test:browser`: Chromium, Firefox, WebKit, and touch-emulated Chromium. Covers booking, inventory reconciliation, accessible picker/dialog, loading cancellation, fitting, resize, shared assets, and 20 mount/load/destroy cycles.
@@ -17,12 +17,12 @@ Resource counters measure owned scene nodes, generated textures, tracked animati
 
 A local headless desktop run on macOS on 2026-09-11 measured:
 
-| Engine | Seats | Create + map load | Selection + next frame | Median frame during zoom |
-| --- | ---: | ---: | ---: | ---: |
-| Chromium 149 | 1,000 | 887 ms | 21 ms | 18 ms |
-| Chromium 149 | 10,000 | 1,795 ms | 32 ms | 23 ms |
-| WebKit 26.5 | 1,000 | 205 ms | 13 ms | 13 ms |
-| WebKit 26.5 | 10,000 | 783 ms | 23 ms | 13 ms |
+| Engine       |  Seats | Create + map load | Selection + next frame | Median frame during zoom |
+| ------------ | -----: | ----------------: | ---------------------: | -----------------------: |
+| Chromium 149 |  1,000 |            887 ms |                  21 ms |                    18 ms |
+| Chromium 149 | 10,000 |          1,795 ms |                  32 ms |                    23 ms |
+| WebKit 26.5  |  1,000 |            205 ms |                  13 ms |                    13 ms |
+| WebKit 26.5  | 10,000 |            783 ms |                  23 ms |                    13 ms |
 
 These measurements use synthetic maps, no network underlay, and software-controlled zoom. They are observations, not a mobile or universal frame-rate guarantee. The fixture excludes decorative glow and per-seat labels until hover. Rerun when maps, rendering options, browsers, or hardware change.
 
