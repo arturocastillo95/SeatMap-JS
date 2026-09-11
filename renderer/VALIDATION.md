@@ -4,7 +4,7 @@ Status: **release candidate; not cleared for stable production publication**.
 
 ## Automated gates
 
-Local verification passed 18 unit/lifecycle/audit tests and 61 active browser scenarios. Eight opt-in benchmark cases and three native-touch cases on non-touch engines are intentionally skipped in the default browser run. The desktop benchmarks were run separately.
+Local verification passed 19 unit/lifecycle/audit tests and 65 active browser scenarios. Eight opt-in benchmark cases and three native-touch cases on non-touch engines are intentionally skipped in the default browser run. The desktop benchmarks were run separately.
 
 - `pnpm test`: booking/lifecycle regression tests, editor and renderer builds, isolated packed-consumer ES/CJS/SSR imports, CSS export, and TypeScript compilation.
 - `pnpm test:browser`: Chromium, Firefox, WebKit, and touch-emulated Chromium. Covers booking, inventory reconciliation, accessible picker/dialog, loading cancellation, fitting, resize, shared assets, and 20 mount/load/destroy cycles.
@@ -33,7 +33,8 @@ These measurements use synthetic maps, no network underlay, and software-control
 - [ ] Physical Pixel 6a-class device: Chrome, portrait/landscape, pinch/pan/tap, 10,000-seat benchmark.
 - [ ] Target-device performance: load seats within 5 seconds excluding network, selection feedback within 100 ms, median pan/zoom frame time within 33 ms. Record device, OS, browser, options, and measurements; set `SEATMAP_ENFORCE_PERF=1` for the benchmark assertions on the agreed target hardware.
 - [ ] Staging app: test backend rejections, concurrent purchases, reservation expiry, reconnects, and pricing changes. The host must discard stale inventory responses and refresh snapshots after reconnecting.
-- [ ] Verify the real production map has unique IDs/keys and correct seat labels; legacy demo accessibility labels require correction from authoritative venue data.
+- [x] Maintained demo venue has unique IDs/keys, explicit demo accessibility labels, and automated renderer coverage.
+- [ ] Verify each real production map against its authoritative seat labels and inventory identifiers.
 
 ## Publication
 

@@ -46,11 +46,11 @@ not a renderer runtime dependency. GPL-3.0-only licensing is unchanged.
 
 The final local run completed successfully:
 
-- 18 unit/lifecycle/audit tests.
+- 19 unit/lifecycle/audit tests.
 - Editor and renderer production builds.
 - Isolated packed-consumer ES/CJS imports without a DOM, stylesheet export,
   public TypeScript declarations, and compilation of the actual React example.
-- 61 browser scenarios across Chromium, Firefox, WebKit, and touch-emulated
+- 65 browser scenarios across Chromium, Firefox, WebKit, and touch-emulated
   Chromium, including the actual React Strict Mode example and automated axe
   checks. The default run skips eight opt-in benchmarks and three native-touch
   cases on profiles that do not support them.
@@ -89,10 +89,10 @@ adding more features; do not restart the renderer rewrite.
 
 ### 2. Audit and correct the real venue data
 
-The legacy `renderer/demo-venue.json` contains repeated `accessible_forward` seat
-labels in “Zona accesible”. A diagnostic experiment substituting those labels
-in memory also exposed duplicate inventory keys elsewhere, including section 10. That experiment did not establish authoritative seat numbers and did not
-repair the source file. The new validator correctly refuses ambiguous maps.
+The maintained `renderer/demo-venue.json` now uses separate `accessible-left`
+and `accessible-right` section IDs and demo seat labels `L1`–`L5` and `R1`–`R5`.
+The `sn` field continues to carry accessibility metadata. These labels are stable
+demo identifiers; they do not claim to recover the original venue numbering.
 
 The read-only `audit:renderer-map` command now reports all duplicate IDs,
 ambiguous section/row/seat keys, malformed geometry, and invalid labels with JSON
@@ -101,10 +101,9 @@ paths. It has valid and invalid fixtures and is also shipped as
 authoritative venue labels and IDs before changing the real map; do not
 automatically renumber seats or invent mappings to live inventory.
 
-Running it against `demo-venue.json` reports 19 errors: 10 invalid
-`accessible_forward` seat labels and 9 ambiguous inventory keys across sections
-9 and 10 (zero-based JSON paths). These findings are evidence for correction,
-not enough information to infer the missing labels.
+Running it against `demo-venue.json` now reports zero errors for 16 sections and
+863 seats. The maintained browser demo loads this map with simulated inventory,
+and browser coverage selects an accessible seat and verifies its GA section.
 
 Acceptance: a real target map normalizes successfully, identifiers match the
 inventory API, accessibility metadata is separate from labels, and an approved

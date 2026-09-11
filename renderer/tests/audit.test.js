@@ -17,7 +17,9 @@ test("malformed label objects cannot interrupt the remaining audit", async () =>
   const report = auditMap(map);
   assert.equal(report.valid, false);
   assert.ok(report.issues.some((issue) => issue.code === "INVALID_SEAT_LABEL"));
-  assert.ok(report.issues.some((issue) => issue.path === "sections[0].seats[1].x"));
+  assert.ok(
+    report.issues.some((issue) => issue.path === "sections[0].seats[1].x"),
+  );
   assert.deepEqual(map, before);
 });
 
@@ -33,6 +35,28 @@ test("map audit accepts a valid map without modifying it", async () => {
     seats: 2,
   });
   assert.deepEqual(map, before);
+});
+
+test("maintained demo venue is valid and keeps accessible labels separate", async () => {
+  const map = JSON.parse(
+    await readFile(new URL("../demo-venue.json", import.meta.url)),
+  );
+  const report = auditMap(map);
+  const accessibleSeats = map.sections
+    .filter((section) => section.id.startsWith("accessible-"))
+    .flatMap((section) => section.seats);
+  assert.equal(report.valid, true);
+  assert.deepEqual(report.summary, {
+    errors: 0,
+    warnings: 0,
+    sections: 16,
+    seats: 863,
+  });
+  assert.deepEqual(
+    accessibleSeats.map((seat) => seat.n),
+    ["L1", "L2", "L3", "L4", "L5", "R1", "R2", "R3", "R4", "R5"],
+  );
+  assert.ok(accessibleSeats.every((seat) => seat.sn === true));
 });
 
 test("map audit reports all duplicate, label, and geometry problems with paths", async () => {

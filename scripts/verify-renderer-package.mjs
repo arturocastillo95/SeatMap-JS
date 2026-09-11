@@ -55,22 +55,6 @@ try {
   );
   writeFileSync(join(temp, "package.json"), JSON.stringify({ type: "module" }));
   writeFileSync(
-    join(temp, "map.json"),
-    JSON.stringify({
-      format: "SMF",
-      version: "2.1.0",
-      sections: [
-        {
-          id: "section",
-          name: "Section",
-          width: 100,
-          height: 100,
-          seats: [{ id: "seat", r: 0, c: 0, n: "1", x: 10, y: 10 }],
-        },
-      ],
-    }),
-  );
-  writeFileSync(
     join(temp, "esm.mjs"),
     `import assert from 'node:assert/strict';import {SeatMapRenderer} from '@seatmap-js/renderer';import fs from 'node:fs';assert.equal(typeof SeatMapRenderer.create,'function');assert.ok(fs.readFileSync(new URL(import.meta.resolve('@seatmap-js/renderer/styles.css')),'utf8').includes('seatmap-ui'));`,
   );
@@ -83,11 +67,12 @@ try {
   const audit = JSON.parse(
     run(process.execPath, [
       join(modules, "@seatmap-js/renderer/bin/audit-map.js"),
-      join(temp, "map.json"),
+      join(modules, "@seatmap-js/renderer/demo-venue.json"),
       "--json",
     ]),
   );
-  if (!audit.valid) throw new Error("Packed map audit rejected a valid map");
+  if (!audit.valid || audit.summary.seats !== 863)
+    throw new Error("Packed map audit rejected the maintained demo venue");
   writeFileSync(
     join(temp, "consumer.ts"),
     `import {SeatMapRenderer,type Cart,type RendererEvents} from '@seatmap-js/renderer';async function main(host:HTMLElement){const r=await SeatMapRenderer.create(host,{currency:'MXN'});const cart:Cart=r.getCart();r.selectSeat('id');r.loadInventory({seats:[]});return cart;} const progress:RendererEvents['seatLoadProgress']={loaded:1,total:1,percent:100};`,

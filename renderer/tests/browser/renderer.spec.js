@@ -37,6 +37,46 @@ test("seated-only fitting, keyboard booking, inventory reconciliation and access
       .violations,
   ).toEqual([]);
 });
+test("maintained demo venue loads with selectable accessible seats and GA", async ({
+  page,
+}) => {
+  const result = await page.evaluate(async () => {
+    await ready(0);
+    const venue = await fetch("/demo-venue.json").then((response) =>
+      response.json(),
+    );
+    delete venue.underlay;
+    await r.loadData(venue);
+    r.loadInventory(api.inventory(venue));
+    const accessible = r.getSeats().filter((seat) => seat.special);
+    const ga = r.getSections().find((section) => section.id === "8BYsAYda");
+    const selection = r.selectSeat(accessible[0].id);
+    return {
+      seats: r.getSeats().length,
+      sections: r.getSections().length,
+      accessible: accessible.map((seat) => seat.seat),
+      selected: {
+        success: selection.success,
+        selected: selection.selected,
+      },
+      totalCount: r.getCart().totalCount,
+      ga: { type: ga.type, isZone: ga.isZone },
+      icon: {
+        width: Number(r._views.get(accessible[0].id)._icon.width.toFixed(1)),
+        height: Number(r._views.get(accessible[0].id)._icon.height.toFixed(1)),
+      },
+    };
+  });
+  expect(result).toEqual({
+    seats: 863,
+    sections: 16,
+    accessible: ["L1", "L2", "L3", "L4", "L5", "R1", "R2", "R3", "R4", "R5"],
+    selected: { success: true, selected: true },
+    totalCount: 1,
+    ga: { type: "ga", isZone: false },
+    icon: { width: 9.6, height: 9.6 },
+  });
+});
 test("GA dialog revalidates inventory, contains focus and restores it", async ({
   page,
 }) => {
@@ -301,11 +341,20 @@ test("touch pinch zoom does not select a seat", async ({ page }, testInfo) => {
 test("built UMD example loads the packed runtime and self-hosted Pixi", async ({
   page,
 }, testInfo) => {
+  await page.route("https://i.postimg.cc/**", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1329" height="1329"/>',
+    }),
+  );
   await page.goto("/.pages/examples/index.html");
   await expect(page.locator("canvas")).toHaveCount(1);
-  await expect(page.locator("#status")).toContainText("Seleccionados: 0");
+  await expect(page.locator("#status")).toHaveText("Recinto listo.");
   await page.getByText("Elegir asientos", { exact: true }).click();
-  await expect(page.locator('[data-seat-id="seat-0"]')).toBeEnabled();
+  await page
+    .getByRole("combobox", { name: "Sección", exact: true })
+    .selectOption("accessible-left");
+  await expect(page.locator('[data-seat-id="gtqWqUrD"]')).toBeEnabled();
   await page.screenshot({
     path: testInfo.outputPath("example.png"),
     fullPage: true,

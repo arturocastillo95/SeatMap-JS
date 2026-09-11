@@ -24,7 +24,7 @@ Seat updates remove unavailable selections. GA updates clamp quantities. A valid
 
 Use section **IDs**, not names, for promotions and GA selection. Maps with duplicate section IDs, seat IDs, or lookup keys reject. Seats without IDs receive deterministic `legacy:` IDs based on section ID, row index, and seat label; renumbering changes those IDs.
 
-The legacy `demo-venue.json` contains repeated `accessible_forward` labels in “Zona accesible”. Correct those labels from the venue's authoritative numbering before using that map. The editor exporter now saves `seatNumber` rather than the displayed icon. Existing corrupted labels cannot be recovered automatically.
+The maintained `demo-venue.json` uses explicit `L1`–`L5` and `R1`–`R5` labels for its left and right accessible sections. These are demo identifiers rather than recovered venue numbering. The editor exporter now saves `seatNumber` rather than the displayed accessibility icon, so new exports keep labels and accessibility metadata separate.
 
 `n` / `number` determine the seat label. `sn` / `specialNeeds` indicate accessible seating only. Row labels follow the map's numbering, including reversal and labels beyond Z.
 

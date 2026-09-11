@@ -469,11 +469,18 @@ export class SeatMapRenderer {
     if (data.sn) {
       let texture = this.textureCache.get("accessible");
       if (!texture) {
-        texture = createAccessibleIcon(this.app.renderer);
+        texture = createAccessibleIcon(
+          this.app.renderer,
+          this.options.seatTextureResolution,
+        );
         this.textureCache.set("accessible", texture);
       }
       const icon = new PIXI.Sprite(texture);
       icon.anchor.set(0.5);
+      icon.width = this.options.seatRadius * 1.6;
+      icon.height = this.options.seatRadius * 1.6;
+      icon.tint = style.seatTextColor ?? 0xffffff;
+      view._icon = icon;
       view.addChild(icon);
     }
     view.on("pointertap", (e) => {

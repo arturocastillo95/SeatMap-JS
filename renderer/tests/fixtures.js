@@ -32,10 +32,14 @@ export function inventory(map) {
   return {
     currency: "MXN",
     seats: map.sections.flatMap((s) =>
-      s.seats.map((x) => ({ id: x.id, status: "available", price: 15000 })),
+      (s.seats ?? []).map((x) => ({
+        id: x.id,
+        status: "available",
+        price: 15000,
+      })),
     ),
     ga: map.sections
-      .filter((s) => s.type === "ga")
+      .filter((s) => s.type === "ga" && !s.isZone)
       .map((s) => ({ sectionId: s.id, available: 10, price: 15000 })),
   };
 }

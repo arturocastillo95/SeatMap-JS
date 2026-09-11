@@ -2,6 +2,9 @@
 
 Framework-neutral PixiJS renderer for SMF 2.0/2.1 maps, with inventory-driven booking state and a built-in accessible HTML picker. The package is a staging release candidate; see [validation gates](VALIDATION.md) before deploying a stable release.
 
+The maintained browser demo loads `demo-venue.json` with simulated inventory.
+Synthetic 1,000- and 10,000-seat maps remain dedicated performance fixtures.
+
 ```js
 import { SeatMapRenderer } from "@seatmap-js/renderer";
 import "@seatmap-js/renderer/styles.css";

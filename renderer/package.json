@@ -20,6 +20,7 @@
     "audit",
     "bin",
     "core/RowLabels.js",
+    "demo-venue.json",
     "dist",
     "LICENSE.md",
     "README.md",
