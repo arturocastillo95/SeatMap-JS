@@ -4,7 +4,7 @@ Status: **release candidate; not cleared for stable production publication**.
 
 ## Automated gates
 
-Local verification passed 17 unit/lifecycle/audit tests and 61 active browser scenarios. Eight opt-in benchmark cases and three native-touch cases on non-touch engines are intentionally skipped in the default browser run. The desktop benchmarks were run separately.
+Local verification passed 18 unit/lifecycle/audit tests and 61 active browser scenarios. Eight opt-in benchmark cases and three native-touch cases on non-touch engines are intentionally skipped in the default browser run. The desktop benchmarks were run separately.
 
 - `pnpm test`: booking/lifecycle regression tests, editor and renderer builds, isolated packed-consumer ES/CJS/SSR imports, CSS export, and TypeScript compilation.
 - `pnpm test:browser`: Chromium, Firefox, WebKit, and touch-emulated Chromium. Covers booking, inventory reconciliation, accessible picker/dialog, loading cancellation, fitting, resize, shared assets, and 20 mount/load/destroy cycles.

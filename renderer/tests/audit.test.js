@@ -9,6 +9,18 @@ const fixture = async (name) =>
     await readFile(new URL(`fixtures/maps/${name}.json`, import.meta.url)),
   );
 
+test("malformed label objects cannot interrupt the remaining audit", async () => {
+  const map = await fixture("valid");
+  map.sections[0].seats[0].n = { toString: 1 };
+  map.sections[0].seats[1].x = "invalid";
+  const before = structuredClone(map);
+  const report = auditMap(map);
+  assert.equal(report.valid, false);
+  assert.ok(report.issues.some((issue) => issue.code === "INVALID_SEAT_LABEL"));
+  assert.ok(report.issues.some((issue) => issue.path === "sections[0].seats[1].x"));
+  assert.deepEqual(map, before);
+});
+
 test("map audit accepts a valid map without modifying it", async () => {
   const map = await fixture("valid");
   const before = structuredClone(map);

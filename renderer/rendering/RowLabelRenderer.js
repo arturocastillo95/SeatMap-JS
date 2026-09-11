@@ -3,17 +3,10 @@
  */
 
 import * as PIXI from "pixi.js";
-import { buildRowLabelMap, getRowLabelText } from "../core/RowLabels.js";
+import { getRowLabelText } from "../core/RowLabels.js";
 
 export { buildRowLabelMap, getRowLabelText } from "../core/RowLabels.js";
 
-/**
- * Generate label text based on index and type
- * @param {number} index - Row index (0-based)
- * @param {string} type - 'numbers' or 'letters'
- * @param {string|number} startValue - Starting value
- * @returns {string}
- */
 /**
  * Render row labels for a section
  * @param {PIXI.Container} container - Container to add labels to

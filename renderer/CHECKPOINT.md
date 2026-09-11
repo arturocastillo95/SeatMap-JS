@@ -46,7 +46,7 @@ not a renderer runtime dependency. GPL-3.0-only licensing is unchanged.
 
 The final local run completed successfully:
 
-- 17 unit/lifecycle/audit tests.
+- 18 unit/lifecycle/audit tests.
 - Editor and renderer production builds.
 - Isolated packed-consumer ES/CJS imports without a DOM, stylesheet export,
   public TypeScript declarations, and compilation of the actual React example.

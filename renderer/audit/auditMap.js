@@ -217,23 +217,23 @@ export function auditMap(input, { currency = "MXN" } = {}) {
             : seat.seatNumber !== undefined
               ? `${seatPath}.seatNumber`
               : `${seatPath}.n`;
-      if (
-        !["string", "number"].includes(typeof rawLabel) ||
-        !String(rawLabel).trim()
-      )
+      const normalizedLabel =
+        typeof rawLabel === "string" || isFiniteNumber(rawLabel)
+          ? String(rawLabel)
+          : "";
+      if (!normalizedLabel.trim())
         error(
           "INVALID_SEAT_LABEL",
           "Expected a nonempty string or number",
           labelPath,
         );
-      else if (String(rawLabel).trim() === "accessible_forward")
+      else if (normalizedLabel.trim() === "accessible_forward")
         error(
           "INVALID_SEAT_LABEL",
           "Accessibility icon token cannot be used as the seat label",
           labelPath,
         );
 
-      const normalizedLabel = String(rawLabel);
       const normalizedId =
         seat.id ??
         (isIdentifier(sectionId) && Number.isSafeInteger(row)
@@ -262,7 +262,7 @@ export function auditMap(input, { currency = "MXN" } = {}) {
           `${seatPath}.price`,
           error,
         );
-      if (Number.isSafeInteger(row))
+      if (Number.isSafeInteger(row) && row >= 0 && normalizedLabel.trim())
         usableSeats.push({ seat, row, label: normalizedLabel, path: seatPath });
     });
 
