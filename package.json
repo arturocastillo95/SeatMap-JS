@@ -55,7 +55,7 @@
     "globals": "^17.14.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "vite": "^7.3.8"
   }
 }
