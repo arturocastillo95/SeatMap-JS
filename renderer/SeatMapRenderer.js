@@ -502,7 +502,8 @@ export class SeatMapRenderer {
     view.on("pointerover", (e) => {
       const seat = this._store.seats.get(data.id);
       if (!seat) return;
-      this.ui.showTooltip(this._store.seatSnapshot(seat), e.global);
+      if (e.pointerType !== "touch")
+        this.ui.showTooltip(this._store.seatSnapshot(seat), e.global);
       if (!view._label && !data.sn) {
         view._label = new PIXI.Text({
           text: data.n,
@@ -515,7 +516,7 @@ export class SeatMapRenderer {
         view._label.anchor.set(0.5);
         view.addChild(view._label);
       }
-      if (view._label) view._label.visible = true;
+      if (view._label) view._label.visible = !seat.selected;
     });
     view.on("pointerout", () => {
       this.ui.hideTooltip();
@@ -531,7 +532,7 @@ export class SeatMapRenderer {
     if (!view || !seat) return;
     const status = seat.seatData.status,
       color = seat.selected
-        ? 0x15803d
+        ? (view._color === 0xffffff ? 0x15803d : view._color)
         : status === "available"
           ? view._color
           : status === "reserved"
@@ -543,6 +544,23 @@ export class SeatMapRenderer {
       view._strokeWidth,
       view._strokeColor,
     );
+    if (seat.selected && !view._selectionMark) {
+      const radius = this.options.seatRadius;
+      const mark = new PIXI.Graphics()
+        .circle(0, 0, radius * 0.78)
+        .stroke({ color: 0xffffff, width: radius * 0.12 })
+        .moveTo(-radius * 0.34, 0)
+        .lineTo(-radius * 0.08, radius * 0.26)
+        .lineTo(radius * 0.38, -radius * 0.3)
+        .stroke({ color: 0xffffff, width: radius * 0.17, cap: "round", join: "round" });
+      mark.eventMode = "none";
+      view._selectionMark = mark;
+      view.addChild(mark);
+    }
+    view.scale.set(seat.selected ? 1.6 : 1);
+    if (view._selectionMark) view._selectionMark.visible = seat.selected;
+    if (view._icon) view._icon.visible = !seat.selected;
+    if (seat.selected && view._label) view._label.visible = false;
     if (view._glow) view._glow.visible = status === "available";
     view.cursor = status === "available" ? "pointer" : "not-allowed";
     view.alpha = status === "unknown" ? 0.5 : 1;

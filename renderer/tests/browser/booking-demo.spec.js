@@ -19,7 +19,7 @@ async function openPicker(page) {
   const drawer = page.locator(".drawer-toggle");
   if ((await drawer.isVisible()) && (await drawer.getAttribute("aria-expanded")) === "true")
     await drawer.click();
-  const summary = page.getByText("Elegir asientos", { exact: true });
+  const summary = page.getByText("Buscar asiento", { exact: true });
   if (!(await summary.evaluate((node) => node.parentElement.open))) await summary.click();
 }
 
@@ -28,6 +28,7 @@ test("complete demo books accessible and GA tickets through HTML controls", asyn
   expect((await new AxeBuilder({ page }).include("#booking-demo").analyze()).violations).toEqual([]);
   await openPicker(page);
   await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption("accessible-left");
+  await page.getByRole("searchbox", { name: "Buscar fila o asiento" }).fill("L1");
   await page.locator('[data-seat-id="gtqWqUrD"]').click();
   await expect(page.locator("[data-selection-view]")).toBeVisible();
   await expect(page.locator("[data-selection-lines]")).toContainText("Asiento L1");

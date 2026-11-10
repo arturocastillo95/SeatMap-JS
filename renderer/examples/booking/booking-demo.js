@@ -1,4 +1,5 @@
 import { bookingDemoConfig } from "./config.js";
+import { presentBookingMap } from "./booking-map.js";
 
 const icon = (name) => {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -49,6 +50,8 @@ export async function initBookingDemo({
   const clearButton = root.querySelector("[data-clear]");
   const sortButton = root.querySelector("[data-sort]");
   let renderer = null;
+  let focusedSectionId = null;
+  const sectionColors = new Map();
   let controller = null;
   let attempt = 0;
   let destroyed = false;
@@ -144,6 +147,8 @@ export async function initBookingDemo({
       button.type = "button";
       button.className = "section-card";
       button.dataset.sectionId = section.id;
+      if (focusedSectionId === section.id) button.setAttribute("aria-current", "location");
+      button.style.setProperty("--section-color", sectionColors.get(section.id) || "#606778");
       button.dataset.focusKey = `section:${section.id}`;
       const iconBox = document.createElement("span");
       iconBox.className = "section-card-icon";
@@ -161,10 +166,23 @@ export async function initBookingDemo({
       const prefix = document.createElement("small");
       prefix.textContent = range.mixed ? "Desde" : "Precio";
       price.append(prefix, document.createTextNode(renderer.formatPrice(range.minimum)));
-      button.append(iconBox, details, price);
+      const chevron = document.createElement("span");
+      chevron.className = "section-card-chevron";
+      chevron.textContent = "›";
+      chevron.setAttribute("aria-hidden", "true");
+      button.append(iconBox, details, price, chevron);
       button.addEventListener("click", () => {
+        focusedSectionId = section.id;
         renderer.zoomToSectionById(section.id);
+        renderSections();
+        announce(`Mostrando ${section.name}. Elige tus lugares en el mapa o en Buscar asiento.`);
         if (count) showSelection(section.id);
+        else {
+          const wasExpanded = sidebar.classList.contains("expanded");
+          sidebar.classList.remove("expanded");
+          drawer.setAttribute("aria-expanded", "false");
+          if (wasExpanded) host.querySelector('[data-map-action="zoomIn"]')?.focus({ preventScroll: true });
+        }
       });
       sectionsNode.append(button);
     }
@@ -370,6 +388,8 @@ export async function initBookingDemo({
     const signal = controller.signal;
     let instance = null;
     underlayWarning = "";
+    focusedSectionId = null;
+    sectionColors.clear();
     lastCartCount = 0;
     selectionFilter = "all";
     footer.classList.remove("visible");
@@ -391,6 +411,13 @@ export async function initBookingDemo({
     try {
       instance = await SeatMapRenderer.create(host, {
         mode: "booking",
+        seatPickerSearchOnly: true,
+        strings: { picker: "Buscar asiento" },
+        backgroundColor: 0xf7f8fa,
+        showGrid: false,
+        padding: host.clientWidth < 600 ? 24 : 65,
+        bookedColor: 0xcbd0d8,
+        reservedColor: 0x9aa2b0,
         locale: config.locale,
         currency: config.currency,
         maxSelectedSeats: config.maxTickets,
@@ -403,7 +430,11 @@ export async function initBookingDemo({
       }
       renderer = instance;
       const mapUrl = root.dataset.mapUrl || config.mapUrl;
-      const map = await mapLoader(mapUrl, signal);
+      const map = presentBookingMap(await mapLoader(mapUrl, signal));
+      for (const section of map.sections) {
+        const color = section.style?.seatColor ?? section.style?.sectionColor ?? 0x606778;
+        sectionColors.set(section.id, `#${Number(color).toString(16).padStart(6, "0")}`);
+      }
       if (destroyed || ownAttempt !== attempt) return;
       await instance.loadData(map, { signal });
       if (destroyed || ownAttempt !== attempt) return;
@@ -411,7 +442,7 @@ export async function initBookingDemo({
       if (destroyed || ownAttempt !== attempt) return;
       renderer.loadInventory(inventory, { mode: "snapshot" });
       renderCart(renderer.getCart());
-      showStatus(underlayWarning || "Recinto listo. Elige una sección o usa el selector accesible.");
+      showStatus(underlayWarning || "Recinto listo. Elige una sección y selecciona tus lugares.");
       window.dispatchEvent(new CustomEvent("booking-demo-ready"));
     } catch (error) {
       instance?.destroy();
@@ -422,6 +453,13 @@ export async function initBookingDemo({
     }
   }
 
+  listen(host, "click", (event) => {
+    if (event.target.closest('[data-map-action="reset"]')) {
+      focusedSectionId = null;
+      renderSections();
+      announce("Vista completa del recinto");
+    }
+  });
   listen(host, "seatLoadProgress", (event) => {
     if (event.detail.total) showStatus(`Cargando localidades: ${event.detail.percent}%`);
   });

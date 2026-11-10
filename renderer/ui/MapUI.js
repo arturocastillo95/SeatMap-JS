@@ -1,5 +1,7 @@
 export const spanishStrings = {
   picker: "Elegir asientos",
+  controls: "Controles del mapa",
+  searchPrompt: "Escribe una fila o un asiento para buscar.",
   section: "Sección",
   allSections: "Todas las secciones",
   search: "Buscar fila o asiento",
@@ -49,18 +51,50 @@ export class MapUI {
     this.root = el("div", undefined, "seatmap-ui");
     this.root.lang = renderer.options.locale;
     this.toolbar = el("div", undefined, "seatmap-toolbar");
+    this.toolbar.classList.add("seatmap-map-controls");
+    this.toolbar.setAttribute("role", "group");
+    this.toolbar.setAttribute("aria-label", this.s.controls);
     for (const [key, action] of [
       ["zoomIn", () => renderer.zoomBy(1.3)],
       ["zoomOut", () => renderer.zoomBy(1 / 1.3)],
       ["reset", () => renderer.fitToView()],
-    ])
-      this.toolbar.append(this.button(this.s[key], action));
+    ]) {
+      const button = this.button(this.s[key], () => { this.hideTooltip(); action(); });
+      button.dataset.mapAction = key;
+      button.setAttribute("aria-label", this.s[key]);
+      button.title = this.s[key];
+      const glyph = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      glyph.setAttribute("viewBox", "0 0 24 24");
+      glyph.setAttribute("aria-hidden", "true");
+      glyph.classList.add("seatmap-control-icon");
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", key === "zoomIn" ? "M5 12h14M12 5v14" : key === "zoomOut" ? "M5 12h14" : "M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4M9 9h6v6H9z");
+      glyph.append(path);
+      button.replaceChildren(glyph);
+      if (key === "reset") button.append(el("span", this.s[key]));
+      else button.classList.add("seatmap-zoom-button");
+      this.toolbar.append(button);
+    }
     this.root.append(this.toolbar);
     this.details = el("details");
-    this.details.append(el("summary", this.s.picker));
+    const summary = el("summary", this.s.picker);
+    if (renderer.options.seatPickerSearchOnly) {
+      const searchIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      searchIcon.setAttribute("viewBox", "0 0 24 24");
+      searchIcon.setAttribute("aria-hidden", "true");
+      searchIcon.classList.add("seatmap-control-icon");
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", "M21 21l-5-5m2-6a8 8 0 1 1-16 0 8 8 0 0 1 16 0");
+      searchIcon.append(path);
+      summary.prepend(searchIcon);
+    }
+    this.details.append(summary);
     this.filter = el("select");
     this.search = el("input");
     this.search.type = "search";
+    this.search.placeholder = this.s.search;
+    this.searchPrompt = el("p", this.s.searchPrompt, "seatmap-search-prompt");
+    this.details.append(this.searchPrompt);
     this.details.append(
       this.label(this.s.section, this.filter),
       this.label(this.s.search, this.search),
@@ -202,10 +236,15 @@ export class MapUI {
         .trim()
         .toLocaleLowerCase(this.r.options.locale),
       section = this.filter.value;
+    const searchOnly = this.r.options.seatPickerSearchOnly;
+    const isGA = this.r._store.ga.has(section);
+    this.searchPrompt.hidden = !searchOnly || Boolean(query) || isGA;
+    this.search.parentElement.hidden = Boolean(searchOnly && isGA);
     const seats = this.r
       .getSeats()
       .filter(
         (s) =>
+          (!searchOnly || Boolean(query)) &&
           (!section || s.sectionId === section) &&
           (!query ||
             `${s.row} ${s.seat}`
@@ -234,9 +273,9 @@ export class MapUI {
       item.append(b);
       this.list.append(item);
     }
-    if (!seats.length) this.list.append(el("li", this.s.empty));
+    if (!seats.length && (!searchOnly || (query && !isGA))) this.list.append(el("li", this.s.empty));
     for (const g of this.r._store.ga.values())
-      if (!section || g.sectionId === section) {
+      if ((!section || g.sectionId === section) && (!searchOnly || section || query)) {
         const item = el("li"),
           b = this.button(
             `${g.sectionName} · ${this.s.ga} · ${this.r.formatPrice(g.price)}`,
@@ -247,6 +286,8 @@ export class MapUI {
         item.append(b);
         this.list.append(item);
       }
+    this.pages.hidden = searchOnly && pages <= 1;
+    this.selection.hidden = Boolean(searchOnly);
     this.pageLabel.textContent = `${this.s.page} ${this.page + 1} / ${pages}`;
     this.previous.disabled = this.page === 0;
     this.next.disabled = this.page === pages - 1;
@@ -303,10 +344,24 @@ export class MapUI {
             .replace("{getY}", promo.getY)
         : "");
     const bounds = this.r.app.canvas.getBoundingClientRect();
-    this.tooltip.textContent = `${seat.sectionName} · ${this.s.row} ${seat.row} · ${this.s.seat} ${seat.seat} · ${this.r.formatPrice(quote?.totalPrice ?? seat.price)} · ${this.s[seat.status] ?? this.s.unavailable}${promoText ? " · " + promoText : ""}`;
+    const heading = el("strong", seat.sectionName, "seatmap-tooltip-title");
+    const location = el("div", `${this.s.row} ${seat.row} · ${this.s.seat} ${seat.seat}`, "seatmap-tooltip-location");
+    const price = el("strong", this.r.formatPrice(quote?.totalPrice ?? seat.price), "seatmap-tooltip-price");
+    const status = el("span", this.s[seat.status] ?? this.s.unavailable, "seatmap-tooltip-status");
+    status.dataset.status = seat.status;
+    const footer = el("div", undefined, "seatmap-tooltip-footer");
+    footer.append(price, status);
+    this.tooltip.replaceChildren(heading, location, footer);
+    if (promoText) this.tooltip.append(el("div", promoText, "seatmap-tooltip-promo"));
     this.tooltip.hidden = false;
-    this.tooltip.style.left = `${Math.max(8, Math.min(window.innerWidth - 280, bounds.left + point.x + 12))}px`;
-    this.tooltip.style.top = `${Math.max(8, Math.min(window.innerHeight - 70, bounds.top + point.y + 12))}px`;
+    const width = this.tooltip.offsetWidth;
+    const height = this.tooltip.offsetHeight;
+    const x = bounds.left + point.x;
+    const y = bounds.top + point.y;
+    const left = x + 16 + width <= window.innerWidth - 8 ? x + 16 : x - width - 16;
+    const top = y + 16 + height <= window.innerHeight - 8 ? y + 16 : y - height - 16;
+    this.tooltip.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, left))}px`;
+    this.tooltip.style.top = `${Math.max(8, Math.min(window.innerHeight - height - 8, top))}px`;
   }
   hideTooltip() {
     this.tooltipSeatId = null;

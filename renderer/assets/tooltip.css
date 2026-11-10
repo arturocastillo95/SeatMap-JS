@@ -116,10 +116,14 @@
   position: fixed;
   pointer-events: none;
   z-index: 100;
-  max-width: 260px;
-  padding: 8px;
-  border: 1px solid #aaa;
-  border-radius: 4px;
+  box-sizing: border-box;
+  width: 244px;
+  max-width: calc(100vw - 16px);
+  padding: 12px 14px;
+  border: 1px solid #dfe2e8;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  overflow-wrap: anywhere;
 }
 .seatmap-sr-only {
   position: absolute;
@@ -137,3 +141,24 @@
     transition: none !important;
   }
 }
+
+/* Compact controls keep the map visible while retaining accessible names. */
+.seatmap-map-controls { gap: 0; flex-wrap: nowrap; }
+.seatmap-map-controls button { min-height: 44px; background: #fff; border-color: #d9dde3; }
+.seatmap-map-controls button + button { margin-left: -1px; }
+.seatmap-map-controls button:first-child { border-radius: 6px 0 0 6px; }
+.seatmap-map-controls button:last-child { border-radius: 0 6px 6px 0; }
+.seatmap-map-controls button:not(:first-child):not(:last-child) { border-radius: 0; }
+.seatmap-map-controls .seatmap-zoom-button { width: 44px; font-size: 24px; line-height: 1; }
+.seatmap-map-controls button:hover { background: #f0f2f6; }
+.seatmap-control-icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.seatmap-map-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.seatmap-search-prompt { max-width: 280px; margin: 8px 0; color: #626970; font-size: 13px; }
+.seatmap-toolbar[hidden], .seatmap-selection[hidden] { display: none; }
+
+.seatmap-tooltip-title { display: block; font-size: 14px; }
+.seatmap-tooltip-location { margin-top: 2px; color: #626970; font-size: 13px; }
+.seatmap-tooltip-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eceef2; }
+.seatmap-tooltip-status { color: #626970; font-size: 12px; }
+.seatmap-tooltip-status[data-status="available"] { color: #17613b; }
+.seatmap-tooltip-promo { margin-top: 8px; font-size: 12px; color: #5142c8; }

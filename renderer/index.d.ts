@@ -151,6 +151,8 @@ export interface RendererOptions {
   locale?: string;
   currency?: string;
   strings?: Record<string, string>;
+  /** Show individual seats in the HTML picker only after a search. Default: false. */
+  seatPickerSearchOnly?: boolean;
   signal?: AbortSignal;
   maxSelectedSeats?: number;
   preventOrphanSeats?: boolean;

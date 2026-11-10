@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1329" viewBox="0 0 1000 1329">
+  <rect width="1000" height="1329" fill="#f7f8fa"/>
+  <rect x="232" y="38" width="520" height="78" rx="4" fill="#252936"/>
+  <text x="492" y="85" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="24" font-weight="600">ESCENARIO</text>
+  <path d="M232 130H752" stroke="#cbd0d8" stroke-width="2"/>
+</svg>
