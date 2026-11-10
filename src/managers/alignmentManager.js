@@ -1179,11 +1179,11 @@ export const AlignmentManager = {
     // Check each moving section against each static section
     for (const { section, x, y } of dragPositions) {
       // Skip collision detection for Zones (explicit check)
-      if (!!section.isZone) continue;
+      if (section.isZone) continue;
 
       for (const other of otherSections) {
         // Skip collision detection with Zones (explicit check)
-        if (!!other.isZone) continue;
+        if (other.isZone) continue;
 
         // Calculate bounds at current position (accounting for pivot at center)
         const currentBounds = {
@@ -1373,7 +1373,7 @@ export const AlignmentManager = {
       
       for (const section of movedSections) {
         // Skip collision detection for Zones (explicit check)
-        if (!!section.isZone) continue;
+        if (section.isZone) continue;
 
         // Check collision with ALL other sections
         const otherSections = State.sections.filter(s => s !== section && !s.isZone);

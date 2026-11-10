@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Unit tests, builds, and packed consumer checks
+      - name: Lint, unit tests, builds, and packed consumer checks
         run: pnpm test
 
       - name: Install browser engines

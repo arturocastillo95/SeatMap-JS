@@ -13,6 +13,10 @@ export const SMFValidator = {
     const errors = [];
     const warnings = [];
 
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return { valid: false, errors: ['SMF document must be an object'], warnings };
+    }
+
     // Root level validation
     this.validateRoot(data, errors, warnings);
 
@@ -155,12 +159,14 @@ export const SMFValidator = {
 
     const numericFields = ['width', 'height', 'zoom', 'panX', 'panY'];
     for (const field of numericFields) {
-      if (canvas[field] !== undefined && typeof canvas[field] !== 'number') {
+      if (canvas[field] !== undefined && !Number.isFinite(canvas[field])) {
         errors.push(`Field "canvas.${field}" must be a number`);
       }
     }
 
-    if (canvas.zoom !== undefined && (canvas.zoom <= 0 || canvas.zoom > 10)) {
+    if (canvas.zoom !== undefined && canvas.zoom <= 0) {
+      errors.push('Field "canvas.zoom" must be greater than 0');
+    } else if (canvas.zoom > 10) {
       warnings.push('Field "canvas.zoom" has unusual value (expected 0 < zoom <= 10)');
     }
 
@@ -267,6 +273,27 @@ export const SMFValidator = {
       } else if (typeof section[field] !== 'number') {
         errors.push(`${prefix}: Field "${field}" must be a number`);
       }
+    }
+
+    for (const key of ['base', 'transform', ...(section.type === 'ga' ? [] : ['rowLabels'])]) {
+      if (!section[key] || typeof section[key] !== 'object' || Array.isArray(section[key])) {
+        errors.push(`${prefix}.${key} must be an object`);
+      }
+    }
+    if (section.base && typeof section.base === 'object') {
+      for (const key of ['baseWidth', 'baseHeight']) {
+        if (!Number.isFinite(section.base[key]) || section.base[key] <= 0)
+          errors.push(`${prefix}.base.${key} must be a positive finite number`);
+      }
+      if (section.type !== 'ga') {
+        for (const key of ['rows', 'columns']) {
+          if (!Number.isInteger(section.base[key]) || section.base[key] < 1)
+            errors.push(`${prefix}.base.${key} must be a positive integer`);
+        }
+      }
+    }
+    for (const key of ['x', 'y', 'width', 'height']) {
+      if (!Number.isFinite(section[key])) errors.push(`${prefix}.${key} must be finite`);
     }
 
     // Validate base object

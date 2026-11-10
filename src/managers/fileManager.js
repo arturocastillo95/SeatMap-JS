@@ -6,13 +6,18 @@ import { State } from '../core/state.js';
 import { COLORS } from '../core/config.js';
 import { Utils } from '../core/utils.js';
 import { Logger } from '../core/logger.js';
+import { replaceMap } from '../core/mapTransaction.js';
 
 export const FileManager = {
   /**
    * Export current venue map to JSON format (SMF - Seat Map Format)
    */
   exportToJSON() {
+    if (State.isImporting) throw new Error('Wait for the current map import to finish before saving');
     const timestamp = new Date().toISOString();
+    State.mapDocument ??= {};
+    State.mapDocument.created ||= timestamp;
+    const original = structuredClone(State.mapDocument);
     
     // Ensure all sections have unique IDs before exporting
     const seenIds = new Set();
@@ -25,27 +30,18 @@ export const FileManager = {
     });
 
     const mapData = {
+      ...original,
       // Format metadata
       format: "SMF",
       version: "2.1.0",
-      created: timestamp,
+      created: original.created || timestamp,
       modified: timestamp,
       
       // Venue information
       venue: {
-        name: "Venue name",
-        capacity: this.calculateTotalCapacity(),
-        location: {
-          address: "123 Main Street",
-          city: "Austin",
-          state: "TX",
-          country: "USA",
-          coordinates: {
-            lat: 30.2672,
-            lng: -97.7431
-          }
-        },
-        metadata: {}
+        name: "Untitled venue",
+        ...original.venue,
+        capacity: this.calculateTotalCapacity()
       },
       
       // Canvas/viewport settings
@@ -72,21 +68,16 @@ export const FileManager = {
       } : null,
       
       // Section groups (for future use)
-      groups: [],
+      groups: original.groups || [],
       
       // Sections array
       sections: State.sections.map(section => this.serializeSection(section)),
       
       // Future extensibility: other objects
-      objects: [],
+      objects: original.objects || [],
       
       // Global metadata
-      metadata: {
-        software: "Venue Map JS v1.0",
-        author: "",
-        tags: [],
-        custom: {}
-      }
+      metadata: original.metadata || { software: "SeatMap JS", custom: {} }
     };
     
     return mapData;
@@ -102,7 +93,7 @@ export const FileManager = {
         // Identity
         id: section.uniqueId,
         name: section.sectionId,
-        groupId: null,
+        groupId: section.smfGroupId ?? null,
         type: 'ga', // Mark as General Admission
         
         // Position and dimensions
@@ -186,7 +177,7 @@ export const FileManager = {
         },
         
         // Extensible metadata
-        metadata: {}
+        metadata: structuredClone(section.smfMetadata || {})
       };
 
       if (section.isZone) {
@@ -215,9 +206,6 @@ export const FileManager = {
     
     // Regular section with seats
     const seats = section.seats;
-    if (seats.length === 0) {
-      return null;
-    }
     
     // Get unique rows and columns
     const rows = new Set(seats.map(s => s.rowIndex));
@@ -226,8 +214,8 @@ export const FileManager = {
     // FIX: Calculate grid dimensions based on max indices to preserve grid structure
     // This ensures that if rows/cols are deleted from the middle or start,
     // the grid is still reconstructed correctly during load.
-    const maxRowIndex = Math.max(...Array.from(rows));
-    const maxColIndex = Math.max(...Array.from(cols));
+    const maxRowIndex = Math.max(0, ...Array.from(rows));
+    const maxColIndex = Math.max(0, ...Array.from(cols));
     
     const numRows = maxRowIndex + 1;
     const numCols = maxColIndex + 1;
@@ -309,7 +297,7 @@ export const FileManager = {
       // Identity
       id: section.uniqueId,
       name: section.sectionId,
-      groupId: null,
+      groupId: section.smfGroupId ?? null,
       
       // Position and dimensions
       x: section.x - section.pivot.x,  // Convert from center to top-left
@@ -398,7 +386,7 @@ export const FileManager = {
         
         // Metadata
         if (seat.metadata && Object.keys(seat.metadata).length > 0) {
-            seatData.m = seat.metadata;
+            seatData.m = structuredClone(seat.metadata);
         }
 
         return seatData;
@@ -437,7 +425,7 @@ export const FileManager = {
       },
       
       // Extensible metadata
-      metadata: {}
+      metadata: structuredClone(section.smfMetadata || {})
     };
   },
   
@@ -484,6 +472,7 @@ export const FileManager = {
       const filename = `venue-map-${timestamp}.json`;
       
       this.downloadJSON(mapData, filename);
+      document.dispatchEvent(new CustomEvent('seatmap:saved', { detail: { map: mapData } }));
       
       Logger.debug('✓ Venue map exported successfully');
       return true;
@@ -496,7 +485,7 @@ export const FileManager = {
   /**
    * Import venue map from JSON
    */
-  async importFromJSON(jsonData) {
+  async importFromJSON(jsonData, { source = 'file', reportErrors = true, throwErrors = false, beforeReplace } = {}) {
     try {
       // Validate format using SMF Validator
       const { SMFValidator } = await import('../core/smfValidator.js');
@@ -516,33 +505,23 @@ export const FileManager = {
       
       Logger.debug(`Loading SMF v${jsonData.version}...`);
       
-      // Clear existing sections
-      await this.clearAllSections();
-      
-      // Restore canvas state
-      if (jsonData.canvas) {
-        State.world.scale.set(jsonData.canvas.zoom);
-        State.world.position.set(jsonData.canvas.panX, jsonData.canvas.panY);
-      }
-      
-      // Restore underlay if present
-      if (jsonData.underlay) {
-        const { UnderlayManager } = await import('./UnderlayManager.js');
-        await UnderlayManager.restore(jsonData.underlay);
-      }
-      
-      // Import sections
       const { SectionManager } = await import('./sectionManager.js');
-      
-      for (const sectionData of jsonData.sections) {
-        await this.deserializeSection(sectionData, SectionManager);
-      }
-      
+      const { UnderlayManager } = await import('./UnderlayManager.js');
+      beforeReplace?.();
+      await replaceMap(jsonData, async () => {
+        for (const sectionData of jsonData.sections) {
+          await this.deserializeSection(sectionData, SectionManager);
+        }
+        if (jsonData.underlay) await UnderlayManager.restore(jsonData.underlay, { silent: true });
+      }, UnderlayManager);
+
+      document.dispatchEvent(new CustomEvent('seatmap:loaded', { detail: { source } }));
       Logger.debug(`✓ Loaded ${jsonData.sections.length} sections with ${jsonData.venue.capacity} total seats`);
       return true;
     } catch (error) {
       console.error('✗ Failed to import venue map:', error);
-      Utils.reportError(`Failed to load file: ${error.message}`, error);
+      if (reportErrors) Utils.reportError(`Failed to load file: ${error.message}`, error);
+      if (throwErrors) throw error;
       return false;
     }
   },
@@ -551,6 +530,10 @@ export const FileManager = {
    * Deserialize a single section from JSON
    */
   async deserializeSection(data, SectionManager) {
+    // Work on a copy so defaults and retained metadata never mutate the input.
+    data = structuredClone(data);
+    data.transform = { rotation: 0, curve: 0, stretchH: 0, stretchV: 0, ...data.transform };
+    data.rowLabels = { type: 'none', showLeft: false, showRight: false, ...data.rowLabels };
     // Check if this is a GA section or Zone
     if (data.type === 'ga') {
       let section;
@@ -589,7 +572,7 @@ export const FileManager = {
         
         // Update GA label with section name
         if (section.gaLabel) {
-          section.gaLabel.text = data.name;
+          section.gaLabel.text = data.name || data.id || 'GA';
         }
         
         // Restore GA capacity
@@ -604,6 +587,8 @@ export const FileManager = {
         if (data.gaLabelOffsetY !== undefined) section.gaLabelOffsetY = data.gaLabelOffsetY;
       }
       
+      section.smfMetadata = data.metadata;
+      section.smfGroupId = data.groupId;
       // Restore section name
       section.sectionId = data.name || data.id; // Fallback to id if name missing
       
@@ -654,7 +639,7 @@ export const FileManager = {
     
     // Regular section with seats
     // Determine if this is v2.0.0 format with individual seat data
-    const hasIndividualSeats = Array.isArray(data.seats) && data.seats.length > 0 && (data.seats[0].rowIndex !== undefined || data.seats[0].r !== undefined);
+    const hasIndividualSeats = Array.isArray(data.seats);
     
     // Create section with base dimensions
     const section = SectionManager.createSection(
@@ -666,6 +651,8 @@ export const FileManager = {
       data.base.columns
     );
     
+    section.smfMetadata = data.metadata;
+    section.smfGroupId = data.groupId;
     // Restore section name
     section.sectionId = data.name || data.id; // Fallback to id if name missing
     
@@ -912,19 +899,19 @@ export const FileManager = {
       // VALIDATION: Ensure each seat has independent base position properties
       // This prevents reference sharing bugs between duplicated sections
       section.seats.forEach(seat => {
-        if (!seat.hasOwnProperty('baseRelativeX')) {
+        if (!Object.hasOwn(seat, 'baseRelativeX')) {
           seat.baseRelativeX = seat.relativeX || seat.x || 0;
           console.warn(`Seat missing baseRelativeX, initialized to ${seat.baseRelativeX}`);
         }
-        if (!seat.hasOwnProperty('baseRelativeY')) {
+        if (!Object.hasOwn(seat, 'baseRelativeY')) {
           seat.baseRelativeY = seat.relativeY || seat.y || 0;
           console.warn(`Seat missing baseRelativeY, initialized to ${seat.baseRelativeY}`);
         }
         // Ensure relativeX/Y are also independent properties
-        if (!seat.hasOwnProperty('relativeX')) {
+        if (!Object.hasOwn(seat, 'relativeX')) {
           seat.relativeX = seat.baseRelativeX;
         }
-        if (!seat.hasOwnProperty('relativeY')) {
+        if (!Object.hasOwn(seat, 'relativeY')) {
           seat.relativeY = seat.baseRelativeY;
         }
       });

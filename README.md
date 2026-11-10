@@ -68,10 +68,20 @@ pnpm build:renderer-pages
 
 See the [Renderer Documentation](renderer/README.md) for package usage and booking demo examples.
 
+### Local drafts and recovery
+
+The editor checks for changes after editing and every five seconds. It stores a local draft in this browser and offers **Restore draft** or **Discard draft** on your next visit. Existing drafts are kept until you choose; starting a new map does not silently overwrite them. The status at the bottom of the editor reports storage failures and conflicts with another tab.
+
+Drafts belong to the browser and site address. Private browsing, clearing site data, or exceeding browser storage limits can make drafts unavailable. **Save** still downloads your durable SMF file and clears the matching local draft. Closing the page with unexported changes requests the browser's standard leave-page warning. Draft recovery also covers agent edits.
+
+### Agent integration
+
+Use `window.seatmapEditor` to inspect snapshots, discover supported commands and schemas, validate maps, and apply atomic edits with revision checks. See [Editor API](docs/EDITOR_API.md) for examples and limits.
+
 ## 📚 Documentation
 
 - **[User Guide](docs/USER_GUIDE.md)** - Complete guide to using SeatMap JS
-- **[File Format Specification](docs/FILE_FORMAT.md)** - SMF v2.0.0 format documentation
+- **[File Format Specification](docs/FILE_FORMAT.md)** - SMF format documentation
 - **[Changelog](docs/CHANGELOG.md)** - Version history and release notes
 - **[Renderer Documentation](renderer/README.md)** - Embeddable map viewer
 - **[Booking Demo Guide](renderer/BOOKING_DEMO.md)** - Renderer 2.0 staging example and integration guidance
@@ -143,7 +153,7 @@ Select 2+ sections to access:
 
 ### File Format (SMF)
 Export venue maps to JSON format:
-- **Version 2.0.0**: Includes individual seat data, custom labels, transformations
+- **Version 2.1.0**: Includes individual seat data, custom labels, transformations
 - **Backward Compatible**: Reads v1.0.0 files
 - **Viewer-Ready**: Complete data for read-only venue map viewers
 
@@ -152,7 +162,7 @@ Export venue maps to JSON format:
 SeatMap JS follows **SOLID principles** with a modular architecture:
 
 - **Type-safe Section class** - Built-in validation prevents runtime errors
-- **Single-responsibility modules** - Each manager handles one concern (~150-350 lines)
+- **Single-responsibility modules** - Managers group related editor behavior
 - **Centralized configuration** - No magic numbers, easy customization
 - **Loose coupling** - Modules don't depend on each other
 - **Easy testing** - Each manager can be tested independently
@@ -167,13 +177,15 @@ See [Refactoring Guide](docs/REFACTORING_GUIDE.md) for architectural details.
 ## 🧰 Development Scripts
 
 ```bash
-pnpm dev:editor       # Serve the editor at http://localhost:8000
+pnpm dev:editor       # Serve the editor locally at http://127.0.0.1:8000
+pnpm dev:editor --host 0.0.0.0 # Opt in to LAN access when needed
 pnpm build:editor     # Build the editor with Vite
 pnpm dev:renderer     # Start the renderer Vite dev server
 pnpm build:renderer   # Build @seatmap-js/renderer
 pnpm build:renderer-pages # Stage the bundled booking demo for GitHub Pages in renderer/.pages
 pnpm pack:renderer    # Verify the packed renderer in isolated consumers
-pnpm test             # Run unit tests, both builds, and packed consumer checks
+pnpm lint             # Check JavaScript correctness
+pnpm test             # Run lint, unit tests, both builds, and packed consumer checks
 ```
 
 ## 🎨 Customization

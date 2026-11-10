@@ -27,6 +27,32 @@
       box-sizing: border-box;
     }
 
+    .draft-status {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      width: fit-content;
+      max-width: calc(100% - 48px);
+      z-index: 240;
+      padding: 8px 12px;
+      background: #191a1e;
+      color: #d0d4de;
+      border: 1px solid #383b44;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .draft-status button {
+      margin-left: 8px;
+      padding: 4px 8px;
+      border: 1px solid #666b77;
+      border-radius: 4px;
+      background: #25272e;
+      color: #fff;
+      cursor: pointer;
+    }
+    .draft-status button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
     /* Material Symbols */
     .material-symbols {
       font-family: "Material Symbols Outlined";
@@ -996,6 +1022,11 @@
   <input type="file" id="fileInput" accept=".json" style="display: none;" />
 
   <div id="app"></div>
+  <div class="draft-status" aria-label="Local draft">
+    <span id="draftStatus" role="status" aria-live="polite">Local drafts enabled</span>
+    <button id="recoverDraftBtn" type="button" hidden>Restore draft</button>
+    <button id="discardDraftBtn" type="button" hidden>Discard draft</button>
+  </div>
   <div id="tooltip" class="tooltip"></div>
   <div id="dragInfo" class="drag-info"></div>
 

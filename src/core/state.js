@@ -3,6 +3,8 @@
 // ============================================
 
 export const State = {
+  mapDocument: null, // Imported document fields retained across exports
+  isImporting: false,
   app: null,
   world: null,
   gridLayer: null,

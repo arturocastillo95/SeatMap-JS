@@ -46,7 +46,7 @@ export const UnderlayManager = {
       return State.underlaySprite;
     } catch (error) {
       console.error('Failed to load image:', error);
-      throw new Error(`Failed to load image: ${error.message}`);
+      throw new Error(`Failed to load image: ${error.message}`, { cause: error });
     }
   },
 
@@ -88,7 +88,7 @@ export const UnderlayManager = {
       return State.underlaySprite;
     } catch (error) {
       console.error('Failed to load image from URL:', error);
-      throw new Error(`Failed to load image from URL: ${error.message}`);
+      throw new Error(`Failed to load image from URL: ${error.message}`, { cause: error });
     }
   },
 
@@ -257,7 +257,7 @@ export const UnderlayManager = {
   /**
    * Clear the current underlay
    */
-  clear() {
+  clear({ silent = false } = {}) {
     // Remove resize handles first
     this.removeResizeHandles();
     
@@ -269,11 +269,12 @@ export const UnderlayManager = {
     
     State.underlayData = null;
     State.underlayFileName = null;
+    State.underlaySourceUrl = null;
     
     Logger.debug('✓ Underlay cleared');
     
     // Dispatch event for UI updates
-    document.dispatchEvent(new CustomEvent('underlayCleared'));
+    if (!silent) document.dispatchEvent(new CustomEvent('underlayCleared'));
   },
 
   /**
@@ -302,7 +303,7 @@ export const UnderlayManager = {
    * Restore underlay from saved data
    * @param {object} data - Saved underlay data
    */
-  async restore(data) {
+  async restore(data, { silent = false } = {}) {
     if (!data || (!data.dataUrl && !data.sourceUrl)) {
       return;
     }
@@ -326,7 +327,7 @@ export const UnderlayManager = {
       sprite.eventMode = 'none';
       
       // Clear existing and add new
-      this.clear();
+      this.clear({ silent });
       State.underlayLayer.addChild(sprite);
       State.underlaySprite = sprite;
       State.underlayData = data.dataUrl || urlToLoad; // If dataUrl was null, use the sourceUrl as the data
@@ -339,7 +340,7 @@ export const UnderlayManager = {
       State.underlayVisible = sprite.visible;
       
       // Setup interactions if in underlay mode
-      if (State.currentMode === 'underlay') {
+      if (!silent && State.currentMode === 'underlay') {
         this.enableInteractions();
         this.addResizeHandles();
       }
@@ -347,7 +348,7 @@ export const UnderlayManager = {
       Logger.debug(`✓ Restored underlay: ${State.underlayFileName}`);
       
       // Dispatch event for UI updates
-      document.dispatchEvent(new CustomEvent('underlayLoaded', {
+      if (!silent) document.dispatchEvent(new CustomEvent('underlayLoaded', {
         detail: {
           fileName: State.underlayFileName,
           width: texture.width,
@@ -357,6 +358,7 @@ export const UnderlayManager = {
       }));
     } catch (error) {
       console.error('Failed to restore underlay:', error);
+      throw error;
     }
   },
 

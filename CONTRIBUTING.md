@@ -42,7 +42,13 @@ Run the full smoke test before opening a pull request:
 pnpm test
 ```
 
-The root `pnpm test` script runs the editor build, renderer build, and renderer publish dry-run.
+The root `pnpm test` script runs ESLint, editor and renderer unit tests, both production builds, and isolated packed-consumer checks. Run `pnpm test:browser` for editor recovery/API tests and renderer browser/accessibility tests. Install test browsers first with `pnpm exec playwright install`.
+
+ESLint checks JavaScript correctness across the repository. Unused-variable checking is strict in the new editor services; legacy modules retain compatibility arguments without an unused-variable gate. Generated output is excluded. The existing TypeScript/React consumer check remains part of package verification.
+
+Dependabot is configured for weekly pnpm workspace and GitHub Actions update PRs once this configuration reaches the default branch. Compatible npm updates are grouped; major versions remain separate. Updates are reviewed and tested, not automatically merged.
+
+The [Editor API](docs/EDITOR_API.md) documents the supported interface for AI agents and browser automation. Prefer it over direct mutations to internal state.
 
 ## Pull Requests
 

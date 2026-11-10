@@ -26,8 +26,8 @@ export const SeatManager = {
   createSeats(section, x, y, width, height, rows, seatsPerRow) {
     const innerWidth = width - (CONFIG.SECTION_MARGIN * 2);
     const innerHeight = height - (CONFIG.SECTION_MARGIN * 2);
-    const seatSpacingX = innerWidth / (seatsPerRow - 1);
-    const seatSpacingY = innerHeight / (rows - 1);
+    const seatSpacingX = seatsPerRow > 1 ? innerWidth / (seatsPerRow - 1) : 0;
+    const seatSpacingY = rows > 1 ? innerHeight / (rows - 1) : 0;
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < seatsPerRow; col++) {
@@ -262,7 +262,7 @@ export const SeatManager = {
     this.updateSeatVisual(seat);
     
     // Dispatch event to update UI
-    document.dispatchEvent(new CustomEvent('seatPropertiesChanged'));
+    if (!State.isImporting) document.dispatchEvent(new CustomEvent('seatPropertiesChanged'));
   },
 
   /**
@@ -360,7 +360,6 @@ export const SeatManager = {
       const offset = startCharCode - 65;
       
       let labelIndex = index + offset;
-      let label = '';
       
       // Handle multi-letter labels (A-Z, then AA, BB, CC, etc.)
       // Calculate how many times to repeat the letter
@@ -370,7 +369,7 @@ export const SeatManager = {
       const char = String.fromCharCode(charCode);
       
       // Repeat the character
-      label = char.repeat(repeatCount);
+      const label = char.repeat(repeatCount);
       
       return label;
     }

@@ -12,6 +12,10 @@ import { FileManager } from '../src/managers/fileManager.js';
 import { ModeManager } from '../src/managers/modeManager.js';
 import { UnderlayManager } from '../src/managers/UnderlayManager.js';
 import { Logger } from '../src/core/logger.js';
+import { startEditorPersistence } from '../src/services/editorPersistence.js';
+import { createEditorApi } from '../src/services/editorApi.js';
+
+let persistence;
 
 async function initializeApp() {
   State.app = new PIXI.Application();
@@ -188,6 +192,7 @@ function setupFileHandlers() {
   // Open button
   Elements.openBtn.addEventListener('click', async () => {
     try {
+      if (persistence?.hasUnsavedChanges() && !confirm('Open another map and replace your unsaved changes? Export with Save first to keep a file copy.')) return;
       await FileManager.open(Elements.fileInput);
     } catch (error) {
       if (error.message !== 'No file selected') {
@@ -608,6 +613,40 @@ function setupAppErrorHandler() {
   });
 }
 
+function setupPersistence() {
+  const status = document.getElementById('draftStatus');
+  const recover = document.getElementById('recoverDraftBtn');
+  const discard = document.getElementById('discardDraftBtn');
+  const messages = {
+    ready: 'Local drafts enabled · Save exports a file',
+    recovery: 'A local draft is available',
+    saved: 'Draft saved in this browser · Save exports a file',
+    unavailable: 'Local draft unavailable · Use Save to export your work',
+    invalid: 'Draft could not be restored · It has been kept',
+    conflict: 'Another tab changed the draft · Export your work before reloading',
+  };
+  persistence = startEditorPersistence({ onStatus: ({ state, pending }) => {
+    if (status.textContent !== messages[state]) status.textContent = messages[state];
+    recover.hidden = !pending;
+    discard.hidden = !pending;
+  } });
+  recover.addEventListener('click', async () => {
+    if (persistence.hasUnsavedChanges() && !confirm('Restore the draft and replace your current unsaved changes?')) return;
+    recover.disabled = true;
+    try { await persistence.drafts.recover(); } finally { recover.disabled = false; }
+  });
+  discard.addEventListener('click', () => {
+    if (confirm('Permanently discard the saved local draft? Your open map will stay unchanged.')) persistence.drafts.discard();
+  });
+  Object.defineProperty(window, 'seatmapEditor', { value: createEditorApi({
+    snapshot: () => FileManager.exportToJSON(),
+    importMap: (map, options) => FileManager.importFromJSON(map, options),
+    selection: () => State.selectedSections.map(section => section.uniqueId),
+    isBusy: () => State.isImporting,
+  }) });
+  window.dispatchEvent(new CustomEvent('seatmap:ready', { detail: { version: window.seatmapEditor.version } }));
+}
+
 // Start the application
 (async () => {
   await initializeApp();
@@ -628,4 +667,5 @@ function setupAppErrorHandler() {
   setupUnderlayHandlers();
   setupSeatHandlers();
   setupRowLabelSpacingHandler();
+  setupPersistence();
 })();

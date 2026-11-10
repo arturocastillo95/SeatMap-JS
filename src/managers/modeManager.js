@@ -58,8 +58,8 @@ export const ModeManager = {
   },
 
   handleSelectionChange() {
-    // If in pricing mode and no section selected, exit pricing mode
-    if (State.currentMode === 'pricing' && State.selectedSections.length === 0) {
+    // Leave section-specific modes when their section is removed or replaced.
+    if (['pricing', 'seats'].includes(State.currentMode) && State.selectedSections.length === 0) {
       this.switchMode('schema');
     }
   },

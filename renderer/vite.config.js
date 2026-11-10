@@ -7,8 +7,8 @@ export default defineConfig({
     server: {
         port: 3000,
         open: false,
-        // Allow all hosts (for ngrok, localtunnel, etc.)
-        host: '0.0.0.0',
+        // Network access is opt-in via --host 0.0.0.0.
+        host: '127.0.0.1',
         allowedHosts: ['.ngrok-free.dev', '.ngrok.io', 'localhost']
     },
 
