@@ -5,6 +5,113 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/tests/browser/host.html");
   await page.waitForFunction(() => window.api);
 });
+test("seat hover animates growth and shading and reverses without jumping", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const states = await page.evaluate(async () => {
+    await ready();
+    r.loadInventory(api.inventory(map));
+    r.app.ticker.stop();
+    const view = r._views.get("seat-1");
+    const sample = () => ({ scale: view.scale.x, shade: view._sprite.tint & 0xff });
+    view.emit("pointerover", { pointerType: "mouse", global: { x: 100, y: 100 } });
+    const start = sample();
+    r._animateSeats(70);
+    const middle = sample();
+    r._animateSeats(70);
+    const end = sample();
+    view.emit("pointerout");
+    const reverseStart = sample();
+    r._animateSeats(70);
+    const reverseMiddle = sample();
+    r._animateSeats(70);
+    return { start, middle, end, reverseStart, reverseMiddle, rest: sample(), pending: r._seatTransitions.size };
+  });
+  expect(states.start).toEqual({ scale: 1, shade: 255 });
+  expect(states.middle.scale).toBeGreaterThan(1);
+  expect(states.middle.scale).toBeLessThan(1.45);
+  expect(states.middle.shade).toBeGreaterThan(217);
+  expect(states.middle.shade).toBeLessThan(255);
+  expect(states.end).toEqual({ scale: 1.45, shade: 217 });
+  expect(states.reverseStart).toEqual(states.end);
+  expect(states.reverseMiddle.scale).toBeGreaterThan(1);
+  expect(states.reverseMiddle.scale).toBeLessThan(1.45);
+  expect(states.rest).toEqual(states.start);
+  expect(states.pending).toBe(0);
+});
+test("zoom enlarges every seat while preserving spacing and selection emphasis", async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    await ready();
+    r.loadInventory(api.inventory(map));
+    const view = r._views.get("seat-1");
+    const position = { x: view.x, y: view.y };
+    r.selectSeat("seat-1");
+    r.viewport.scale.set(r.state.initialScale * 1.75);
+    r._semanticZoom();
+    const halfway = r._views.get("seat-2").scale.x;
+    const halfwayFill = r._views.get("seat-2")._detailSprite.alpha;
+    r.viewport.scale.set(r.state.initialScale * 2.5);
+    r._semanticZoom();
+    const close = {
+      normal: r._views.get("seat-2").scale.x,
+      accessible: r._views.get("seat-0").scale.x,
+      selected: view.scale.x,
+      fill: r._views.get("seat-2")._detailSprite.alpha,
+      baseVisible: r._views.get("seat-2")._sprite.visible,
+      selectedFillVisible: view._detailSprite.visible,
+    };
+    r.viewport.scale.set(r.state.initialScale);
+    r._semanticZoom();
+    const overviewDetailVisible = r._views.get("seat-2")._detailSprite.visible;
+    return { halfway, halfwayFill, close, position, overviewDetailVisible, after: { x: view.x, y: view.y },
+      overviewFill: r._views.get("seat-2")._detailSprite.alpha,
+      overview: r._views.get("seat-2").scale.x, selected: view.scale.x };
+  });
+  expect(result.halfway).toBeGreaterThan(1);
+  expect(result.halfway).toBeLessThan(1.35);
+  expect(result.close.normal).toBeCloseTo(1.35);
+  expect(result.close.accessible).toBeCloseTo(1.35);
+  expect(result.close.selected).toBeCloseTo(2.7);
+  expect(result.halfwayFill).toBeCloseTo(0.5);
+  expect(result.close.fill).toBe(1);
+  expect(result.close.baseVisible).toBe(false);
+  expect(result.overviewDetailVisible).toBe(false);
+  expect(result.close.selectedFillVisible).toBe(false);
+  expect(result.overviewFill).toBe(0);
+  expect(result.after).toEqual(result.position);
+  expect(result.overview).toBe(1);
+  expect(result.selected).toBe(2);
+});
+test("seat labels retain enough texture detail when zoomed on high DPI canvases", async ({ page }) => {
+  const samples = await page.evaluate(async () => {
+    await ready(100, { resolution: 2 });
+    r.loadInventory(api.inventory(map));
+    const view = r._views.get("seat-1");
+    const hover = () => view.emit("pointerover", {
+      pointerType: "mouse", global: { x: 100, y: 100 },
+    });
+    const sample = () => ({
+      resolution: view._label.resolution,
+      required: r.viewport.scale.x * view.scale.x * r.app.renderer.resolution,
+      width: view._label.width,
+    });
+    r.viewport.scale.set(3);
+    hover();
+    const initial = sample();
+    r.viewport.scale.set(5);
+    r._semanticZoom();
+    const zoomed = sample();
+    view.emit("pointerout");
+    r.viewport.scale.set(7);
+    r._semanticZoom();
+    hover();
+    return [initial, zoomed, sample()];
+  });
+  for (const sample of samples) {
+    expect(sample.resolution).toBeGreaterThanOrEqual(sample.required);
+    expect(sample.resolution).toBeLessThan(sample.required * 2);
+    expect(sample.width).toBeCloseTo(samples[0].width, 1);
+  }
+});
 test("seated-only fitting, keyboard booking, inventory reconciliation and accessible controls", async ({
   page,
 }) => {

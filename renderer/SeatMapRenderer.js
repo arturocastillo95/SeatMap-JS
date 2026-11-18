@@ -106,6 +106,10 @@ export class SeatMapRenderer {
     this._priceDivisor = 10 ** currencyDigits(this.options.currency);
     this._store = new BookingStore(this.options);
     this._views = new Map();
+    this._seatTransitions = new Map();
+    this._visibleSeatLabels = new Set();
+    this._seatZoomScale = 1;
+    this._seatDetailProgress = 0;
     this._sections = new Map();
     this._highlights = new Set();
     this._generation = 0;
@@ -152,6 +156,7 @@ export class SeatMapRenderer {
       this._animationDuration = this.options.animationDuration;
       this._motionHandler();
       this._motion.addEventListener("change", this._motionHandler);
+      this.app.ticker.add((ticker) => this._animateSeats(ticker.deltaMS));
       this.container.appendChild(this.app.canvas);
       this.app.canvas.classList.add("seatmap-canvas");
       this.app.canvas.setAttribute("aria-hidden", "true");
@@ -258,6 +263,10 @@ export class SeatMapRenderer {
     this.inputHandler?.reset();
     this._clearHighlights();
     this.ui?.closeDialog();
+    this._seatTransitions.clear();
+    this._visibleSeatLabels.clear();
+    this._seatZoomScale = 1;
+    this._seatDetailProgress = 0;
     this.ui?.hideTooltip();
     if (this.viewport)
       for (const child of this.viewport.removeChildren()) {
@@ -481,6 +490,12 @@ export class SeatMapRenderer {
     sprite.scale.set(1 / this.options.seatTextureResolution);
     view.addChild(sprite);
     view._sprite = sprite;
+    const detailSprite = new PIXI.Sprite();
+    detailSprite.anchor.set(0.5);
+    detailSprite.scale.set(1 / this.options.seatTextureResolution);
+    detailSprite.alpha = this._seatDetailProgress;
+    view.addChild(detailSprite);
+    view._detailSprite = detailSprite;
     if (data.sn) {
       let texture = this.textureCache.get("accessible");
       if (!texture) {
@@ -517,6 +532,8 @@ export class SeatMapRenderer {
     view.on("pointerover", (e) => {
       const seat = this._store.seats.get(data.id);
       if (!seat) return;
+      view._hovered = e.pointerType !== "touch";
+      this._updateSeat(data.id);
       if (e.pointerType !== "touch")
         this.ui.showTooltip(this._store.seatSnapshot(seat), e.global);
       if (!view._label && !data.sn) {
@@ -531,14 +548,22 @@ export class SeatMapRenderer {
         view._label.anchor.set(0.5);
         view.addChild(view._label);
       }
-      if (view._label) view._label.visible = !seat.selected;
+      if (view._label) {
+        view._label.visible = !seat.selected;
+        if (view._label.visible) this._visibleSeatLabels.add(view);
+        this._updateSeatLabelResolution(view);
+      }
     });
     view.on("pointerout", () => {
+      view._hovered = false;
+      this._updateSeat(data.id);
       this.ui.hideTooltip();
       if (view._label) view._label.visible = false;
+      this._visibleSeatLabels.delete(view);
     });
     this._views.set(data.id, view);
     parent.addChild(view);
+    this._applySeatScale(view);
     this._updateSeat(data.id);
   }
   _updateSeat(id) {
@@ -559,6 +584,22 @@ export class SeatMapRenderer {
       view._strokeWidth,
       view._strokeColor,
     );
+    // Crossfade two shared textures instead of generating textures per zoom frame.
+    if (!view._detailTexture) {
+      const base = new PIXI.Color(view._color).toNumber();
+      const channels = [16, 8, 0].map((shift) => (base >> shift) & 0xff);
+      const fill = channels.reduce((value, channel) =>
+        (value << 8) | Math.round(channel + (255 - channel) * 0.45), 0);
+      const border = channels.reduce((value, channel) =>
+        (value << 8) | Math.round(channel * 0.8), 0);
+      view._detailTexture = this.textureCache.getSeatTexture(
+        this.options.seatRadius, fill,
+        Math.max(view._strokeWidth, this.options.seatRadius * 0.14), border,
+      );
+      view._detailSprite.texture = view._detailTexture;
+    }
+    view._canShowDetail = status === "available" && !seat.selected;
+    this._applySeatDetail(view);
     if (seat.selected && !view._selectionMark) {
       const radius = this.options.seatRadius;
       const mark = new PIXI.Graphics()
@@ -572,18 +613,86 @@ export class SeatMapRenderer {
       view._selectionMark = mark;
       view.addChild(mark);
     }
-    view.scale.set(seat.selected ? 1.6 : 1);
+    const hovered = view._hovered && status === "available" && !seat.selected;
+    this._transitionSeat(view, seat.selected ? 2 : hovered ? 1.45 : 1,
+      hovered ? 217 : 255, seat.selected || status !== "available");
     if (view._selectionMark) view._selectionMark.visible = seat.selected;
     if (view._icon) view._icon.visible = !seat.selected;
-    if (seat.selected && view._label) view._label.visible = false;
+    if (seat.selected && view._label) {
+      view._label.visible = false;
+      this._visibleSeatLabels.delete(view);
+    }
     if (view._glow) view._glow.visible = status === "available";
     view.cursor = status === "available" ? "pointer" : "not-allowed";
     view.alpha = status === "unknown" ? 0.5 : 1;
+  }
+  _transitionSeat(view, scale, shade, immediate) {
+    const current = this._seatTransitions.get(view);
+    if (current?.scale === scale && current?.shade === shade && !immediate) return;
+    this._seatTransitions.delete(view);
+    if (immediate || this._motion?.matches) {
+      view._emphasisScale = scale;
+      this._applySeatScale(view);
+      view._sprite.tint = shade * 0x010101;
+      view._detailSprite.tint = view._sprite.tint;
+      this._updateSeatLabelResolution(view);
+    } else if ((view._emphasisScale ?? 1) !== scale || (view._sprite.tint & 0xff) !== shade) {
+      this._seatTransitions.set(view, {
+        scale, shade, fromScale: view._emphasisScale ?? 1,
+        fromShade: view._sprite.tint & 0xff, elapsed: 0,
+      });
+    }
+  }
+  _animateSeats(deltaMS) {
+    for (const [view, transition] of this._seatTransitions) {
+      transition.elapsed += deltaMS;
+      const progress = this._motion?.matches ? 1 : Math.min(1, transition.elapsed / 140);
+      const eased = 1 - (1 - progress) ** 3;
+      view._emphasisScale = transition.fromScale + (transition.scale - transition.fromScale) * eased;
+      this._applySeatScale(view);
+      const shade = Math.round(transition.fromShade + (transition.shade - transition.fromShade) * eased);
+      view._sprite.tint = shade * 0x010101;
+      view._detailSprite.tint = view._sprite.tint;
+      this._updateSeatLabelResolution(view);
+      if (progress === 1) this._seatTransitions.delete(view);
+    }
+  }
+  _applySeatDetail(view) {
+    const progress = this._seatDetailProgress;
+    view._detailSprite.visible = view._canShowDetail && progress > 0;
+    view._detailSprite.alpha = progress;
+    view._sprite.visible = !view._canShowDetail || progress < 1;
+  }
+  _applySeatScale(view) {
+    view.scale.set(this._seatZoomScale * (view._emphasisScale ?? 1));
+  }
+  _updateSeatLabelResolution(view) {
+    if (!view._label?.visible) return;
+    // Text textures need enough pixels for the zoomed size on the canvas.
+    // Bucket upward to avoid rerasterizing on every animation frame.
+    const scale = Math.abs(this.viewport.scale.x * view.scale.x);
+    const required = Math.max(1, scale * this.app.renderer.resolution);
+    const resolution = 2 ** Math.ceil(Math.log2(required));
+    if (view._label.resolution !== resolution)
+      view._label.resolution = resolution;
   }
   _semanticZoom() {
     this.minimap?.update();
     if (!this.viewport) return;
     const ratio = this.viewport.scale.x / (this.state.initialScale || 1);
+    // Fill more of each seat's spacing as the overview becomes a close-up.
+    // Keep zoom sizing separate from hover/selection animation so they compose.
+    const progress = Math.max(0, Math.min(1, (ratio - 1) / 1.5));
+    const detail = progress * progress * (3 - 2 * progress);
+    if (detail !== this._seatDetailProgress) {
+      this._seatDetailProgress = detail;
+      this._seatZoomScale = 1 + 0.35 * detail;
+      for (const view of this._views.values()) {
+        this._applySeatDetail(view);
+        this._applySeatScale(view);
+      }
+    }
+    for (const view of this._visibleSeatLabels) this._updateSeatLabelResolution(view);
     for (const view of this._sections.values())
       if (view.sectionData.isZone) {
         view.alpha = Math.max(0, Math.min(1, 2 - ratio));
