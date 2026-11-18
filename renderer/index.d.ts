@@ -159,6 +159,7 @@ export interface RendererOptions {
   maxSelectedSeats?: number;
   preventOrphanSeats?: boolean;
   seatRadius?: number;
+  /** Explicit values use fixed seats-per-frame batches; omitted uses an ~8 ms construction budget. */
   seatChunkSize?: number;
   seatTextureResolution?: number;
   seatLabelSize?: number;

@@ -227,3 +227,22 @@ test("GA percentage quote agrees with its payable total", () => {
   assert.equal(line.pricePerTicket, 80);
   assert.equal(line.totalPrice, 160);
 });
+
+test("booking changes preserve normalized geometry and caller-owned metadata", () => {
+  const input = fixture();
+  input.sections[0].seats[0].metadata = { label: "original" };
+  const original = structuredClone(input);
+  const normalized = normalizeMap(input);
+  const store = new BookingStore({ preventOrphanSeats: false });
+  store.load(normalized);
+  store.loadInventory({ seats: [{ id: "s0", status: "available", price: 500 }] });
+  store.selectSeat("s0");
+  assert.deepEqual(input, original);
+  assert.equal(normalized.sections[0].seats[0].status, "unknown");
+  assert.equal(normalized.sections[0].seats[0].price, 125);
+  input.sections[0].seats[0].metadata.label = "changed by caller";
+  assert.equal(store.seats.get("s0").seatData.metadata.label, "original");
+  store.loadInventory({ seats: [] });
+  assert.equal(store.getSeats()[0].price, 125);
+  assert.equal(store.getSeats()[0].selected, false);
+});

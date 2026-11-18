@@ -14,6 +14,7 @@ for (const count of [1000, 10000])
       r.loadInventory(api.inventory(map));
       const begin = performance.now();
       r.selectSeat("seat-0");
+      const selectionSyncMs = performance.now() - begin;
       await new Promise(requestAnimationFrame);
       const selectionMs = performance.now() - begin;
       const times = [];
@@ -31,6 +32,7 @@ for (const count of [1000, 10000])
         count,
         loadMs,
         selectionMs,
+        selectionSyncMs,
         medianFrameMs: times.sort((a, b) => a - b)[45],
         resources,
         afterDestroy: r.getDiagnostics(),

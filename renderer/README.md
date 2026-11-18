@@ -36,6 +36,7 @@ Provide a host element with an explicit height. Install PixiJS 8.14.3+ (major 8)
 - Cart, canvas, dialog, and picker share canonical state. Sold seats are removed and GA quantities are reconciled.
 - Quantity promotions make the cheapest eligible items free within each section. Section IDs are authoritative.
 - Loading can be aborted or superseded; destruction is idempotent. Underlay failure produces diagnostics.
+- By default, seat construction yields after roughly 8 ms of work. Setting `seatChunkSize` explicitly uses fixed seats-per-frame batches instead. Validation and booking-store initialization remain synchronous.
 - Keyboard users can select through the section/search picker with 50 seats per page. Multiple instances own independent UI.
 
 Audit an SMF file before connecting inventory. The command is read-only and

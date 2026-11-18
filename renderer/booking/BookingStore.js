@@ -230,7 +230,9 @@ export class BookingStore {
         });
       for (const data of section.seats) {
         const seat = {
-          seatData: copy(data),
+          // normalizeMap already owns a deep clone of geometry and metadata.
+          // Only top-level booking fields (price/status) are mutated here.
+          seatData: { ...data },
           sectionId: section.id,
           sectionName: section.name,
           selected: false,

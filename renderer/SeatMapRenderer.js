@@ -97,6 +97,7 @@ export class SeatMapRenderer {
         "VALIDATION_ERROR",
         "seatChunkSize must be an integer",
       );
+    this._fixedSeatChunks = options.seatChunkSize !== undefined;
     this.strings = { ...spanishStrings, ...options.strings };
     this._priceFormatter = new Intl.NumberFormat(this.options.locale, {
       style: "currency",
@@ -126,6 +127,8 @@ export class SeatMapRenderer {
         antialias: this.options.antialias ?? true,
         resolution:
           this.options.resolution ?? Math.min(window.devicePixelRatio || 1, 2),
+        // We use targeted pointer events; global move events traverse every seat.
+        eventFeatures: { globalMove: false },
         autoDensity: true,
         width: Math.max(1, this.container.clientWidth),
         height: Math.max(1, this.container.clientHeight),
@@ -152,7 +155,8 @@ export class SeatMapRenderer {
       this.container.appendChild(this.app.canvas);
       this.app.canvas.classList.add("seatmap-canvas");
       this.app.canvas.setAttribute("aria-hidden", "true");
-      this.viewport = new PIXI.Container();
+      // Pan and zoom the map as one group instead of transforming every seat.
+      this.viewport = new PIXI.Container({ isRenderGroup: true });
       this.app.stage.addChild(this.viewport);
       this.state = {
         initialScale: 1,
@@ -343,30 +347,33 @@ export class SeatMapRenderer {
         zoneCount: sorted.filter((s) => s.isZone || s.type === "ga").length,
       });
       current();
+      let batchStart = performance.now();
       for (const section of sorted.filter(
         (s) => !s.isZone && s.type !== "ga",
       )) {
         current();
         const view = this._renderSection(section);
-        for (
-          let i = 0;
-          i < section.seats.length;
-          i += this.options.seatChunkSize
-        ) {
+        for (let i = 0; i < section.seats.length;) {
           current();
-          for (const seat of section.seats.slice(
-            i,
-            i + this.options.seatChunkSize,
-          )) {
-            this._createSeat(view, seat, section);
+          const end = Math.min(i + this.options.seatChunkSize, section.seats.length);
+          while (i < end) {
+            this._createSeat(view, section.seats[i++], section);
             loaded++;
+            // Keep default construction slices short without waiting a frame
+            // after every progress checkpoint on faster devices.
+            if (!this._fixedSeatChunks && performance.now() - batchStart >= 8) break;
           }
           this._emit("seatLoadProgress", {
             loaded,
             total,
             percent: total ? Math.round((loaded / total) * 100) : 100,
           });
-          if (loaded < total) await nextFrame(controller.signal);
+          current();
+          if (loaded < total &&
+            (this._fixedSeatChunks || performance.now() - batchStart >= 8)) {
+            await nextFrame(controller.signal);
+            batchStart = performance.now();
+          }
         }
         current();
         if (section.rowLabels?.type !== "none" && !section.rowLabels?.hidden)
@@ -375,12 +382,13 @@ export class SeatMapRenderer {
       current();
       this.viewport.addChild(this._labels);
       if (!this._navigated) this.fitToView(false);
-      await underlay;
+      const underlaySprite = await underlay;
       current();
-      if (!this._navigated) this.fitToView(false);
+      if (underlaySprite && !this._navigated) this.fitToView(false);
       this._ready = true;
       this.minimap?.rebuild();
-      this._sync();
+      // Every seat already received its initial appearance during creation.
+      this._sync([]);
       current();
       this._emit("seatLoadProgress", { loaded: total, total, percent: 100 });
       current();
@@ -446,6 +454,8 @@ export class SeatMapRenderer {
       data.y + (section.layoutShiftY ?? 0),
     );
     view.eventMode = "static";
+    // The seat owns its hit area; sprites, icons and labels are decorative.
+    view.interactiveChildren = false;
     view.hitArea = new PIXI.Circle(
       0,
       0,
@@ -581,8 +591,8 @@ export class SeatMapRenderer {
         if (view.zoneLabel) view.zoneLabel.alpha = view.alpha;
       }
   }
-  _sync() {
-    for (const id of this._views.keys()) this._updateSeat(id);
+  _sync(seatIds = this._views.keys()) {
+    for (const id of seatIds) this._updateSeat(id);
     this.ui?.refresh();
     this._semanticZoom();
     const cart = this.getCart();
@@ -601,8 +611,8 @@ export class SeatMapRenderer {
     this._requireReady();
     const result = this._store.selectSeat(id, selected);
     if (result.success) {
-      this._sync();
-      const seat = this._store.getSeats().find((s) => s.id === id);
+      this._sync([id]);
+      const seat = this._store.seatSnapshot(this._store.seats.get(id));
       this._emit(selected ? "seat-selected" : "seat-deselected", {
         seat,
         sectionId: seat.sectionId,
@@ -670,8 +680,11 @@ export class SeatMapRenderer {
   clearSelections() {
     return this._attempt(() => {
       this._requireReady();
+      const seatIds = [...this._store.selection.getSelectedSeats()].map(
+        (seat) => seat.seatData.id,
+      );
       this._store.clearSelections();
-      this._sync();
+      this._sync(seatIds);
       this._emit("selections-cleared", {});
     });
   }
@@ -680,7 +693,7 @@ export class SeatMapRenderer {
       this._requireReady();
       const result = this._store.setGAQuantity(id, quantity);
       if (result.success) {
-        this._sync();
+        this._sync([]);
         const detail = {
           sectionId: id,
           quantity,
@@ -704,7 +717,7 @@ export class SeatMapRenderer {
   clearGASelections() {
     this._requireReady();
     for (const g of this._store.ga.values()) g.quantity = 0;
-    this._sync();
+    this._sync([]);
     this._emit("ga-selection-change", { allSelections: [] });
   }
   loadInventory(data, options) {
@@ -712,7 +725,11 @@ export class SeatMapRenderer {
       this._requireReady();
       const result = this._store.loadInventory(data, options);
       this._unmatched = result.unmatched;
-      this._sync();
+      this._sync(
+        options?.mode === "patch"
+          ? new Set([...result.matched, ...result.adjusted])
+          : undefined,
+      );
       if (result.adjusted.length) this.ui.announce(this.strings.adjusted);
       if (result.unmatched.length)
         this._diagnostic(
@@ -737,7 +754,7 @@ export class SeatMapRenderer {
           ? Object.fromEntries(promos.map((p) => [p.sectionId, p]))
           : promos,
       );
-      this._sync();
+      this._sync([]);
     });
   }
   getSectionPromo(id) {
@@ -749,7 +766,7 @@ export class SeatMapRenderer {
   clearAllPromos() {
     this._requireReady();
     this._store.promos.clear();
-    this._sync();
+    this._sync([]);
   }
   formatPrice(price) {
     return this._priceFormatter.format(price / this._priceDivisor);

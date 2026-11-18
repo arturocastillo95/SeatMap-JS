@@ -189,12 +189,17 @@ export class MapUI {
   }
   refresh() {
     const focusedSummary = this.selection.contains(document.activeElement);
-    const selectedFilter = this.filter.value;
-    this.filter.replaceChildren(new Option(this.s.allSections, ""));
-    for (const section of this.r.getSections().filter((s) => !s.isZone))
-      this.filter.append(new Option(section.name, section.id));
-    this.filter.value = selectedFilter;
-    if (this.filter.selectedIndex < 0) this.filter.selectedIndex = 0;
+    // Booking updates do not change the section list; reset/load replaces this Map.
+    if (this._filterSections !== this.r._store.sections) {
+      const selectedFilter = this.filter.value;
+      this.filter.replaceChildren(new Option(this.s.allSections, ""));
+      for (const section of this.r._store.sections.values())
+        if (!section.isZone)
+          this.filter.append(new Option(section.name, section.id));
+      this.filter.value = selectedFilter;
+      if (this.filter.selectedIndex < 0) this.filter.selectedIndex = 0;
+      this._filterSections = this.r._store.sections;
+    }
     this.renderResults();
     this.updateDialog();
     if (this.tooltipSeatId) {
@@ -241,21 +246,20 @@ export class MapUI {
     const isGA = this.r._store.ga.has(section);
     this.searchPrompt.hidden = !searchOnly || Boolean(query) || isGA;
     this.search.parentElement.hidden = Boolean(searchOnly && isGA);
-    const seats = this.r
-      .getSeats()
-      .filter(
-        (s) =>
-          (!searchOnly || Boolean(query)) &&
-          (!section || s.sectionId === section) &&
-          (!query ||
-            `${s.row} ${s.seat}`
-              .toLocaleLowerCase(this.r.options.locale)
-              .includes(query)),
-      );
+    const seats = [];
+    if (!searchOnly || query) {
+      for (const seat of this.r._store.seats.values()) {
+        if (section && seat.sectionId !== section) continue;
+        if (query && !`${seat.seatData.rowLabel} ${seat.seatData.n}`
+          .toLocaleLowerCase(this.r.options.locale).includes(query)) continue;
+        seats.push(seat);
+      }
+    }
     const pages = Math.max(1, Math.ceil(seats.length / 50));
     this.page = Math.max(0, Math.min(this.page, pages - 1));
     this.list.replaceChildren();
-    for (const seat of seats.slice(this.page * 50, this.page * 50 + 50)) {
+    for (const record of seats.slice(this.page * 50, this.page * 50 + 50)) {
+      const seat = this.r._store.seatSnapshot(record);
       const quote = this.r._store.quoteSeat(seat.id);
       const text = `${seat.sectionName} · ${this.s.row} ${seat.row} · ${this.s.seat} ${seat.seat}${seat.special ? " · " + this.s.special : ""} · ${this.r.formatPrice(quote?.totalPrice ?? seat.price)} · ${this.s[seat.status] ?? this.s.unavailable}`;
       const b = this.button(text, () => {
