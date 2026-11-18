@@ -98,7 +98,8 @@ map is zoomed or panned beyond the visible area, and hides it when the full map
 is visible. The overview includes
 section colors and the underlay when available. Its outlined rectangle tracks the
 visible area during zooming, panning, and resizing. Click to recenter or drag the
-rectangle to pan without changing zoom or seat selections. Focus the overview and
+rectangle to pan without changing zoom or seat selections. Double-click or
+double-tap the overview to restore the full-map view. Focus the overview and
 use arrow keys to pan; Home fits the full map.
 
 Set `showMinimap: false` in the renderer options to disable it. Override

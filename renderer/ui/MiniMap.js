@@ -27,6 +27,8 @@ export class MiniMap {
       event.preventDefault();
       this.svg.focus({ preventScroll: true });
       this.pointer = event.pointerId;
+      this.press = { x: event.clientX, y: event.clientY, time: event.timeStamp };
+      this.moved = false;
       this.svg.setPointerCapture(event.pointerId);
       const point = this.point(event);
       const center = this.center();
@@ -36,16 +38,29 @@ export class MiniMap {
     });
     this.svg.addEventListener('pointermove', event => {
       if (event.pointerId !== this.pointer) return;
+      if (Math.hypot(event.clientX - this.press.x, event.clientY - this.press.y) > 8) this.moved = true;
       const point = this.point(event);
       this.navigate(point.x + this.offset.x, point.y + this.offset.y);
     });
     for (const name of ['pointerup', 'pointercancel', 'lostpointercapture'])
       this.svg.addEventListener(name, event => {
         if (event.pointerId !== this.pointer) return;
+        const tap = name === 'pointerup' && !this.moved &&
+          event.timeStamp - this.press.time < 350 &&
+          Math.hypot(event.clientX - this.press.x, event.clientY - this.press.y) <= 8;
+        const previous = this.lastTap;
+        const doubleTap = tap && previous && previous.type === event.pointerType &&
+          event.timeStamp - previous.time < 500 &&
+          Math.hypot(event.clientX - previous.x, event.clientY - previous.y) <= 20;
+        this.lastTap = tap && !doubleTap
+          ? { x: event.clientX, y: event.clientY, time: event.timeStamp, type: event.pointerType }
+          : null;
         this.pointer = undefined;
         if (this.svg.hasPointerCapture(event.pointerId)) this.svg.releasePointerCapture(event.pointerId);
+        if (doubleTap) renderer.fitToView();
       });
     this.svg.addEventListener('keydown', event => {
+      this.lastTap = null;
       const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
       if (event.key === 'Home') {
         event.preventDefault();
@@ -78,6 +93,7 @@ export class MiniMap {
     r._semanticZoom();
   }
   rebuild() {
+    this.lastTap = null;
     this.scene.replaceChildren();
     const r = this.r;
     if (!r._ready) { this.root.hidden = true; return; }

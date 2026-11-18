@@ -57,3 +57,28 @@ test('booking overview includes venue artwork', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: 'Centrar mapa', exact: true }).click();
   await expect(page.locator('.seatmap-minimap')).toBeHidden();
 });
+
+test.describe('minimap reset gestures', () => {
+  test.use({ hasTouch: true });
+  for (const input of ['mouse', 'touch']) {
+    test(`double ${input === 'mouse' ? 'click' : 'tap'} restores full-map zoom`, async ({ page }) => {
+      await page.goto('/tests/browser/host.html');
+      await page.waitForFunction(() => window.ready);
+      await page.evaluate(() => window.ready(100));
+      const initial = await page.evaluate(() => window.r.viewport.scale.x);
+      await page.evaluate(() => window.r.zoomBy(3));
+      const overview = page.locator('.seatmap-minimap');
+      await expect(overview).toBeVisible();
+      const box = await overview.locator('svg').boundingBox();
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      if (input === 'mouse') await page.mouse.dblclick(x, y);
+      else {
+        await page.touchscreen.tap(x, y);
+        await page.touchscreen.tap(x, y);
+      }
+      await expect(overview).toBeHidden();
+      expect(await page.evaluate(() => window.r.viewport.scale.x)).toBeCloseTo(initial);
+      expect(await page.evaluate(() => window.r.getCart().totalCount)).toBe(0);
+    });
+  }
+});
