@@ -89,3 +89,17 @@ ES, CJS, and UMD bundles are built. ES/CJS consumers explicitly import `@seatmap
 Read [MIGRATION.md](MIGRATION.md) before upgrading from 1.x. Examples include framework-neutral mounting, the complete booking demo, and React Strict Mode cleanup. The historical booking URLs redirect to the Renderer 2.0 demo.
 
 License: GPL-3.0-only; see LICENSE.md.
+
+### Minimap
+
+The renderer shows a compact venue overview in the bottom-right corner when the
+map is zoomed or panned beyond the visible area, and hides it when the full map
+is visible. The overview includes
+section colors and the underlay when available. Its outlined rectangle tracks the
+visible area during zooming, panning, and resizing. Click to recenter or drag the
+rectangle to pan without changing zoom or seat selections. Focus the overview and
+use arrow keys to pan; Home fits the full map.
+
+Set `showMinimap: false` in the renderer options to disable it. Override
+`strings.minimap` to translate its accessible navigation instructions. The overview
+uses section geometry rather than individual seats to keep large maps responsive.

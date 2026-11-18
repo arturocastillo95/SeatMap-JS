@@ -153,6 +153,8 @@ export interface RendererOptions {
   strings?: Record<string, string>;
   /** Show individual seats in the HTML picker only after a search. Default: false. */
   seatPickerSearchOnly?: boolean;
+  /** Show the interactive venue overview (default: true). */
+  showMinimap?: boolean;
   signal?: AbortSignal;
   maxSelectedSeats?: number;
   preventOrphanSeats?: boolean;

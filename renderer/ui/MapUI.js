@@ -1,4 +1,5 @@
 export const spanishStrings = {
+  minimap: "Vista general del mapa. Usa las flechas para moverte e Inicio para centrar.",
   picker: "Elegir asientos",
   controls: "Controles del mapa",
   searchPrompt: "Escribe una fila o un asiento para buscar.",

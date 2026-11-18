@@ -27,6 +27,7 @@ import {
   nextFrame,
 } from "./core/Lifecycle.js";
 import { createAccessibleIcon } from "./assets/accessibleIcon.js";
+import { MiniMap } from "./ui/MiniMap.js";
 import { MapUI, spanishStrings } from "./ui/MapUI.js";
 
 export class SeatMapRenderer {
@@ -74,6 +75,7 @@ export class SeatMapRenderer {
       mobileMinZoomForSelection: 2,
       mobileSeatHitareaScale: 1.8,
       showGrid: true,
+      showMinimap: true,
       gridSize: 30,
       gridColor: 0x1a1a22,
       gridLineWidth: 1,
@@ -191,6 +193,7 @@ export class SeatMapRenderer {
       };
       this.app.canvas.addEventListener("pointerdown", this._pointerDown);
       this.ui = new MapUI(this);
+      if (this.options.showMinimap) this.minimap = new MiniMap(this);
       this._resize = () => {
         clearTimeout(this._resizeTimer);
         this._resizeTimer = setTimeout(() => this._performResize(), 100);
@@ -265,6 +268,7 @@ export class SeatMapRenderer {
     this._store.reset();
     this._unmatched = [];
     this._ready = false;
+    this.minimap?.rebuild();
     if (this.state) {
       this.state.initialBounds = null;
       this.state.initialPosition = null;
@@ -375,6 +379,7 @@ export class SeatMapRenderer {
       current();
       if (!this._navigated) this.fitToView(false);
       this._ready = true;
+      this.minimap?.rebuild();
       this._sync();
       current();
       this._emit("seatLoadProgress", { loaded: total, total, percent: 100 });
@@ -566,6 +571,7 @@ export class SeatMapRenderer {
     view.alpha = status === "unknown" ? 0.5 : 1;
   }
   _semanticZoom() {
+    this.minimap?.update();
     if (!this.viewport) return;
     const ratio = this.viewport.scale.x / (this.state.initialScale || 1);
     for (const view of this._sections.values())
@@ -817,6 +823,7 @@ export class SeatMapRenderer {
       );
       this.viewport.position.set(p.x, p.y);
     }
+    this._semanticZoom();
   }
   _renderGrid() {
     this._grid?.destroy();
@@ -867,6 +874,8 @@ export class SeatMapRenderer {
     this.inputHandler?.destroy();
     this.viewportManager?.destroy();
     this.ui?.destroy();
+    this.minimap?.destroy();
+    this.minimap = null;
     this.textureCache?.destroy();
     if (this._appReady && this.app) {
       this.app.canvas.removeEventListener("pointerdown", this._pointerDown);

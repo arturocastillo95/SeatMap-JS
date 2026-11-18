@@ -183,3 +183,10 @@ dialog::backdrop { background: rgba(17,19,22,.62); }
 .map-area .seatmap-ui input, .map-area .seatmap-ui select { min-height: 42px; border-color: #cfd4df; border-radius: 6px; background: #fff; font-size: 14px; }
 
 .map-area .seatmap-ui label[hidden] { display: none; }
+
+/* Keep navigation controls clear of the bottom-right venue overview. */
+.map-area .seatmap-ui { left: 12px; right: auto; }
+.map-area .seatmap-ui:has(details[open]) { z-index: 2; }
+@media (max-width: 360px) {
+  .map-area .seatmap-minimap { bottom: 140px; }
+}
