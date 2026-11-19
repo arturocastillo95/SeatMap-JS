@@ -3,6 +3,7 @@
  */
 
 import * as PIXI from 'pixi.js';
+import { DEFAULT_STROKE_WIDTH } from '../core/SmfVersion.js';
 
 /**
  * Render GA (General Admission) content
@@ -122,8 +123,8 @@ export function createSectionBackground(data) {
     if (data.isZone) {
         fillColor = data.sectionColor ?? style.sectionColor ?? 0xcccccc;
         const opacity = data.fillOpacity ?? style.opacity ?? 0.5;
-        fillAlpha = opacity;
-        strokeAlpha = opacity > 0.8 ? 1 : opacity + 0.2; 
+        fillAlpha = style.fillVisible === false ? 0 : opacity;
+        strokeAlpha = style.strokeVisible === false ? 0 : Math.min(1, opacity + 0.2);
     } else {
         fillColor = style.sectionColor ?? 0x3b82f6;
         fillAlpha = style.fillVisible === false ? 0 : ((style.opacity ?? 1) * 0.25);
@@ -138,7 +139,17 @@ export function createSectionBackground(data) {
     }
     
     if (fillAlpha > 0) graphics.fill({ color: fillColor, alpha: fillAlpha });
-    if (strokeAlpha > 0) graphics.stroke({ width: 2, color: fillColor, alpha: strokeAlpha });
+    if (strokeAlpha > 0) {
+        const strokeWidth = Number.isFinite(style.strokeWidth) && style.strokeWidth > 0
+            ? style.strokeWidth
+            : DEFAULT_STROKE_WIDTH;
+        graphics.stroke({ width: strokeWidth, color: fillColor, alpha: strokeAlpha });
+    }
+    if (fillAlpha === 0 && strokeAlpha > 0) {
+        graphics.hitArea = data.points?.length
+            ? new PIXI.Polygon(data.points)
+            : new PIXI.Rectangle(0, 0, width, height);
+    }
 
     return { graphics, fillAlpha, strokeAlpha, fillColor };
 }

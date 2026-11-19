@@ -42,6 +42,15 @@ const setup = (options = {}) => {
   s.load(normalizeMap(fixture(), s.options));
   return s;
 };
+test("2.2 preserves explicit inventory rows with labels hidden", () => {
+  const input = fixture();
+  input.version = "2.2.0";
+  input.sections[0].rowLabels = { type: "none", labels: ["Ñ"] };
+  const result = normalizeMap(input);
+  assert.ok(result.sections[0].seats.every((seat) => seat.rowLabel === "Ñ"));
+  assert.throws(() => normalizeMap({ ...input, version: "2.3.0" }), /Unsupported SMF version/);
+});
+
 test("requires inventory; normalizes labels, special metadata and minor units", () => {
   const s = setup();
   assert.equal(s.selectSeat("s0").success, false);
@@ -186,6 +195,17 @@ test("row labels beyond Z and reversed order are shared by every snapshot", () =
   const n = normalizeMap(m);
   assert.equal(n.sections[0].seats[0].rowLabel, "AB");
   assert.equal(n.sections[0].seats[1].rowLabel, "AA");
+});
+test("explicit row labels survive empty rows and drive booking keys", () => {
+  const map = fixture();
+  const section = map.sections[0];
+  section.rowLabels = { type: "letters", start: "M", labels: ["M", "N", "Ñ", "O"] };
+  section.seats[1].r = 2;
+  const seat = normalizeMap(map).sections[0].seats[1];
+  assert.equal(seat.rowLabel, "Ñ");
+  assert.equal(seat.key, "Different name;;Ñ;;11");
+  section.rowLabels.reversed = true;
+  assert.equal(normalizeMap(map).sections[0].seats[1].rowLabel, "N");
 });
 test("GA quantity promotions use minor units and the shared total", () => {
   const s = setup();

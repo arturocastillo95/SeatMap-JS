@@ -2,11 +2,34 @@
 // FILE MANAGER - Save/Load Venue Maps
 // ============================================
 
+import { DEFAULT_STROKE_WIDTH, legacySeatId, versionForSections } from '../../renderer/core/SmfVersion.js';
 import { State } from '../core/state.js';
-import { COLORS } from '../core/config.js';
+import { COLORS, CONFIG } from '../core/config.js';
 import { Utils } from '../core/utils.js';
 import { Logger } from '../core/logger.js';
 import { replaceMap } from '../core/mapTransaction.js';
+
+function restoreOutlineStyle(section, style) {
+  if (style?.fillVisible !== undefined) section.fillVisible = style.fillVisible;
+  if (style?.strokeVisible !== undefined) section.strokeVisible = style.strokeVisible;
+  if (style?.strokeWidth !== undefined) section.strokeWidth = style.strokeWidth;
+}
+
+function serializeOutline(section) {
+  const points = section.points;
+  if (!points?.length) return {};
+  const { contentWidth: width, contentHeight: height } = section;
+  const corners = new Set();
+  for (let i = 0; i < points.length; i += 2) {
+    const [x, y] = [points[i], points[i + 1]];
+    if ((x !== 0 && x !== width) || (y !== 0 && y !== height)) return { points: [...points] };
+    // A diagonal edge is not a rectangle, even if all four corners are present.
+    const next = (i + 2) % points.length;
+    if (x !== points[next] && y !== points[next + 1]) return { points: [...points] };
+    corners.add(`${x},${y}`);
+  }
+  return points.length === 8 && corners.size === 4 ? {} : { points: [...points] };
+}
 
 export const FileManager = {
   /**
@@ -29,11 +52,12 @@ export const FileManager = {
       seenIds.add(section.uniqueId);
     });
 
+    const sections = State.sections.map(section => this.serializeSection(section));
     const mapData = {
       ...original,
       // Format metadata
       format: "SMF",
-      version: "2.1.0",
+      version: versionForSections(sections),
       created: original.created || timestamp,
       modified: timestamp,
       
@@ -71,7 +95,7 @@ export const FileManager = {
       groups: original.groups || [],
       
       // Sections array
-      sections: State.sections.map(section => this.serializeSection(section)),
+      sections,
       
       // Future extensibility: other objects
       objects: original.objects || [],
@@ -154,6 +178,7 @@ export const FileManager = {
           sectionColor: section.sectionColor !== undefined ? section.sectionColor : COLORS.DEFAULT_SECTION,
           fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
           strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
+          ...(section.strokeWidth !== DEFAULT_STROKE_WIDTH && { strokeWidth: section.strokeWidth }),
           opacity: 1.0,
           glow: {
             enabled: section.glowEnabled,
@@ -190,9 +215,6 @@ export const FileManager = {
         serialized.labelColor = section.labelColor;
         serialized.labelOffsetX = section.labelOffsetX;
         serialized.labelOffsetY = section.labelOffsetY;
-        if (section.points) {
-          serialized.points = section.points;
-        }
       } else {
         // Non-zone GA section - save GA label properties
         serialized.gaLabelFontSize = section.gaLabelFontSize;
@@ -201,7 +223,7 @@ export const FileManager = {
         serialized.gaLabelOffsetY = section.gaLabelOffsetY;
       }
 
-      return serialized;
+      return { ...serialized, ...serializeOutline(section) };
     }
     
     // Regular section with seats
@@ -217,12 +239,13 @@ export const FileManager = {
     const maxRowIndex = Math.max(0, ...Array.from(rows));
     const maxColIndex = Math.max(0, ...Array.from(cols));
     
-    const numRows = maxRowIndex + 1;
-    const numCols = maxColIndex + 1;
+    const numRows = Math.max(maxRowIndex + 1, section.gridRows ?? 0);
+    const numCols = Math.max(maxColIndex + 1, section.gridColumns ?? 0);
 
-    // Calculate spacing to preserve grid layout
-    let spacingX = 24; // Default
-    let spacingY = 24; // Default
+    // Keep the original pitch when the remaining seats cannot establish it.
+    const margins = 2 * CONFIG.SECTION_MARGIN;
+    let spacingX = numCols > 1 ? (section.baseWidth - margins) / (numCols - 1) : 0;
+    let spacingY = numRows > 1 ? (section.baseHeight - margins) / (numRows - 1) : 0; // Default
     
     // Calculate X spacing
     let totalSpacingX = 0;
@@ -289,9 +312,8 @@ export const FileManager = {
     if (countY > 0) spacingY = totalSpacingY / countY;
 
     // Recalculate base dimensions based on the full grid extent
-    const margin = 20; // CONFIG.SECTION_MARGIN
-    const baseWidth = (numCols > 1) ? ((numCols - 1) * spacingX + (margin * 2)) : section.baseWidth;
-    const baseHeight = (numRows > 1) ? ((numRows - 1) * spacingY + (margin * 2)) : section.baseHeight;
+    const baseWidth = numCols > 1 ? (numCols - 1) * spacingX + margins : section.baseWidth;
+    const baseHeight = numRows > 1 ? (numRows - 1) * spacingY + margins : section.baseHeight;
     
     return {
       // Identity
@@ -306,6 +328,7 @@ export const FileManager = {
       centerY: section.y,
       width: section.contentWidth,
       height: section.contentHeight,
+      ...serializeOutline(section),
       
       // Base configuration
       base: {
@@ -328,6 +351,7 @@ export const FileManager = {
       rowLabels: {
         type: section.rowLabelType || "none",
         start: section.rowLabelStart !== undefined ? section.rowLabelStart : (section.rowLabelType === 'letters' ? 'A' : 1),
+        ...(section.explicitRowLabels && { labels: [...section.explicitRowLabels] }),
         reversed: section.rowLabelReversed || false,
         showLeft: section.showLeftLabels || false,
         showRight: section.showRightLabels || false,
@@ -401,6 +425,7 @@ export const FileManager = {
         sectionColor: section.sectionColor !== undefined ? section.sectionColor : COLORS.DEFAULT_SECTION,
         fillVisible: section.fillVisible !== undefined ? section.fillVisible : true,
         strokeVisible: section.strokeVisible !== undefined ? section.strokeVisible : true,
+        ...(section.strokeWidth !== DEFAULT_STROKE_WIDTH && { strokeWidth: section.strokeWidth }),
         opacity: 1.0,
         glow: {
           enabled: section.glowEnabled,
@@ -559,7 +584,6 @@ export const FileManager = {
         if (data.labelColor !== undefined) section.labelColor = data.labelColor;
         if (data.labelOffsetX !== undefined) section.labelOffsetX = data.labelOffsetX;
         if (data.labelOffsetY !== undefined) section.labelOffsetY = data.labelOffsetY;
-        if (data.points) section.points = data.points;
         
       } else {
         // Create GA section
@@ -587,6 +611,8 @@ export const FileManager = {
         if (data.gaLabelOffsetY !== undefined) section.gaLabelOffsetY = data.gaLabelOffsetY;
       }
       
+      if (data.points?.length) section.points = data.points;
+      restoreOutlineStyle(section, data.style);
       section.smfMetadata = data.metadata;
       section.smfGroupId = data.groupId;
       // Restore section name
@@ -675,6 +701,7 @@ export const FileManager = {
     
     // Restore row labels (with v2.0.0 additions)
     section.rowLabelType = data.rowLabels.type;
+    section.explicitRowLabels = data.rowLabels.labels;
     section.rowLabelStart = data.rowLabels.start !== undefined ? data.rowLabels.start : (data.rowLabels.type === 'letters' ? 'A' : 1);
     section.rowLabelReversed = data.rowLabels.reversed || false;
     section.showLeftLabels = data.rowLabels.showLeft;
@@ -763,14 +790,8 @@ export const FileManager = {
       }
     }
     
-    // Restore fill and stroke visibility (v2.0.0+)
+    restoreOutlineStyle(section, data.style);
     if (data.style) {
-      if (data.style.fillVisible !== undefined) {
-        section.fillVisible = data.style.fillVisible;
-      }
-      if (data.style.strokeVisible !== undefined) {
-        section.strokeVisible = data.style.strokeVisible;
-      }
       // Restore glow properties
       if (data.style.glow) {
         section.glowEnabled = data.style.glow.enabled || false;
@@ -792,7 +813,7 @@ export const FileManager = {
       // Create a map of seat data for fast lookup
       const seatDataMap = new Map(data.seats.map(s => {
           const r = s.r !== undefined ? s.r : s.rowIndex;
-          const c = s.c !== undefined ? s.c : s.colIndex;
+          const c = s.c ?? s.colIndex ?? s.columnIndex;
           return [`${r},${c}`, s];
       }));
       
@@ -852,7 +873,7 @@ export const FileManager = {
           
           // Restore seat number if available
           // Handle legacy (number) and optimized (n)
-          const number = seatData.n !== undefined ? seatData.n : seatData.number;
+          const number = seatData.n ?? seatData.number ?? seatData.seatNumber;
           if (number !== undefined) {
             if (seat.seatLabel) {
               seat.seatLabel.text = number;
@@ -868,10 +889,10 @@ export const FileManager = {
             seat.isManualNumber = true;
           }
 
-          // Restore seat ID (v2.1.0)
-          if (seatData.id) {
-            seat.id = seatData.id;
-          }
+          // Match the renderer's inventory ID for older files without explicit IDs.
+          seat.id = seatData.id || legacySeatId(
+            data.id ?? data.name ?? section.uniqueId, seat.rowIndex, seat.seatNumber
+          );
           
           // Restore special needs status
           // Handle legacy (specialNeeds) and optimized (sn)
@@ -946,7 +967,7 @@ export const FileManager = {
     
     // Update row labels if needed
     // The _loadedFromFile flag (set earlier) ensures updateRowLabels doesn't reset seat positions
-    if (data.rowLabels.type !== 'none') {
+    if (data.rowLabels.type !== 'none' || data.rowLabels.labels) {
       SectionManager.updateRowLabels(section);
     }
     
@@ -955,10 +976,16 @@ export const FileManager = {
       delete section._loadedFromFile;
     }
     
-    // Restore exact center position if available (v2.0.0+)
-    if (data.centerX !== undefined && data.centerY !== undefined) {
-      section.x = data.centerX;
-      section.y = data.centerY;
+    // Anchor saved polygons to the imported center even if the editor
+    // recalculated the pivot from seats and row labels.
+    if (data.points?.length) {
+      const dx = section.pivot.x - data.width / 2;
+      const dy = section.pivot.y - data.height / 2;
+      section.points = data.points.map((value, index) => value + (index % 2 === 0 ? dx : dy));
+    }
+    if ((data.centerX !== undefined && data.centerY !== undefined) || data.points?.length) {
+      section.x = data.centerX ?? data.x + data.width / 2;
+      section.y = data.centerY ?? data.y + data.height / 2;
       
       // Update all seat positions to match the new section position
       SectionManager.positionSeatsAndLabels(section);

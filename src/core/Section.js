@@ -88,6 +88,8 @@ export class Section extends PIXI.Graphics {
     this._sectionColor = config.sectionColor || COLORS.SECTION_STROKE;
     this._fillVisible = config.fillVisible !== undefined ? config.fillVisible : true;
     this._strokeVisible = config.strokeVisible !== undefined ? config.strokeVisible : true;
+    this._strokeWidth = config.strokeWidth ?? VISUAL_CONFIG.SECTION.STROKE_WIDTH;
+    this._points = config.points ?? null;
     
     // Zone specific properties
     if (this._isZone) {
@@ -95,7 +97,6 @@ export class Section extends PIXI.Graphics {
       this._showZoneLabel = config.showZoneLabel !== undefined ? config.showZoneLabel : true;
       this._showZone = config.showZone !== undefined ? config.showZone : true;
       this._fillOpacity = config.fillOpacity !== undefined ? config.fillOpacity : 0.5;
-      this._points = config.points || null; // Array of [x, y, x, y...]
 
       // Label customization
       this._labelFontSize = config.labelFontSize || 14;
@@ -141,6 +142,7 @@ export class Section extends PIXI.Graphics {
     this._rowLabelType = config.rowLabelType || 'none'; // 'none', 'numbers', 'letters'
     this._rowLabelStart = config.rowLabelStart || 1;
     this._rowLabelReversed = config.rowLabelReversed || false;
+    this.explicitRowLabels = config.explicitRowLabels;
     this._showLeftLabels = config.showLeftLabels || false;
     this._showRightLabels = config.showRightLabels || false;
     this._labelsHidden = config.labelsHidden || false;
@@ -211,14 +213,16 @@ export class Section extends PIXI.Graphics {
     // Apply stroke only if visible
     if (this._strokeVisible) {
       this.stroke({ 
-        width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, 
+        width: this._strokeWidth,
         color: this._sectionColor, 
         alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA 
       });
     }
     
-    this.hitArea = new PIXI.Rectangle(0, 0, this._contentWidth, this._contentHeight);
-    
+    this.hitArea = this._points?.length
+      ? new PIXI.Polygon(this._points)
+      : new PIXI.Rectangle(0, 0, this._contentWidth, this._contentHeight);
+
     // Create GA label if needed
     if (this._isGeneralAdmission && !this._isZone) {
       this.createGALabel();
@@ -400,6 +404,18 @@ export class Section extends PIXI.Graphics {
       throw new Error('Stroke visible must be a boolean');
     }
     this._strokeVisible = value;
+    this.redrawGraphics();
+  }
+
+  get strokeWidth() {
+    return this._strokeWidth;
+  }
+
+  set strokeWidth(value) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error('Stroke width must be a positive finite number');
+    }
+    this._strokeWidth = value;
     this.redrawGraphics();
   }
 
@@ -1021,6 +1037,7 @@ export class Section extends PIXI.Graphics {
       rowLabels: {
         type: this._rowLabelType,
         start: this._rowLabelStart,
+        ...(this.explicitRowLabels && { labels: [...this.explicitRowLabels] }),
         reversed: this._rowLabelReversed,
         showLeft: this._showLeftLabels,
         showRight: this._showRightLabels,

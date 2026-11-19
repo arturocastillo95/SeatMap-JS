@@ -413,7 +413,7 @@ export async function initBookingDemo({
         mode: "booking",
         seatPickerSearchOnly: true,
         strings: { picker: "Buscar asiento" },
-        backgroundColor: 0xf7f8fa,
+        backgroundColor: config.backgroundColor ?? 0xf7f8fa,
         showGrid: false,
         padding: host.clientWidth < 600 ? 24 : 65,
         bookedColor: 0xcbd0d8,
@@ -430,7 +430,8 @@ export async function initBookingDemo({
       }
       renderer = instance;
       const mapUrl = root.dataset.mapUrl || config.mapUrl;
-      const map = presentBookingMap(await mapLoader(mapUrl, signal));
+      const sourceMap = await mapLoader(mapUrl, signal);
+      const map = config.preserveMapStyle ? sourceMap : presentBookingMap(sourceMap);
       for (const section of map.sections) {
         const color = section.style?.seatColor ?? section.style?.sectionColor ?? 0x606778;
         sectionColors.set(section.id, `#${Number(color).toString(16).padStart(6, "0")}`);

@@ -1,4 +1,5 @@
-import { buildRowLabelMap } from "../core/RowLabels.js";
+import { legacySeatId, supportsSmfVersion, SUPPORTED_SMF_VERSIONS } from "../core/SmfVersion.js";
+import { buildRowLabelMap, validExplicitRowLabels } from "../core/RowLabels.js";
 import { SelectionManager } from "../interaction/SelectionManager.js";
 
 export class RendererError extends Error {
@@ -59,8 +60,9 @@ const statuses = new Set([
 /** Validate and normalize a cloned map before replacing the current scene. */
 export function normalizeMap(input, { currency = "MXN" } = {}) {
   if (!object(input)) fail("Expected an SMF object");
-  if (input.format !== "SMF" || !/^2\.(0|1)\.\d+$/.test(input.version))
-    fail("Supported SMF versions are 2.0 and 2.1");
+  if (input.format !== "SMF") fail('Expected format "SMF"', "format");
+  if (!supportsSmfVersion(input.version))
+    fail(`Unsupported SMF version. Supported versions are ${SUPPORTED_SMF_VERSIONS}`, "version");
   if (!Array.isArray(input.sections))
     fail("Expected sections array", "sections");
   const map = copy(input),
@@ -96,6 +98,8 @@ export function normalizeMap(input, { currency = "MXN" } = {}) {
       fail("Invalid polygon", path);
     if (s.rowLabels !== undefined && !object(s.rowLabels))
       fail("Invalid row labels", path);
+    if (s.rowLabels?.labels !== undefined && !validExplicitRowLabels(s.rowLabels.labels))
+      fail("Expected unique, nonempty row label strings", `${path}.rowLabels.labels`);
     if (
       s.rowLabels?.start !== undefined &&
       !["string", "number"].includes(typeof s.rowLabels.start)
@@ -146,7 +150,7 @@ export function normalizeMap(input, { currency = "MXN" } = {}) {
       seat.rowLabel = rows[seat.r] || String(seat.r + 1);
       seat.key = `${s.name};;${seat.rowLabel};;${seat.n}`;
       seat.id = identity(
-        seat.id ?? `legacy:${JSON.stringify([s.id, seat.r, seat.n])}`,
+        seat.id ?? legacySeatId(s.id, seat.r, seat.n),
         path,
       );
       if (ids.has(seat.id)) fail("Duplicate seat ID", path);

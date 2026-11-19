@@ -22,6 +22,9 @@ cpSync(resolve(rendererRoot, "examples"), resolve(outputDir, "examples"), {
 cpSync(resolve(rendererRoot, "dist"), resolve(outputDir, "dist"), {
   recursive: true,
 });
+cpSync(resolve(repoRoot, "dist"), resolve(outputDir, "editor"), {
+  recursive: true,
+});
 for (const file of ["demo-booking.html", "demo-booking-bundled.html"])
   cpSync(resolve(rendererRoot, file), resolve(outputDir, file));
 cpSync(

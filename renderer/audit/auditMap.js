@@ -1,4 +1,5 @@
-import { buildRowLabelMap } from "../core/RowLabels.js";
+import { supportsSmfVersion, SUPPORTED_SMF_VERSIONS } from "../core/SmfVersion.js";
+import { buildRowLabelMap, validExplicitRowLabels } from "../core/RowLabels.js";
 
 const isObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -45,12 +46,11 @@ export function auditMap(input, { currency = "MXN" } = {}) {
   if (input.format !== "SMF")
     error("INVALID_FORMAT", 'Expected format "SMF"', "format");
   if (
-    typeof input.version !== "string" ||
-    !/^2\.(0|1)\.\d+$/.test(input.version)
+    !supportsSmfVersion(input.version)
   )
     error(
       "UNSUPPORTED_VERSION",
-      "Supported SMF versions are 2.0 and 2.1",
+      `Supported SMF versions are ${SUPPORTED_SMF_VERSIONS}`,
       "version",
     );
   if (!Array.isArray(input.sections)) {
@@ -147,6 +147,14 @@ export function auditMap(input, { currency = "MXN" } = {}) {
         "INVALID_POLYGON",
         "Expected at least three finite coordinate pairs",
         `${sectionPath}.points`,
+      );
+
+    const strokeWidth = section.style?.strokeWidth;
+    if (strokeWidth !== undefined && (!isFiniteNumber(strokeWidth) || strokeWidth <= 0))
+      error(
+        "INVALID_STROKE_WIDTH",
+        "Expected a positive finite number",
+        `${sectionPath}.style.strokeWidth`,
       );
 
     auditRowLabels(section.rowLabels, sectionPath, error);
@@ -324,6 +332,8 @@ function validPolygon(points) {
 function validRowLabels(rowLabels) {
   if (rowLabels === undefined) return true;
   if (!isObject(rowLabels)) return false;
+  if (rowLabels.labels !== undefined && !validExplicitRowLabels(rowLabels.labels))
+    return false;
   if (
     rowLabels.type !== undefined &&
     !["letters", "numbers", "none"].includes(rowLabels.type)
@@ -350,6 +360,8 @@ function auditRowLabels(rowLabels, sectionPath, error) {
     error("INVALID_ROW_LABELS", "Expected row label configuration", path);
     return;
   }
+  if (rowLabels.labels !== undefined && !validExplicitRowLabels(rowLabels.labels))
+    error("INVALID_ROW_LABELS", "Expected unique, nonempty row label strings", `${path}.labels`);
   if (
     rowLabels.type !== undefined &&
     !["letters", "numbers", "none"].includes(rowLabels.type)

@@ -7,6 +7,7 @@ import { CONFIG, COLORS, VISUAL_CONFIG } from '../core/config.js';
 import { Utils } from '../core/utils.js';
 import { SectionTransformations } from './SectionTransformations.js';
 import { Logger } from '../core/logger.js';
+import { getExplicitRowLabel } from '../../renderer/core/RowLabels.js';
 
 /**
  * Manager for seat operations
@@ -24,6 +25,8 @@ export const SeatManager = {
    * @param {number} seatsPerRow - Seats per row
    */
   createSeats(section, x, y, width, height, rows, seatsPerRow) {
+    section.gridRows = rows;
+    section.gridColumns = seatsPerRow;
     const innerWidth = width - (CONFIG.SECTION_MARGIN * 2);
     const innerHeight = height - (CONFIG.SECTION_MARGIN * 2);
     const seatSpacingX = seatsPerRow > 1 ? innerWidth / (seatsPerRow - 1) : 0;
@@ -104,7 +107,7 @@ export const SeatManager = {
   updateSeatNumber(seat, newNumber) {
     seat.seatNumber = newNumber;
     seat.isManualNumber = true;
-    if (seat.seatLabel) {
+    if (seat.seatLabel && !seat.specialNeeds) {
       seat.seatLabel.text = newNumber.toString();
     }
   },
@@ -141,19 +144,10 @@ export const SeatManager = {
         // Find section
         const section = State.sections.find(s => s.seats.includes(seat));
         
-        if (section && section.rowLabelType !== 'none') {
-          // Calculate dynamic label
-          const uniqueRows = [...new Set(section.seats.map(s => s.rowIndex))].sort((a, b) => a - b);
-          const visualRowIndex = uniqueRows.indexOf(seat.rowIndex);
-          
-          if (visualRowIndex !== -1) {
-            const totalRows = uniqueRows.length;
-            const labelIndex = section.rowLabelReversed ? (totalRows - 1 - visualRowIndex) : visualRowIndex;
-            const labelText = this.getRowLabelText(labelIndex, section.rowLabelType, section.rowLabelStart);
-            
-            Utils.showTooltip(`${section.sectionId} - Row ${labelText} Seat ${seat.seatNumber}`);
-            return;
-          }
+        const label = section?.rowLabelByIndex?.get(seat.rowIndex);
+        if (label) {
+          Utils.showTooltip(`${section.sectionId} - Row ${label} Seat ${seat.seatNumber}`);
+          return;
         }
         
         Utils.showTooltip(seat.seatId);
@@ -376,6 +370,18 @@ export const SeatManager = {
     return '';
   },
 
+  buildSectionRowLabels(section, rows) {
+    return new Map(rows.map((row, index) => {
+      const labelIndex = section.rowLabelReversed ? rows.length - 1 - index : index;
+      return [row, this.getSectionRowLabel(section, row, labelIndex)];
+    }));
+  },
+
+  getSectionRowLabel(section, rowIndex, labelIndex) {
+    return getExplicitRowLabel(rowIndex, section.explicitRowLabels, section.rowLabelReversed)
+      ?? this.getRowLabelText(labelIndex, section.rowLabelType, section.rowLabelStart);
+  },
+
   /**
    * Create a row label
    * @param {string} text - Label text
@@ -436,6 +442,19 @@ export const SeatManager = {
       }
     }
 
+    // Group seats by their original row index
+    const rowMap = new Map();
+    section.seats.forEach(seat => {
+      const rowIdx = seat.rowIndex;
+      if (!rowMap.has(rowIdx)) {
+        rowMap.set(rowIdx, []);
+      }
+      rowMap.get(rowIdx).push(seat);
+    });
+
+    const rowIndices = [...rowMap.keys()].sort((a, b) => a - b);
+    section.rowLabelByIndex = this.buildSectionRowLabels(section, rowIndices);
+
     // Don't create labels if type is 'none' or neither position is enabled
     if (section.rowLabelType === 'none' || (!section.showLeftLabels && !section.showRightLabels)) {
       // Reset to base dimensions if no labels
@@ -460,28 +479,16 @@ export const SeatManager = {
       // Update seat positions (handles rotation)
       SectionTransformations.positionSeatsAndLabels(section);
       
-      this.updateSectionGraphics(section);
+      section.redrawGraphics();
       return;
     }
 
-    // Group seats by their original row index
-    const rowMap = new Map();
-    section.seats.forEach(seat => {
-      const rowIdx = seat.rowIndex;
-      if (!rowMap.has(rowIdx)) {
-        rowMap.set(rowIdx, []);
-      }
-      rowMap.get(rowIdx).push(seat);
-    });
-
-    const rows = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
     // Use section's rowLabelSpacing property (defaults to 20px)
     const labelSpacing = section.rowLabelSpacing || 20;
     
-    rows.forEach(([rowIndex, seatsInRow], arrayIndex) => {
-      const totalRows = rows.length;
-      const labelIndex = section.rowLabelReversed ? (totalRows - 1 - arrayIndex) : arrayIndex;
-      const labelText = this.getRowLabelText(labelIndex, section.rowLabelType, section.rowLabelStart);
+    rowIndices.forEach(rowIndex => {
+      const seatsInRow = rowMap.get(rowIndex);
+      const labelText = section.rowLabelByIndex.get(rowIndex);
       
       const sortedSeats = seatsInRow.sort((a, b) => a.relativeX - b.relativeX);
       const leftmostSeat = sortedSeats[0];
@@ -551,7 +558,7 @@ export const SeatManager = {
     section.contentHeight = contentHeight + (EDGE_PADDING * 2);
     section.pivot.set(section.contentWidth / 2, section.contentHeight / 2);
     
-    this.updateSectionGraphics(section);
+    section.redrawGraphics();
     
     if (section.selectionBorder) {
       const offset = VISUAL_CONFIG.SELECTION.BORDER_OFFSET;
@@ -561,27 +568,5 @@ export const SeatManager = {
     }
     
     SectionTransformations.positionSeatsAndLabels(section);
-  },
-
-  /**
-   * Update section graphics
-   * @param {Section} section - The section
-   */
-  updateSectionGraphics(section) {
-    const sectionColor = section.sectionColor || COLORS.SECTION_STROKE;
-    section.clear();
-    section.rect(0, 0, section.contentWidth, section.contentHeight);
-    
-    // Apply fill only if visible
-    if (section.fillVisible) {
-      section.fill({ color: sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
-    }
-    
-    // Apply stroke only if visible
-    if (section.strokeVisible) {
-      section.stroke({ width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, color: sectionColor, alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA });
-    }
-    
-    section.hitArea = new PIXI.Rectangle(0, 0, section.contentWidth, section.contentHeight);
   }
 };

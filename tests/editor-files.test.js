@@ -69,11 +69,32 @@ test('fresh exports keep creation time and contain no invented address', () => {
 });
 test('GA section metadata and group survive deserialization and serialization', async () => {
   const { SectionManager } = await import('../src/managers/sectionManager.js');
-  const data = { ...sectionData(), type: 'ga', ga: { capacity: 20 }, metadata: { tier: 'VIP' }, groupId: 'group' };
+  const style = { strokeWidth: 0.65, fillVisible: false, strokeVisible: true };
+  const data = { ...sectionData(), type: 'ga', ga: { capacity: 20 }, metadata: { tier: 'VIP' }, groupId: 'group', style };
   const section = await FileManager.deserializeSection(data, SectionManager);
   const exported = FileManager.serializeSection(section);
   assert.deepEqual(exported.metadata, data.metadata); assert.equal(exported.groupId, 'group');
+  for (const [field, value] of Object.entries(style)) assert.equal(exported.style[field], value);
   exported.metadata.tier = 'Other'; assert.equal(section.smfMetadata.tier, 'VIP');
+});
+test('regular sections preserve a thin outline and its world coordinates through reloads', async () => {
+  const data = map();
+  data.sections = [{
+    ...sectionData(), x: 10, y: 20, width: 72, height: 68,
+    points: [4, 2, 68, 2, 62, 66, 4, 66],
+    style: { strokeWidth: 0.65, fillVisible: false, strokeVisible: true },
+  }];
+  assert.equal(await FileManager.importFromJSON(data), true);
+  const exported = FileManager.exportToJSON();
+  assert.equal(exported.version, '2.2.0');
+  const [section] = exported.sections;
+  assert.equal(section.style.strokeWidth, 0.65);
+  assert.equal(section.style.strokeVisible, true);
+  assert.equal(section.style.fillVisible, false);
+  const worldPoints = ({ x, y, points }) => points.map((value, i) => value + (i % 2 === 0 ? x : y));
+  assert.deepEqual(worldPoints(section), worldPoints(data.sections[0]));
+  assert.equal(await FileManager.importFromJSON(exported), true);
+  assert.deepEqual(FileManager.exportToJSON().sections[0].points, section.points);
 });
 test('public import rejects malformed data without clearing the current map', async () => {
   const old = new PIXI.Container(); State.sections = [old]; State.sectionLayer.addChild(old);
@@ -107,4 +128,28 @@ test('an overlapping replacement is rejected and cannot disturb the in-flight im
   await assert.rejects(replaceMap(map(), async () => {}, underlays), /already in progress/);
   finish(); await first;
   assert.equal(State.isImporting, false);
+});
+
+test('a legacy map retains its inventory ID and exports with compact 2.1 defaults', async () => {
+  const data = map();
+  data.version = '2.0.0';
+  data.sections = [{
+    ...sectionData(), points: [0, 0, 64, 0, 64, 64, 0, 64],
+    seats: [{ rowIndex: 0, columnIndex: 1, number: '5', x: 44, y: 20 }],
+  }];
+  assert.equal(await FileManager.importFromJSON(data), true);
+  const saved = FileManager.exportToJSON();
+  assert.equal(saved.version, '2.1.0');
+  assert.equal(saved.sections[0].points, undefined);
+  assert.equal(saved.sections[0].style.strokeWidth, undefined);
+  assert.equal(saved.sections[0].seats[0].id, 'legacy:["a",0,"5"]');
+  assert.equal(saved.sections[0].seats[0].n, '5');
+});
+
+test('rejects an unsupported SMF version before replacing the map', async () => {
+  const old = new PIXI.Container();
+  State.sections = [old];
+  const data = { ...map(), version: '2.3.0' };
+  await assert.rejects(FileManager.importFromJSON(data, { throwErrors: true, reportErrors: false }), /Unsupported SMF version/);
+  assert.equal(State.sections[0], old);
 });

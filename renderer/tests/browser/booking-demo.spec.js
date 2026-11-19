@@ -23,6 +23,27 @@ async function openPicker(page) {
   if (!(await summary.evaluate((node) => node.parentElement.open))) await summary.click();
 }
 
+test("SMF 2.2 finds custom rows and preserves numbers in booking review", async ({ page }) => {
+  await openDemo(page, "/examples/booking/index.html?venue=vip-oro-plata");
+  for (const [section, query, id] of [
+    ["oro", "Ñ 1", "oro-Ñ-1"],
+    ["oro", "W 11", "oro-W-11"],
+    ["oro", "W 14", "oro-W-14"],
+    ["plata", "KK 40", "plata-KK-40"],
+  ]) {
+    await openPicker(page);
+    await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption(section);
+    await page.getByRole("searchbox", { name: "Buscar fila o asiento" }).fill(query);
+    await page.locator(`[data-seat-id="${id}"]`).click();
+  }
+  await page.getByRole("button", { name: "Revisar selección" }).click();
+  const review = page.locator("[data-review-dialog]");
+  await expect(review).toContainText("Oro · Fila Ñ · Asiento 1");
+  await expect(review).toContainText("Oro · Fila W · Asiento 11");
+  await expect(review).toContainText("Oro · Fila W · Asiento 14");
+  await expect(review).toContainText("Plata · Fila KK · Asiento 40");
+});
+
 test("complete demo books accessible and GA tickets through HTML controls", async ({ page }) => {
   await openDemo(page);
   expect((await new AxeBuilder({ page }).include("#booking-demo").analyze()).violations).toEqual([]);
@@ -118,6 +139,19 @@ test("built Pages artifact opens the complete demo without external runtimes", a
   await openDemo(page, "/.pages/");
   await expect(page.locator("[data-sections] .section-card")).toHaveCount(13);
   await expect(page.locator('script[src*="pixi.min.js"]')).toHaveCount(1);
+});
+
+test("built Pages editor opens beneath the project path and accepts SMF 2.2", async ({ page }) => {
+  await page.goto("/.pages/editor/");
+  await page.waitForFunction(() => window.seatmapEditor);
+  const saved = await page.evaluate(async () => {
+    const api = window.seatmapEditor;
+    const map = await (await fetch("../examples/booking/vip-oro-plata.smf.json")).json();
+    const applied = await api.replaceMap({ map, expectedRevision: api.getSnapshot().revision });
+    if (!applied.ok) throw new Error(applied.error.message);
+    return api.getSnapshot().summary;
+  });
+  expect(saved.seats).toBe(1481);
 });
 
 test("removing the last sidebar ticket restores focus to section browsing", async ({ page }) => {

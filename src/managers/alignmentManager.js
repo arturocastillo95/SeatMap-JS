@@ -6,6 +6,9 @@ import { State, Elements } from '../core/state.js';
 import { SectionManager } from './sectionManager.js';
 import { COLORS } from '../core/config.js';
 import { Logger } from '../core/logger.js';
+import { validExplicitRowLabels } from '../../renderer/core/RowLabels.js';
+import { planCenterNumbering } from '../core/centerNumbering.js';
+import { SeatManager } from './SeatManager.js';
 
 export const AlignmentManager = {
   // Configuration
@@ -73,6 +76,21 @@ export const AlignmentManager = {
     Elements.rowLabelNone.addEventListener('click', () => this.setRowLabelType('none'));
     Elements.rowLabelNumbers.addEventListener('click', () => this.setRowLabelType('numbers'));
     Elements.rowLabelLetters.addEventListener('click', () => this.setRowLabelType('letters'));
+    Elements.rowLabelCustom.addEventListener('click', () => {
+      const expanded = Elements.customRowLabels.hidden;
+      Elements.customRowLabels.hidden = !expanded;
+      Elements.rowLabelCustom.setAttribute('aria-expanded', String(expanded));
+      if (expanded) Elements.customRowLabelInput.focus();
+    });
+    Elements.customRowLabelInput.addEventListener('input', () => this.previewCustomRowLabels());
+    Elements.applyCustomRowLabels.addEventListener('click', () => this.applyCustomRowLabels());
+
+    Elements.centerNumbering.addEventListener('toggle', () => this.previewCenterNumbering());
+    for (const input of [Elements.centerNumberingSplit, Elements.centerNumberingOddSide, Elements.centerNumberingReplace]) {
+      input.addEventListener('input', () => this.previewCenterNumbering());
+    }
+    Elements.applyCenterNumbering.addEventListener('click', () => this.applyCenterNumbering());
+
 
     // Row label position buttons (toggleable)
     Elements.rowLabelLeft.addEventListener('click', () => this.toggleRowLabelPosition('left'));
@@ -315,6 +333,14 @@ export const AlignmentManager = {
       }
     });
 
+    Elements.sectionStrokeWidth.addEventListener('change', (event) => {
+      if (State.selectedSections.length !== 1) return;
+      const section = State.selectedSections[0];
+      const width = event.target.valueAsNumber;
+      if (Number.isFinite(width) && width > 0) section.strokeWidth = width;
+      event.target.value = section.strokeWidth;
+    });
+
     // Glow Enabled Toggle
     Elements.glowEnabledToggle.addEventListener('change', (e) => {
       if (State.selectedSections.length === 1) {
@@ -515,6 +541,7 @@ export const AlignmentManager = {
   setRowLabelType(type) {
     if (State.selectedSections.length === 1) {
       const section = State.selectedSections[0];
+      if (type !== 'none') section.explicitRowLabels = undefined;
       section.rowLabelType = type;
       
       // Set appropriate default starting value based on type
@@ -559,7 +586,7 @@ export const AlignmentManager = {
       }
       
       // If both positions are now off and not hidden, switch back to 'none'
-      if (!section.showLeftLabels && !section.showRightLabels && !section.labelsHidden) {
+      if (!section.showLeftLabels && !section.showRightLabels && !section.labelsHidden && !section.explicitRowLabels) {
         section.rowLabelType = 'none';
       }
       
@@ -574,6 +601,7 @@ export const AlignmentManager = {
       const section = State.selectedSections[0];
       
       // Validate and set the starting value based on label type
+      if (section.explicitRowLabels) return;
       if (section.rowLabelType === 'numbers') {
         // For numbers, parse as integer and ensure it's >= 1
         const num = parseInt(value, 10);
@@ -617,8 +645,75 @@ export const AlignmentManager = {
       
       SectionManager.updateRowLabels(section);
       this.updateSeatPositions(section);
+      this.updateSidebarValues(section);
       Logger.debug(`✓ Row labels ${section.rowLabelReversed ? 'reversed' : 'normal'}`);
     }
+  },
+
+  previewCustomRowLabels() {
+    const section = State.selectedSections.length === 1 && State.selectedSections[0];
+    if (!section || section.isGeneralAdmission) return null;
+    const labels = Elements.customRowLabelInput.value.trim().split(/,\s*|\r?\n/).map(label => label.trim());
+    const valid = labels.length === section.gridRows && validExplicitRowLabels(labels);
+    Elements.applyCustomRowLabels.disabled = !valid;
+    Elements.customRowLabelStatus.textContent = valid
+      ? `${labels.length} labels ready to apply.`
+      : `Enter ${section.gridRows} unique labels, separated by commas or line breaks.`;
+    return valid ? labels : null;
+  },
+
+  applyCustomRowLabels() {
+    const labels = this.previewCustomRowLabels();
+    if (!labels) return;
+    const [section] = State.selectedSections;
+    section.explicitRowLabels = labels;
+    section.rowLabelType = 'letters';
+    section.rowLabelStart = 'A';
+    section.rowLabelReversed = false;
+    if (!section.showLeftLabels && !section.showRightLabels) section.showLeftLabels = true;
+    SectionManager.updateRowLabels(section);
+    this.updateSeatPositions(section);
+    this.updateSidebarValues(section);
+  },
+
+  previewCenterNumbering() {
+    const section = State.selectedSections.length === 1 && State.selectedSections[0];
+    const { centerNumbering, centerNumberingSplit, centerNumberingOddSide, centerNumberingReplace,
+      centerNumberingStatus, centerNumberingPreview, applyCenterNumbering } = Elements;
+    applyCenterNumbering.disabled = true;
+    centerNumberingPreview.textContent = '';
+    centerNumberingStatus.textContent = '';
+    if (!centerNumbering.open || !section || section.isGeneralAdmission) return null;
+
+    const split = centerNumberingSplit.valueAsNumber;
+    if (!Number.isInteger(split) || split < 1 || split >= section.gridColumns) {
+      centerNumberingStatus.textContent = `Choose a column from 1 to ${section.gridColumns - 1}.`;
+      return null;
+    }
+    const result = planCenterNumbering(section.seats, split, centerNumberingOddSide.value, centerNumberingReplace.checked);
+    const labels = SeatManager.buildSectionRowLabels(section, [...result.preview.keys()]);
+    const rowName = row => labels.get(row) || String(row + 1);
+    centerNumberingPreview.textContent = [...result.preview]
+      .map(([row, numbers]) => `${rowName(row)} · ${numbers.join(', ')}`).join('\n');
+    if (result.conflicts.length) {
+      centerNumberingStatus.textContent = `Duplicate numbers in rows ${result.conflicts.map(rowName).join(', ')}. Edit the conflicting seats or enable Replace manual numbers.`;
+      return null;
+    }
+
+    const changed = result.changes.filter(({ seat, number }) => String(seat.seatNumber) !== number).length;
+    centerNumberingStatus.textContent = `${changed} of ${section.seats.length} seat numbers will change.`;
+    applyCenterNumbering.disabled = result.changes.every(({ seat, number }) =>
+      seat.isManualNumber && String(seat.seatNumber) === number
+    );
+    return result;
+  },
+
+  applyCenterNumbering() {
+    const result = this.previewCenterNumbering();
+    if (!result || Elements.applyCenterNumbering.disabled) return;
+    for (const { seat, number } of result.changes) SeatManager.updateSeatNumber(seat, number);
+    this.previewCenterNumbering();
+    Elements.centerNumberingStatus.textContent = 'Seat numbers applied.';
   },
 
   setSeatNumberStart(value) {
@@ -636,6 +731,7 @@ export const AlignmentManager = {
         Elements.seatNumberStartInput.value = '1';
         SectionManager.updateSeatNumbers(section);
       }
+      this.previewCenterNumbering();
     }
   },
 
@@ -648,6 +744,7 @@ export const AlignmentManager = {
       Elements.seatNumberFlipBtn.classList.toggle('active', section.seatNumberReversed);
       
       SectionManager.updateSeatNumbers(section);
+      this.previewCenterNumbering();
       Logger.debug(`✓ Seat numbering ${section.seatNumberReversed ? 'reversed' : 'normal'}`);
     }
   },
@@ -898,6 +995,7 @@ export const AlignmentManager = {
     // Update fill and stroke visibility toggles
     Elements.sectionFillToggle.classList.toggle('active', section.fillVisible !== false);
     Elements.sectionStrokeToggle.classList.toggle('active', section.strokeVisible !== false);
+    Elements.sectionStrokeWidth.value = section.strokeWidth;
     
     // Update Glow Controls
     Elements.glowEnabledToggle.checked = section.glowEnabled;
@@ -1055,9 +1153,29 @@ export const AlignmentManager = {
     }
     
     // Update row label type buttons
+    const custom = Boolean(section.explicitRowLabels);
+    const selectionChanged = this.numberingSection !== section;
+    this.numberingSection = section;
+    if (selectionChanged) {
+      Elements.customRowLabels.hidden = !custom;
+      Elements.centerNumbering.open = false;
+      Elements.centerNumberingSplit.value = Math.ceil((section.gridColumns || 0) / 2) || '';
+      Elements.centerNumberingOddSide.value = 'left';
+      Elements.centerNumberingReplace.checked = false;
+    }
+    Elements.centerNumbering.hidden = !(section.gridColumns > 1);
+    Elements.rowLabelCustom.classList.toggle('active', custom && section.rowLabelType !== 'none');
+    Elements.rowLabelCustom.setAttribute('aria-expanded', String(!Elements.customRowLabels.hidden));
+    Elements.customRowLabelInput.value = custom
+      ? (section.rowLabelReversed ? [...section.explicitRowLabels].reverse() : section.explicitRowLabels).join('\n')
+      : '';
+    Elements.rowLabelStartInput.hidden = custom;
+    this.previewCustomRowLabels();
+    this.previewCenterNumbering();
+
     Elements.rowLabelNone.classList.toggle('active', section.rowLabelType === 'none');
-    Elements.rowLabelNumbers.classList.toggle('active', section.rowLabelType === 'numbers');
-    Elements.rowLabelLetters.classList.toggle('active', section.rowLabelType === 'letters');
+    Elements.rowLabelNumbers.classList.toggle('active', section.rowLabelType === 'numbers' && !custom);
+    Elements.rowLabelLetters.classList.toggle('active', section.rowLabelType === 'letters' && !custom);
     
     // Show/hide position section based on label type
     const showPosition = section.rowLabelType !== 'none';

@@ -101,6 +101,18 @@ function initializeElements() {
   Elements.rowLabelNone = document.getElementById('rowLabelNone');
   Elements.rowLabelNumbers = document.getElementById('rowLabelNumbers');
   Elements.rowLabelLetters = document.getElementById('rowLabelLetters');
+  Elements.rowLabelCustom = document.getElementById('rowLabelCustom');
+  Elements.customRowLabels = document.getElementById('customRowLabels');
+  Elements.customRowLabelInput = document.getElementById('customRowLabelInput');
+  Elements.customRowLabelStatus = document.getElementById('customRowLabelStatus');
+  Elements.applyCustomRowLabels = document.getElementById('applyCustomRowLabels');
+  Elements.centerNumbering = document.getElementById('centerNumbering');
+  Elements.centerNumberingSplit = document.getElementById('centerNumberingSplit');
+  Elements.centerNumberingOddSide = document.getElementById('centerNumberingOddSide');
+  Elements.centerNumberingReplace = document.getElementById('centerNumberingReplace');
+  Elements.centerNumberingStatus = document.getElementById('centerNumberingStatus');
+  Elements.centerNumberingPreview = document.getElementById('centerNumberingPreview');
+  Elements.applyCenterNumbering = document.getElementById('applyCenterNumbering');
   Elements.rowLabelLeft = document.getElementById('rowLabelLeft');
   Elements.rowLabelRight = document.getElementById('rowLabelRight');
   Elements.rowLabelHidden = document.getElementById('rowLabelHidden');
@@ -139,6 +151,7 @@ function initializeElements() {
   Elements.seatTextColorInput = document.getElementById('seatTextColorInput');
   Elements.sectionFillToggle = document.getElementById('sectionFillToggle');
   Elements.sectionStrokeToggle = document.getElementById('sectionStrokeToggle');
+  Elements.sectionStrokeWidth = document.getElementById('sectionStrokeWidth');
   Elements.gaSizeControls = document.getElementById('gaSizeControls');
   Elements.gaWidthInput = document.getElementById('gaWidthInput');
   Elements.gaHeightInput = document.getElementById('gaHeightInput');

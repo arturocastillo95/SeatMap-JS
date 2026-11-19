@@ -3,6 +3,9 @@
 // Validates venue map files against the SMF schema
 // ============================================
 
+import { supportsSmfVersion, SUPPORTED_SMF_VERSIONS } from '../../renderer/core/SmfVersion.js';
+import { validExplicitRowLabels } from '../../renderer/core/RowLabels.js';
+
 export const SMFValidator = {
   /**
    * Validate an SMF file and return validation results
@@ -60,8 +63,8 @@ export const SMFValidator = {
 
     if (!data.version) {
       errors.push('Missing required field: version');
-    } else if (!this.isValidVersion(data.version)) {
-      warnings.push(`Unrecognized version: ${data.version}. Expected format: x.y.z`);
+    } else if (!supportsSmfVersion(data.version) && data.version !== '1.0.0') {
+      errors.push(`Unsupported SMF version ${data.version}. This editor supports 1.0.0 and ${SUPPORTED_SMF_VERSIONS}.`);
     }
 
     if (!data.venue) {
@@ -335,13 +338,11 @@ export const SMFValidator = {
       }
     }
 
-    // Zone-specific validation
-    if (section.isZone) {
-      if (section.points && !Array.isArray(section.points)) {
-        errors.push(`${prefix}: Zone "points" must be an array`);
-      } else if (section.points && section.points.length < 6) {
-        errors.push(`${prefix}: Zone "points" must have at least 6 values (3 vertices)`);
-      }
+    if (section.points != null && (
+      !Array.isArray(section.points) || section.points.length < 6 ||
+      section.points.length % 2 !== 0 || !section.points.every(Number.isFinite)
+    )) {
+      errors.push(`${prefix}.points must contain at least three finite coordinate pairs`);
     }
   },
 
@@ -381,6 +382,9 @@ export const SMFValidator = {
    * Validate row labels object
    */
   validateRowLabels(rowLabels, prefix, errors, warnings) {
+    if (rowLabels.labels !== undefined && !validExplicitRowLabels(rowLabels.labels)) {
+      errors.push(`${prefix}.rowLabels.labels must contain unique, nonempty strings`);
+    }
     const validTypes = ['none', 'numbers', 'letters'];
     if (rowLabels.type && !validTypes.includes(rowLabels.type)) {
       errors.push(`${prefix}.rowLabels.type must be one of: ${validTypes.join(', ')}`);
@@ -525,6 +529,9 @@ export const SMFValidator = {
         errors.push(`${prefix}.style.${field} must be a boolean`);
       }
     }
+    if (style.strokeWidth !== undefined && (!Number.isFinite(style.strokeWidth) || style.strokeWidth <= 0)) {
+      errors.push(`${prefix}.style.strokeWidth must be a positive finite number`);
+    }
 
     // Opacity
     if (style.opacity !== undefined) {
@@ -534,13 +541,6 @@ export const SMFValidator = {
         errors.push(`${prefix}.style.opacity must be between 0 and 1`);
       }
     }
-  },
-
-  /**
-   * Check if version string is valid semver format
-   */
-  isValidVersion(version) {
-    return /^\d+\.\d+\.\d+$/.test(version);
   },
 
   /**
