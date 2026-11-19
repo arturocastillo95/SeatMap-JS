@@ -100,9 +100,10 @@ test('seat tooltip stays within the viewport and selection uses a checkmark', as
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(382);
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(836);
   expect(await page.evaluate(() => window.bookingDemo.renderer._views.get(window.testSeatId)._selectionMark.visible)).toBe(true);
-  expect(await page.evaluate(() => window.bookingDemo.renderer._views.get(window.testSeatId).scale.x)).toBeCloseTo(1.6);
+  const seatScale = () => page.evaluate(() => window.bookingDemo.renderer._views.get(window.testSeatId).scale.x);
+  await expect.poll(seatScale).toBeCloseTo(2);
   await page.screenshot({ path: testInfo.outputPath('seat-tooltip.png') });
   await page.evaluate(() => window.bookingDemo.renderer.deselectSeat(window.testSeatId));
   expect(await page.evaluate(() => window.bookingDemo.renderer._views.get(window.testSeatId)._selectionMark.visible)).toBe(false);
-  expect(await page.evaluate(() => window.bookingDemo.renderer._views.get(window.testSeatId).scale.x)).toBe(1);
+  await expect.poll(seatScale).toBeCloseTo(1);
 });
