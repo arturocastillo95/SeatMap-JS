@@ -3,7 +3,7 @@
  */
 
 import * as PIXI from "pixi.js";
-import { getRowLabelText } from "../core/RowLabels.js";
+import { buildRowLabelMap } from "../core/RowLabels.js";
 
 export { buildRowLabelMap, getRowLabelText } from "../core/RowLabels.js";
 
@@ -31,27 +31,20 @@ export function renderRowLabels(container, sectionData) {
     rows[r].push(seat);
   });
 
-  const rowIndices = Object.keys(rows)
-    .map(Number)
-    .sort((a, b) => a - b);
+  const fallbackLabels = typeof seats[0].rowLabel === "string"
+    ? null
+    : buildRowLabelMap(seats, config);
   const spacing = config.spacing || 20;
   const color = config.color ?? 0xffffff;
 
-  rowIndices.forEach((rowIndex, arrayIndex) => {
-    const rowSeats = rows[rowIndex];
+  Object.entries(rows).forEach(([rowIndex, rowSeats]) => {
+    const labelText = fallbackLabels ? fallbackLabels[rowIndex] : rowSeats[0].rowLabel;
     // Sort by x position
     rowSeats.sort((a, b) => {
       const ax = a.x ?? a.relativeX ?? a.baseX;
       const bx = b.x ?? b.relativeX ?? b.baseX;
       return ax - bx;
     });
-
-    // Determine label text
-    const totalRows = rowIndices.length;
-    const labelIndex = config.reversed
-      ? totalRows - 1 - arrayIndex
-      : arrayIndex;
-    const labelText = getRowLabelText(labelIndex, config.type, config.start);
 
     const firstSeat = rowSeats[0];
     const lastSeat = rowSeats[rowSeats.length - 1];

@@ -4,7 +4,9 @@
 
 SeatMap JS uses a JSON-based file format called SMF (Seat Map Format) for saving and loading venue maps.
 
-### Current Version: 2.1.0
+### Current versions
+
+The editor exports SMF 2.1.0 for conventional maps and SMF 2.2.0 for maps with explicit row labels, a custom stroke width or a visible stroke with no fill. Update the renderer before distributing 2.2 files. The editor, renderer and map auditor read SMF 2.0, 2.1 and 2.2.
 
 ## Format Structure
 
@@ -143,6 +145,8 @@ Each regular section in the `sections` array contains:
 
 ### Zone Section Fields
 
+Any section can include `points` with at least three finite `[x, y]` coordinate pairs, stored as a flat array relative to the section's top-left corner. Sections without `points` use a rectangle.
+
 Zones are a special type of section used to define areas.
 
 - `isZone`: Boolean, true if the section is a zone.
@@ -268,6 +272,13 @@ The optional `underlay` object contains background image data:
 
 ## Version History
 
+### v2.2.0
+
+- `rowLabels.labels` stores custom labels by original row index. The editor requires one unique, nonempty label per grid row when applying a custom list. Empty rows keep their positions. Label visibility controls drawing and leaves explicit labels available for seat search and booking.
+- A visible stroke supports a section hit target even with the fill hidden. The editor omits a default stroke width of 2 and redundant full-section rectangle points.
+- Center-out numbering is an editor operation. The exported map stores the resulting seat numbers in `n` with existing seat IDs. Generated numbers use the manual-number flag so subsequent sequential numbering preserves them. The editor can replace manual numbers explicitly when generating a new pattern.
+- Automatic row labels retain their historical conventions in the editor and renderer. Use explicit labels when the published row names must match across both.
+
 ### v2.1.0 (2025-11-20)
 
 **New Features:**
@@ -350,6 +361,7 @@ Initial format with basic section, transformation, and styling support.
 
 - `type`: "none", "numbers", or "letters"
 - `start`: Starting value (number >= 1 or letter A-Z)
+- `labels`: Optional array of unique, nonempty display labels indexed by the original zero-based row position. Use it for venue-specific sequences such as `["M", "N", "Ñ", "O"]`. Reversing the labels reverses the array's assignment to row positions.
 - `reversed`: Flip top-to-bottom order
 - `showLeft`: Display labels on left side
 - `showRight`: Display labels on right side
@@ -403,6 +415,7 @@ To reduce file size, seat objects use short keys and omit default values:
 - `sectionColor`: Section color as numeric value (e.g., 4285718 for #3b82f6)
 - `fillVisible`: Whether section background is visible (boolean, default: true)
 - `strokeVisible`: Whether section border is visible (boolean, default: true)
+- `strokeWidth`: Optional positive finite border width in map units (default: 2). The editor stores it alongside the **Stroke** visibility setting. When section zoom is enabled in the renderer, a section with a visible border responds to clicks inside its contour even when its fill is hidden. Individual seat clicks retain their seat behavior.
 - `opacity`: Section opacity (0.0 to 1.0)
 
 ### Glow Fields

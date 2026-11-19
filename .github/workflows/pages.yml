@@ -1,4 +1,4 @@
-name: Deploy Booking Demo
+name: Deploy SeatMap Pages
 
 on:
   push:
@@ -10,6 +10,9 @@ on:
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - scripts/build-renderer-pages.mjs
+      - index.html
+      - js/**
+      - src/**
       - renderer/**
   workflow_dispatch:
 

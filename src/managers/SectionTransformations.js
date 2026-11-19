@@ -549,15 +549,7 @@ export const SectionTransformations = {
     // Update pivot to new center
     section.pivot.set(section.contentWidth / 2, section.contentHeight / 2);
     
-    // Update graphics
-    const sectionColor = section.sectionColor;
-    section.clear();
-    section.rect(0, 0, section.contentWidth, section.contentHeight);
-    section.fill({ color: sectionColor, alpha: VISUAL_CONFIG.SECTION.FILL_ALPHA });
-    section.stroke({ width: VISUAL_CONFIG.SECTION.STROKE_WIDTH, color: sectionColor, alpha: VISUAL_CONFIG.SECTION.STROKE_ALPHA });
-    
-    // Update hit area
-    section.hitArea = new PIXI.Rectangle(0, 0, section.contentWidth, section.contentHeight);
+    section.redrawGraphics();
     
     // Update selection border if it exists
     if (section.selectionBorder) {

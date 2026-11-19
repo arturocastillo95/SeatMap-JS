@@ -1,6 +1,8 @@
 # SeatMap Renderer 2.0 release candidate
 
-Framework-neutral PixiJS renderer for SMF 2.0/2.1 maps, with inventory-driven booking state and a built-in accessible HTML picker. The package is a staging release candidate; see [validation gates](VALIDATION.md) before deploying a stable release.
+Framework-neutral PixiJS renderer for SMF 2.0, 2.1 and 2.2 maps, with inventory-driven booking state and a built-in accessible HTML picker. The package is a staging release candidate. See the [validation gates](VALIDATION.md) before deploying a stable release.
+
+The GitHub Pages build serves the booking demo at the site root and the map editor at `/editor/` relative to the project site.
 
 The maintained browser demo at `examples/booking/index.html` loads `demo-venue.json` with simulated inventory and provides the complete section, cart, mobile drawer, and review flow. The focused integration sample remains at `examples/compact/index.html`.
 Synthetic 1,000- and 10,000-seat maps remain dedicated performance fixtures.

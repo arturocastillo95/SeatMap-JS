@@ -1282,6 +1282,10 @@
               <span>Stroke</span>
             </button>
           </div>
+          <div class="sidebar-input-group">
+            <label class="sidebar-label" for="sectionStrokeWidth">Stroke width</label>
+            <input type="number" class="sidebar-input" id="sectionStrokeWidth" min="0" step="any" />
+          </div>
           
           <!-- Size controls for GA sections -->
           <div id="gaSizeControls" style="display: none; margin-top: 12px;">
@@ -1509,6 +1513,14 @@
             </button>
           </div>
 
+          <button class="sidebar-toggle-btn" id="rowLabelCustom" type="button" aria-expanded="false" aria-controls="customRowLabels">Custom labels</button>
+          <div class="sidebar-input-group" id="customRowLabels" hidden>
+            <label class="sidebar-label" for="customRowLabelInput">Labels from top to bottom</label>
+            <textarea class="sidebar-input" id="customRowLabelInput" rows="4" aria-describedby="customRowLabelStatus"></textarea>
+            <div class="sidebar-info" id="customRowLabelStatus" role="status"></div>
+            <button class="sidebar-toggle-btn" id="applyCustomRowLabels" type="button" disabled>Apply row labels</button>
+          </div>
+
           <div
             id="rowLabelPositionSection"
             style="display: none; margin-top: 10px;"
@@ -1654,6 +1666,22 @@
             </div>
             <div class="sidebar-info">Starting number and direction</div>
           </div>
+          <details id="centerNumbering">
+            <summary>Number from center</summary>
+            <div class="sidebar-input-group">
+              <label class="sidebar-label" for="centerNumberingSplit">Split after column</label>
+              <input type="number" class="sidebar-input" id="centerNumberingSplit" min="1" step="1">
+              <label class="sidebar-label" for="centerNumberingOddSide">Odd numbers</label>
+              <select class="sidebar-input" id="centerNumberingOddSide">
+                <option value="left">Left side</option>
+                <option value="right">Right side</option>
+              </select>
+              <label><input type="checkbox" id="centerNumberingReplace"> Replace manual numbers</label>
+            </div>
+            <div class="sidebar-info" id="centerNumberingStatus" role="status"></div>
+            <pre id="centerNumberingPreview" style="max-height: 160px; overflow: auto; white-space: pre-wrap;"></pre>
+            <button class="sidebar-toggle-btn" id="applyCenterNumbering" type="button" disabled>Apply numbers</button>
+          </details>
         </div>
       </div>
     </div>

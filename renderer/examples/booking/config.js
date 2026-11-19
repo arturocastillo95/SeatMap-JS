@@ -12,3 +12,14 @@ export const bookingDemoConfig = Object.freeze({
     description: "Evento ficticio creado para probar la selección de localidades con SeatMap Renderer 2.0.",
   }),
 });
+
+export const vipOroPlataConfig = Object.freeze({
+  ...bookingDemoConfig,
+  mapUrl: "./vip-oro-plata.smf.json",
+  preserveMapStyle: true,
+  backgroundColor: 0xffffff,
+  event: Object.freeze({
+    ...bookingDemoConfig.event,
+    title: "VIP, Oro y Plata",
+  }),
+});

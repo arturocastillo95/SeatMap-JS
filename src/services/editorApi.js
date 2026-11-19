@@ -153,7 +153,7 @@ export function createEditorApi({ snapshot, importMap, selection = () => [], isB
   }
   return Object.freeze({
     version: '1.0.0',
-    capabilities: () => jsonCopy({ version: '1.0.0', format: 'SMF 2.1', limits: LIMITS,
+    capabilities: () => jsonCopy({ version: '1.0.0', format: 'SMF 2.1', supportedFormats: ['SMF 2.0', 'SMF 2.1', 'SMF 2.2'], limits: LIMITS,
       methods: ['getSnapshot', 'validate', 'apply', 'replaceMap'],
       commands: ['venue.update', 'section.create', 'section.update', 'section.remove', 'seats.remove'],
       commandSchemas, patchFields: PATCH_FIELDS, revisionRequired: true, docs: 'docs/EDITOR_API.md' }),

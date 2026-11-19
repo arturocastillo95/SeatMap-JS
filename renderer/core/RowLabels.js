@@ -21,6 +21,16 @@ export function getRowLabelText(index, type, startValue) {
   return label;
 }
 
+export function validExplicitRowLabels(labels) {
+  return Array.isArray(labels) && labels.length > 0 &&
+    [...labels].every((label) => typeof label === "string" && label.trim()) &&
+    new Set(labels).size === labels.length;
+}
+
+export function getExplicitRowLabel(row, labels, reversed) {
+  return labels?.[reversed ? labels.length - 1 - row : row];
+}
+
 /** Build the authoritative row-index to display-label mapping. */
 export function buildRowLabelMap(seats, rowLabelsConfig) {
   if (!Array.isArray(seats) || seats.length === 0) return {};
@@ -32,14 +42,16 @@ export function buildRowLabelMap(seats, rowLabelsConfig) {
     ),
   ].sort((a, b) => a - b);
   const config = rowLabelsConfig || { type: "numbers" };
+  const labels = config.labels;
   return Object.fromEntries(
     rows.map((row, index) => [
       row,
-      getRowLabelText(
-        config.reversed ? rows.length - 1 - index : index,
-        config.type,
-        config.start,
-      ),
+      getExplicitRowLabel(row, labels, config.reversed) ??
+        getRowLabelText(
+          config.reversed ? rows.length - 1 - index : index,
+          config.type,
+          config.start,
+        ),
     ]),
   );
 }
