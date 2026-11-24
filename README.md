@@ -1,3 +1,5 @@
+
+
 # SeatMap JS
 
 > **Version 0.1.2** | [Changelog](docs/CHANGELOG.md) | [License](LICENSE.md)
@@ -89,7 +91,7 @@ Use `window.seatmapEditor` to inspect snapshots, discover supported commands and
 ## 🏗️ Project Structure
 
 ```
-venue-map-js/
+SeatMap-JS/
 ├── package.json            # Root scripts for editor and renderer workflows
 ├── index.html              # Main editor application
 ├── js/
