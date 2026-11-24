@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@turf/helpers": "6.5.0",
-    "@turf/union": "6.5.0",
+    "@turf/union": "7.4.0",
     "pixi.js": "^8.14.3"
   },
   "devDependencies": {
