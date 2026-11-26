@@ -314,6 +314,12 @@ export async function initBookingDemo({
     reviewContent.append(total);
   }
 
+  function expandMobileSelection() {
+    if (!window.matchMedia("(max-width: 768px)").matches) return;
+    sidebar.classList.add("expanded");
+    drawer.setAttribute("aria-expanded", "true");
+  }
+
   function renderCart(cart) {
     const removedFocus = selectionLines.contains(document.activeElement);
     const count = cart.totalCount;
@@ -328,10 +334,7 @@ export async function initBookingDemo({
     renderSections(cart);
     if (lastCartCount === 0 && count > 0) {
       showSelection("all");
-      if (window.matchMedia("(max-width: 768px)").matches) {
-        sidebar.classList.add("expanded");
-        drawer.setAttribute("aria-expanded", "true");
-      }
+      if (cart.ga.length) expandMobileSelection();
     }
     else if (count === 0) {
       showBrowser({ focus: removedFocus });
@@ -455,6 +458,10 @@ export async function initBookingDemo({
   }
 
   listen(host, "click", (event) => {
+    const seatId = event.target.closest("[data-seat-id]")?.dataset.seatId;
+    if (seatId && lastCartCount === 1 &&
+      renderer?.getCart().seats.some((seat) => seat.id === seatId))
+      expandMobileSelection();
     if (event.target.closest('[data-map-action="reset"]')) {
       focusedSectionId = null;
       renderSections();

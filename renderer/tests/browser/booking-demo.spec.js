@@ -160,6 +160,9 @@ test("removing the last sidebar ticket restores focus to section browsing", asyn
     const r = window.bookingDemo.renderer;
     r.selectSeat(r.getSeats().find((seat) => seat.sectionId === "accessible-left").id);
   });
+  const drawer = page.locator(".drawer-toggle");
+  if (await drawer.isVisible() && await drawer.getAttribute("aria-expanded") === "false")
+    await drawer.click();
   const remove = page.locator("[data-selection-lines] button");
   await remove.focus();
   await page.keyboard.press("Enter");

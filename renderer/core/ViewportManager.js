@@ -243,9 +243,9 @@ export class ViewportManager {
    * Zoom to fit a specific section, optionally centered on a tap point
    * @param {PIXI.Container} sectionContainer
    * @param {Object} [tapPoint] - Optional tap coordinates {x, y} in screen space
-   * @param {number} [zoomBoost=1.3] - Multiplier to zoom in beyond section fit (1.0 = fit exactly, 1.5 = 50% more zoom)
+   * @param {number} [minScale=0] - Minimum target scale before applying the zoom cap
    */
-  zoomToSection(sectionContainer, tapPoint = null, zoomBoost = 1.3) {
+  zoomToSection(sectionContainer, tapPoint = null, minScale = 0) {
     const screenWidth = this.app.screen.width;
     const screenHeight = this.app.screen.height;
     const padding = this.config.sectionZoomPadding || 50;
@@ -257,8 +257,8 @@ export class ViewportManager {
     const scaleY = Math.max(1, screenHeight - padding * 2) / height;
 
     // Calculate base scale to fit section, then apply zoom boost
-    let targetScale = Math.min(scaleX, scaleY) * zoomBoost;
-    targetScale = Math.min(targetScale, this.config.maxZoom || 3);
+    const fitScale = Math.min(scaleX, scaleY) * 1.3;
+    const targetScale = Math.min(Math.max(fitScale, minScale), this.config.maxZoom || 3);
 
     let targetX, targetY;
 

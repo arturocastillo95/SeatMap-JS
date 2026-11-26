@@ -9,6 +9,7 @@ export class InputHandler {
    * @param {PIXI.Container} options.viewport - Viewport container
    * @param {Object} options.state - Shared state object
    * @param {Object} options.config - Zoom/pan configuration
+   * @param {Function} options.onTap - Callback when a primary press ends as a tap
    * @param {Function} options.onZoomChange - Callback when zoom changes
    * @param {Function} options.getConstrainedPosition - Position constraint function
    */
@@ -17,143 +18,17 @@ export class InputHandler {
     this.viewport = options.viewport;
     this.state = options.state;
     this.config = options.config || {};
+    this.onTap = options.onTap;
     this.onZoomChange = options.onZoomChange;
     this.getConstrainedPosition = options.getConstrainedPosition;
     this.domContainer = options.domContainer;
 
     this.activePointers = new Map();
 
-    // Gesture tracking - to distinguish taps from gestures
-    this.gestureState = {
-      isGesture: false, // True if a pan/pinch gesture was detected
-      startTime: 0, // Timestamp when touch started
-      startPos: null, // Initial touch position
-      totalMovement: 0, // Total distance moved
-      gestureCooldown: false, // Brief cooldown after gesture ends
-    };
-
-    // Double-tap detection
-    this.doubleTapState = {
-      lastTapTime: 0,
-      lastTapPos: null,
-      pendingTapTimeout: null,
-      pendingTapCallback: null,
-    };
-
-    // Thresholds for gesture detection (from config)
-    this.TAP_MAX_DURATION = this.config.tapMaxDuration || 300;
-    this.TAP_MAX_MOVEMENT = this.config.tapMaxMovement || 10;
-    this.GESTURE_COOLDOWN_MS = this.config.gestureCooldownMs || 200;
-    this.DOUBLE_TAP_MAX_DELAY = this.config.doubleTapMaxDelay || 300;
-    this.DOUBLE_TAP_MAX_DISTANCE = this.config.doubleTapMaxDistance || 50;
-
-    // Bind methods
+    this.tap = null;
+    this.tapMaxDuration = this.config.tapMaxDuration ?? 300;
+    this.tapMaxMovement = this.config.tapMaxMovement ?? 10;
     this.wheelHandler = this.wheelHandler.bind(this);
-    this.onPointerUp = this.onPointerUp.bind(this);
-  }
-
-  /**
-   * Check if the current interaction is a valid tap (not a gesture)
-   * @returns {boolean}
-   */
-  isValidTap() {
-    if (this.gestureState.gestureCooldown) return false;
-    if (this.gestureState.isGesture) return false;
-
-    const duration = Date.now() - this.gestureState.startTime;
-    return (
-      duration < this.TAP_MAX_DURATION &&
-      this.gestureState.totalMovement < this.TAP_MAX_MOVEMENT
-    );
-  }
-
-  /**
-   * Check if the current tap is a double-tap
-   * @param {Object} tapPos - Current tap position {x, y}
-   * @returns {boolean}
-   */
-  isDoubleTap(tapPos) {
-    const now = Date.now();
-    const timeSinceLastTap = now - this.doubleTapState.lastTapTime;
-
-    if (timeSinceLastTap > this.DOUBLE_TAP_MAX_DELAY) {
-      return false;
-    }
-
-    if (!this.doubleTapState.lastTapPos) {
-      return false;
-    }
-
-    const dx = tapPos.x - this.doubleTapState.lastTapPos.x;
-    const dy = tapPos.y - this.doubleTapState.lastTapPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    return distance < this.DOUBLE_TAP_MAX_DISTANCE;
-  }
-
-  /**
-   * Record a tap for double-tap detection
-   * @param {Object} tapPos - Tap position {x, y}
-   */
-  recordTap(tapPos) {
-    this.doubleTapState.lastTapTime = Date.now();
-    this.doubleTapState.lastTapPos = { x: tapPos.x, y: tapPos.y };
-  }
-
-  /**
-   * Clear double-tap state (call after processing a double-tap)
-   */
-  clearDoubleTap() {
-    this.doubleTapState.lastTapTime = 0;
-    this.doubleTapState.lastTapPos = null;
-    if (this.doubleTapState.pendingTapTimeout) {
-      clearTimeout(this.doubleTapState.pendingTapTimeout);
-      this.doubleTapState.pendingTapTimeout = null;
-    }
-    this.doubleTapState.pendingTapCallback = null;
-  }
-
-  /**
-   * Handle a tap with double-tap detection
-   * Delays single-tap action to check for double-tap
-   * @param {Object} tapPos - Tap position {x, y}
-   * @param {Function} onSingleTap - Callback for single tap
-   * @param {Function} onDoubleTap - Callback for double tap
-   */
-  handleTapWithDoubleTapDetection(tapPos, onSingleTap, onDoubleTap) {
-    // Check if this is a double-tap (second tap within threshold)
-    if (this.isDoubleTap(tapPos)) {
-      // Cancel pending single-tap
-      if (this.doubleTapState.pendingTapTimeout) {
-        clearTimeout(this.doubleTapState.pendingTapTimeout);
-        this.doubleTapState.pendingTapTimeout = null;
-      }
-      // Clear state and execute double-tap
-      this.clearDoubleTap();
-      onDoubleTap(tapPos);
-      return;
-    }
-
-    // Record this tap
-    this.recordTap(tapPos);
-
-    // Set a timeout to execute single-tap if no second tap comes
-    this.doubleTapState.pendingTapCallback = onSingleTap;
-    this.doubleTapState.pendingTapTimeout = setTimeout(() => {
-      this.doubleTapState.pendingTapTimeout = null;
-      if (this.doubleTapState.pendingTapCallback) {
-        this.doubleTapState.pendingTapCallback(tapPos);
-        this.doubleTapState.pendingTapCallback = null;
-      }
-    }, this.DOUBLE_TAP_MAX_DELAY);
-  }
-
-  /**
-   * Check if a gesture is currently in progress or recently ended
-   * @returns {boolean}
-   */
-  isGestureActive() {
-    return this.gestureState.isGesture || this.gestureState.gestureCooldown;
   }
 
   /**
@@ -164,19 +39,20 @@ export class InputHandler {
     stage.eventMode = "static";
     stage.hitArea = this.app.screen;
 
-    this._handlers = Object.fromEntries(
-      ["Down", "Cancel", "Leave", "Move"].map((name) => [
-        "pointer" + name.toLowerCase(),
-        (e) => this["onPointer" + name](e),
-      ]),
-    );
+    this._cancelPointer = (e) => this.endPointer(e.pointerId);
+    this._handlers = {
+      pointerdown: (e) => this.onPointerDown(e),
+      pointerup: (e) => this.onPointerUp(e),
+      pointermove: (e) => this.onPointerMove(e),
+      pointerupoutside: this._cancelPointer,
+      pointerleave: this._cancelPointer,
+    };
     for (const [event, handler] of Object.entries(this._handlers))
       stage.on(event, handler);
-    stage.on("pointerup", this.onPointerUp);
-    stage.on("pointerupoutside", this.onPointerUp);
 
-    // Wheel zoom
     if (this.domContainer) {
+      // Pixi doesn't forward native pointer cancellation to the stage.
+      this.domContainer.addEventListener("pointercancel", this._cancelPointer);
       this.domContainer.addEventListener("wheel", this.wheelHandler, {
         passive: false,
       });
@@ -188,105 +64,55 @@ export class InputHandler {
    * @param {PIXI.FederatedPointerEvent} e
    */
   onPointerDown(e) {
-    this.activePointers.set(e.pointerId, { x: e.global.x, y: e.global.y });
+    if (e.button !== 0) return;
+    const point = { x: e.global.x, y: e.global.y };
+    this.activePointers.set(e.pointerId, point);
 
     if (this.activePointers.size === 1) {
-      this.state.isDragging = true;
-      this.state.lastPos = { x: e.global.x, y: e.global.y };
-
-      // Initialize gesture tracking for tap detection
-      this.gestureState.isGesture = false;
-      this.gestureState.startTime = Date.now();
-      this.gestureState.startPos = { x: e.global.x, y: e.global.y };
-      this.gestureState.totalMovement = 0;
-    } else if (this.activePointers.size === 2) {
-      // Multi-touch = gesture, not a tap
-      this.gestureState.isGesture = true;
-      this.state.isDragging = false;
-      this.state.lastDist = this.getDist(this.activePointers);
-      this.state.lastCenter = this.getCenter(this.activePointers);
-    }
-  }
-
-  /**
-   * Handle pointer up
-   * @param {PIXI.FederatedPointerEvent} e
-   */
-  onPointerUp(e) {
-    this.activePointers.delete(e.pointerId);
-
-    if (this.activePointers.size === 0) {
-      // If a gesture occurred, set a brief cooldown to prevent accidental taps
-      if (this.gestureState.isGesture) {
-        this.gestureState.gestureCooldown = true;
-        clearTimeout(this._cooldownTimer);
-        this._cooldownTimer = setTimeout(() => {
-          this.gestureState.gestureCooldown = false;
-        }, this.GESTURE_COOLDOWN_MS);
+      this.state.lastPos = point;
+      this.tap = { point, target: e.target, started: Date.now() };
+    } else {
+      this.tap = null;
+      if (this.activePointers.size === 2) {
+        this.state.lastDist = this.getDist(this.activePointers);
+        this.state.lastCenter = this.getCenter(this.activePointers);
       }
-
-      this.state.isDragging = false;
-      this.state.lastDist = null;
-      this.state.lastCenter = null;
-    } else if (this.activePointers.size === 1) {
-      this.state.isDragging = true;
-      const pointer = this.activePointers.values().next().value;
-      this.state.lastPos = { x: pointer.x, y: pointer.y };
-      this.state.lastDist = null;
     }
   }
 
-  /**
-   * Handle pointer cancel
-   * @param {PIXI.FederatedPointerEvent} e
-   */
-  onPointerCancel(e) {
-    this.activePointers.delete(e.pointerId);
-    this.state.isDragging = false;
+  onPointerUp(e) {
+    if (e.button !== 0 || !this.activePointers.has(e.pointerId)) return;
+    const tap = this.tap;
+    this.endPointer(e.pointerId);
+    if (
+      tap && this.app.screen.contains(e.global.x, e.global.y) &&
+      Math.hypot(e.global.x - tap.point.x, e.global.y - tap.point.y) < this.tapMaxMovement
+    )
+      this.onTap?.(e, tap, Date.now() - tap.started < this.tapMaxDuration);
+  }
+
+  endPointer(pointerId) {
+    if (!this.activePointers.delete(pointerId)) return;
+    this.tap = null;
     this.state.lastDist = null;
     this.state.lastCenter = null;
+    if (this.activePointers.size === 1)
+      this.state.lastPos = this.activePointers.values().next().value;
   }
 
-  /**
-   * Handle pointer leave
-   * @param {PIXI.FederatedPointerEvent} e
-   */
-  onPointerLeave(e) {
-    this.activePointers.delete(e.pointerId);
-    if (this.activePointers.size === 0) {
-      this.state.isDragging = false;
-    }
-  }
-
-  /**
-   * Handle pointer move
-   * @param {PIXI.FederatedPointerEvent} e
-   */
   onPointerMove(e) {
-    if (this.activePointers.has(e.pointerId)) {
-      const oldPos = this.activePointers.get(e.pointerId);
-      const newPos = { x: e.global.x, y: e.global.y };
+    if (!this.activePointers.has(e.pointerId)) return;
+    const point = { x: e.global.x, y: e.global.y };
+    this.activePointers.set(e.pointerId, point);
 
-      // Track total movement for tap detection
-      if (this.gestureState.startPos && this.activePointers.size === 1) {
-        const dx = newPos.x - this.gestureState.startPos.x;
-        const dy = newPos.y - this.gestureState.startPos.y;
-        this.gestureState.totalMovement = Math.sqrt(dx * dx + dy * dy);
-
-        // Mark as gesture if movement exceeds threshold
-        if (this.gestureState.totalMovement >= this.TAP_MAX_MOVEMENT) {
-          this.gestureState.isGesture = true;
-        }
-      }
-
-      this.activePointers.set(e.pointerId, newPos);
+    if (this.tap) {
+      if (Math.hypot(point.x - this.tap.point.x, point.y - this.tap.point.y) < this.tapMaxMovement)
+        return;
+      this.tap = null;
     }
 
-    if (this.activePointers.size === 2) {
-      this.handlePinchZoom();
-    } else if (this.state.isDragging && this.activePointers.size === 1) {
-      this.handlePan(e);
-    }
+    if (this.activePointers.size === 2) this.handlePinchZoom();
+    else if (this.activePointers.size === 1) this.handlePan(e);
   }
 
   /**
@@ -465,13 +291,9 @@ export class InputHandler {
    * Cleanup
    */
   reset() {
-    clearTimeout(this._cooldownTimer);
-    this.clearDoubleTap();
+    this.tap = null;
     this.activePointers.clear();
-    this.gestureState.isGesture = false;
-    this.gestureState.gestureCooldown = false;
     if (this.state) {
-      this.state.isDragging = false;
       this.state.lastDist = null;
       this.state.lastCenter = null;
     }
@@ -482,13 +304,11 @@ export class InputHandler {
     if (this.app?.stage) {
       for (const [event, handler] of Object.entries(this._handlers || {}))
         this.app.stage.off(event, handler);
-      this.app.stage.off("pointerup", this.onPointerUp);
-      this.app.stage.off("pointerupoutside", this.onPointerUp);
     }
     if (this.domContainer) {
+      this.domContainer.removeEventListener("pointercancel", this._cancelPointer);
       this.domContainer.removeEventListener("wheel", this.wheelHandler);
     }
-    this.activePointers.clear();
     this.app = null;
     this.viewport = null;
     this.state = null;

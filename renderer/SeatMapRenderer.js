@@ -168,8 +168,6 @@ export class SeatMapRenderer {
         initialBounds: null,
         initialPosition: null,
         hasUnderlay: false,
-        isDragging: false,
-        isTouchDevice: navigator.maxTouchPoints > 0,
       };
       this.textureCache = new TextureCache(this.app.renderer, {
         resolution: this.options.seatTextureResolution,
@@ -187,6 +185,7 @@ export class SeatMapRenderer {
         state: this.state,
         config: this.options,
         domContainer: this.app.canvas,
+        onTap: (event, tap, shortTap) => this._tapMap(event, tap, shortTap),
         onZoomChange: () => {
           this._navigated = true;
           this.viewportManager.cancelAnimation();
@@ -441,20 +440,74 @@ export class SeatMapRenderer {
       );
     graphics.eventMode = "static";
     graphics.cursor = "pointer";
-    graphics.on("pointertap", (e) => {
-      if (!this.inputHandler.isValidTap()) return;
-      e.stopPropagation();
-      if (section.type === "ga" && !section.isZone) {
-        if (this._ready && this.options.mode === "booking")
-          this.ui.openGA(section.id);
-      } else if (
-        section.isZone
-          ? this.options.enableZoneZoom
-          : this.options.enableSectionZoom
-      )
-        this.zoomToSectionById(section.id, e.global);
-    });
+    view._background = graphics;
     return view;
+  }
+  _tapMap(event, { point, target }, shortTap) {
+    const sectionView = target.parent;
+    const background = sectionView?._background === target
+      ? sectionView.sectionData
+      : null;
+    const backgroundTap = shortTap && target === event.target;
+    if (background?.type === "ga" && !background.isZone) {
+      if (backgroundTap && this._ready && this.options.mode === "booking")
+        this.ui.openGA(background.id);
+      return;
+    }
+
+    if (this._ready) {
+      const touch = event.pointerType === "touch";
+      const seat = this._seatAtPoint(point, touch);
+      if (seat) {
+        const minScale = Math.min(
+          this.options.maxZoom,
+          this.state.initialScale * this.options.mobileMinZoomForSelection,
+        );
+        if (
+          touch && this.options.mobileRequireZoomForSelection &&
+          this.viewport.scale.x < minScale
+        ) {
+          this.viewportManager.zoomToSection(
+            this._sections.get(seat.sectionId), point, minScale,
+          );
+        } else {
+          this._attempt(() => this._setSeat(seat.seatData.id, !seat.selected));
+        }
+        return;
+      }
+    }
+
+    if (
+      backgroundTap && background && (background.isZone
+        ? this.options.enableZoneZoom : this.options.enableSectionZoom)
+    )
+      this.zoomToSectionById(background.id, point);
+  }
+  _seatAtPoint(point, touch) {
+    const scale = this.viewport.scale.x;
+    const baseRadius = this.options.seatRadius * this._seatZoomScale;
+    // Keep a minimum touch radius in screen pixels even at the overview scale.
+    const radius = touch
+      ? Math.max(baseRadius, 6 / scale) * this.options.mobileSeatHitareaScale
+      : baseRadius + 2 / scale;
+    let nearestId;
+    let nearestDistance = radius * radius;
+    // Transforms are shared by a section. Measure in that section's coordinates
+    // so rotation and layout offsets are respected in the same distance units.
+    for (const view of this._sections.values()) {
+      const { seats, layoutShiftX = 0, layoutShiftY = 0 } = view.sectionData;
+      if (!seats.length) continue;
+      const local = view.toLocal(point);
+      const x = local.x - layoutShiftX;
+      const y = local.y - layoutShiftY;
+      for (const seat of seats) {
+        const distance = (x - seat.x) ** 2 + (y - seat.y) ** 2;
+        if (distance > nearestDistance) continue;
+        nearestDistance = distance;
+        nearestId = seat.id;
+      }
+    }
+    return this._store.seats.get(nearestId);
   }
   _createSeat(parent, data, section) {
     const view = new PIXI.Container();
@@ -465,12 +518,7 @@ export class SeatMapRenderer {
     view.eventMode = "static";
     // The seat owns its hit area; sprites, icons and labels are decorative.
     view.interactiveChildren = false;
-    view.hitArea = new PIXI.Circle(
-      0,
-      0,
-      this.options.seatRadius *
-        (this.state.isTouchDevice ? this.options.mobileSeatHitareaScale : 1),
-    );
+    view.hitArea = new PIXI.Circle(0, 0, this.options.seatRadius);
     const style = section.style ?? {};
     view._color = data.sn ? 0x2563eb : (style.seatColor ?? 0xffffff);
     view._strokeColor = style.seatStrokeColor ?? 0xffffff;
@@ -513,22 +561,6 @@ export class SeatMapRenderer {
       view._icon = icon;
       view.addChild(icon);
     }
-    view.on("pointertap", (e) => {
-      e.stopPropagation();
-      if (this.inputHandler.isGestureActive() || !this._ready) return;
-      if (
-        this.state.isTouchDevice &&
-        this.options.mobileRequireZoomForSelection &&
-        this.viewport.scale.x / this.state.initialScale <
-          this.options.mobileMinZoomForSelection
-      ) {
-        this.zoomToSectionById(section.id, e.global);
-        return;
-      }
-      this._attempt(() =>
-        this._setSeat(data.id, !this._store.seats.get(data.id).selected),
-      );
-    });
     view.on("pointerover", (e) => {
       const seat = this._store.seats.get(data.id);
       if (!seat) return;
@@ -664,7 +696,10 @@ export class SeatMapRenderer {
     view._sprite.visible = !view._canShowDetail || progress < 1;
   }
   _applySeatScale(view) {
-    view.scale.set(this._seatZoomScale * (view._emphasisScale ?? 1));
+    const emphasis = view._emphasisScale ?? 1;
+    view.scale.set(this._seatZoomScale * emphasis);
+    // Keep Pixi's hover target stable while the seat is visually emphasized.
+    view.hitArea.radius = this.options.seatRadius / emphasis;
   }
   _updateSeatLabelResolution(view) {
     if (!view._label?.visible) return;
