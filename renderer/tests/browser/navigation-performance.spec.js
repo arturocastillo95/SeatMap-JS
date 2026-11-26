@@ -26,6 +26,7 @@ for (const variant of ["baseline", "render-group", "render-group-events"])
       for (const action of ["pan", "zoom"]) {
         const renderTimes = [], inputTimes = [], frameTimes = [];
         pointer("pointerdown", 450);
+        if (action === "pan") pointer("pointermove", 465);
         let last = performance.now();
         for (let i = 0; i < 70; i++) {
           const begin = performance.now();

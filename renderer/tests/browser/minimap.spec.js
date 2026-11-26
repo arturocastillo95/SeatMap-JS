@@ -61,7 +61,7 @@ test('booking overview includes venue artwork', async ({ page }, testInfo) => {
 test.describe('minimap reset gestures', () => {
   test.use({ hasTouch: true });
   for (const input of ['mouse', 'touch']) {
-    test(`double ${input === 'mouse' ? 'click' : 'tap'} restores full-map zoom`, async ({ page }) => {
+    test(`double ${input === 'mouse' ? 'click' : 'tap'} restores full-map zoom`, async ({ page, browserName }) => {
       await page.goto('/tests/browser/host.html');
       await page.waitForFunction(() => window.ready);
       await page.evaluate(() => window.ready(100));
@@ -72,6 +72,24 @@ test.describe('minimap reset gestures', () => {
       const box = await overview.locator('svg').boundingBox();
       const x = box.x + box.width / 2, y = box.y + box.height / 2;
       if (input === 'mouse') await page.mouse.dblclick(x, y);
+      else if (browserName === 'chromium') {
+        const cdp = await page.context().newCDPSession(page);
+        // Playwright tap calls can take over 500 ms each on loaded CI runners.
+        // Supply the gesture's timestamps independently of command latency.
+        const start = (Date.now() - 250) / 1000;
+        try {
+          for (const delay of [0, 0.15]) {
+            await cdp.send('Input.dispatchTouchEvent', {
+              type: 'touchStart', touchPoints: [{ x, y }], timestamp: start + delay,
+            });
+            await cdp.send('Input.dispatchTouchEvent', {
+              type: 'touchEnd', touchPoints: [], timestamp: start + delay + 0.05,
+            });
+          }
+        } finally {
+          await cdp.detach();
+        }
+      }
       else {
         await page.touchscreen.tap(x, y);
         await page.touchscreen.tap(x, y);

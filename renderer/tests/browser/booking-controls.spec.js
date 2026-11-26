@@ -107,3 +107,37 @@ test('seat tooltip stays within the viewport and selection uses a checkmark', as
   expect(await page.evaluate(() => window.bookingDemo.renderer._views.get(window.testSeatId)._selectionMark.visible)).toBe(false);
   await expect.poll(seatScale).toBeCloseTo(1);
 });
+
+test('the mobile booking map stays in place while tapping adjacent seats', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'Uses the mobile booking layout and touch input.');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/examples/booking/index.html');
+  await expect(page.locator('[data-status]')).toContainText('Recinto listo');
+  const drawer = page.locator('.drawer-toggle');
+  if (await drawer.getAttribute('aria-expanded') === 'false') await drawer.click();
+  await page.locator('[data-sections] [data-section-id="VIP 3"]').click();
+  const pair = await page.evaluate(() => {
+    const r = window.bookingDemo.renderer;
+    const rect = r.app.canvas.getBoundingClientRect();
+    const visible = r.getSeats().filter(seat => seat.sectionId === 'VIP 3').map(seat => {
+      const point = r._views.get(seat.id).getGlobalPosition();
+      return { ...seat, x: rect.left + point.x, y: rect.top + point.y };
+    }).filter(point => document.elementFromPoint(point.x, point.y) === r.app.canvas);
+    for (const first of visible.filter(seat => seat.seat === '1')) {
+      const second = visible.find(seat => seat.row === first.row && seat.seat === '2');
+      if (second) return [first, second];
+    }
+    throw new Error('No adjacent VIP 3 seats are visible');
+  });
+  const [first, second] = pair;
+  const map = page.locator('#seatmap-container');
+  const bounds = await map.boundingBox();
+  const selected = () => page.evaluate(() => window.bookingDemo.renderer.getCart().seats.map(seat => seat.id));
+  await page.touchscreen.tap(first.x, first.y);
+  await expect(drawer).toHaveAttribute('aria-expanded', 'false');
+  expect(await map.boundingBox()).toEqual(bounds);
+  await page.touchscreen.tap(second.x, second.y);
+  expect(await selected()).toEqual([first.id, second.id]);
+  await page.touchscreen.tap(second.x, second.y);
+  expect(await selected()).toEqual([first.id]);
+});

@@ -132,15 +132,16 @@ dialog::backdrop { background: rgba(17,19,22,.62); }
 .section-card[aria-current="location"] { border-color: var(--accent); background: #f7f5ff; }
 .map-message { top: 20px; left: 24px; right: 24px; max-width: none; padding: 13px 16px; border: 0; background: #e5f3fb; color: #23516b; box-shadow: none; }
 .map-message.error { background: #fff0eb; color: #812719; }
-#seatmap-container { height: calc(100% - 56px); }
-.map-legend { position: absolute; bottom: 22px; left: 24px; display: flex; flex-wrap: wrap; gap: 16px; color: #596170; font-size: 12px; }
+/* Reserve room for the footer so seats stay in place when the cart opens. */
+#seatmap-container { height: calc(100% - var(--footer-height) - 48px); }
+.map-legend { position: absolute; bottom: calc(var(--footer-height) + 18px); left: 24px; display: flex; flex-wrap: wrap; gap: 16px; color: #596170; font-size: 12px; }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .map-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 .legend-available { background: #8751bb; }
 .map-legend .legend-selected { display: inline-grid; width: 13px; height: 13px; place-items: center; background: #8751bb; color: #fff; font-style: normal; font-size: 10px; line-height: 1; }
 .legend-selected::after { content: "✓"; }
 .legend-unavailable { background: #cbd0d8; border: 1px solid #a1a8b4; }
-.map-hint { position: absolute; bottom: 18px; right: 24px; margin: 0; color: #596170; font-size: 12px; }
+.map-hint { position: absolute; bottom: calc(var(--footer-height) + 18px); right: 24px; margin: 0; color: #596170; font-size: 12px; }
 .map-area .seatmap-ui { top: auto; bottom: 16px; right: 24px; max-width: min(340px,calc(100% - 48px)); max-height: calc(100% - 100px); padding: 10px; border-color: #dfe2e8; border-radius: 8px; box-shadow: 0 2px 8px #18243a0d; }
 .map-area .seatmap-ui summary { padding: 10px 2px 2px; color: #5142c8; }
 .map-area .seatmap-ui details[open] summary { padding-bottom: 10px; }
@@ -149,8 +150,6 @@ dialog::backdrop { background: rgba(17,19,22,.62); }
 .map-area .seatmap-ui .seatmap-results button:hover { background: #f3f1fc; }
 .map-area .seatmap-ui button[aria-pressed="true"] { background: #e6f3eb; }
 .purchase-footer { left: 390px; }
-.has-selection #seatmap-container { height: calc(100% - var(--footer-height) - 48px); }
-.has-selection .map-legend { bottom: calc(var(--footer-height) + 18px); }
 .has-selection .map-hint { display: none; }
 @media (max-width: 1100px) { .map-hint { display: none; } }
 @media (max-width: 768px) {
@@ -159,11 +158,9 @@ dialog::backdrop { background: rgba(17,19,22,.62); }
   .drawer-toggle { min-height: 56px; }
   .purchase-footer { left: 0; }
   .map-message { top: 12px; left: 12px; right: 12px; padding: 10px 12px; font-size: 12px; }
-  #seatmap-container { height: calc(100% - 96px); }
-  .has-selection #seatmap-container { height: calc(100% - 96px - var(--footer-height)); }
+  #seatmap-container { height: calc(100% - 96px - var(--footer-height)); }
   .map-area .seatmap-ui { right: 12px; bottom: 12px; max-width: calc(100% - 24px); max-height: calc(100% - 64px); }
-  .map-legend { left: 12px; bottom: 68px; gap: 12px; font-size: 11px; }
-  .has-selection .map-legend { bottom: calc(var(--footer-height) + 68px); }
+  .map-legend { left: 12px; bottom: calc(var(--footer-height) + 68px); gap: 12px; font-size: 11px; }
   .section-list { padding: 12px 16px; }
 }
 
